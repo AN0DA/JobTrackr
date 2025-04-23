@@ -41,8 +41,8 @@ class ApplicationList(Static):
         for app in applications:
             company_name = app.get("company", {}).get("name", "")
             table.add_row(
-                app["jobTitle"],
+                app["job_title"],
                 company_name,
                 app["status"],
-                app["appliedDate"]
+                app["applied_date"]
             )

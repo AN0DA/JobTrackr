@@ -7,7 +7,7 @@ from textual.app import ComposeResult
 from src.tui.widgets.stats_card import StatsCard
 from src.tui.widgets.application_list import ApplicationList
 from src.tui.widgets.reminder_list import ReminderList
-from src.tui.api_client import APIClient
+from src.services.application_service import ApplicationService
 
 
 class Dashboard(Static):
@@ -17,26 +17,26 @@ class Dashboard(Static):
         """Compose the dashboard layout."""
         with Container():
             with Grid(id="stats-grid"):
-                yield StatsCard("Total Applications", "0")
-                yield StatsCard("Applied", "0")
-                yield StatsCard("Interviews", "0")
-                yield StatsCard("Offers", "0")
+                yield StatsCard("Total Applications", "0", id="total-apps")
+                yield StatsCard("Applied", "0", id="applied-apps")
+                yield StatsCard("Interviews", "0", id="interview-apps")
+                yield StatsCard("Offers", "0", id="offer-apps")
 
             with Grid(id="lists-grid"):
                 yield ApplicationList(title="Recent Applications")
                 yield ReminderList(title="Upcoming Reminders")
 
-    async def on_mount(self) -> None:
+    def on_mount(self) -> None:
         """Load dashboard data when mounted."""
-        await self.refresh_data()
+        self.refresh_data()
 
-    async def refresh_data(self) -> None:
-        """Refresh dashboard data from API."""
+    def refresh_data(self) -> None:
+        """Refresh dashboard data from database."""
         self.update_status("Fetching dashboard data...")
 
         try:
-            client = APIClient()
-            stats = await client.get_dashboard_stats()
+            service = ApplicationService()
+            stats = service.get_dashboard_stats()
 
             # Update stats cards
             total_card = self.query_one("#total-apps", StatsCard)
@@ -44,24 +44,27 @@ class Dashboard(Static):
             interview_card = self.query_one("#interview-apps", StatsCard)
             offer_card = self.query_one("#offer-apps", StatsCard)
 
-            total_card.update_value(str(stats["totalApplications"]))
+            total_card.update_value(str(stats["total_applications"]))
 
             # Find status counts
-            for status_count in stats["applicationsByStatus"]:
+            interview_count = 0
+            for status_count in stats["applications_by_status"]:
                 if status_count["status"] == "APPLIED":
                     applied_card.update_value(str(status_count["count"]))
                 elif status_count["status"] in ["INTERVIEW", "PHONE_SCREEN", "TECHNICAL_INTERVIEW"]:
-                    interview_card.update_value(str(status_count["count"]))
+                    interview_count += status_count["count"]
                 elif status_count["status"] == "OFFER":
                     offer_card.update_value(str(status_count["count"]))
 
+            interview_card.update_value(str(interview_count))
+
             # Update recent applications list
             app_list = self.query_one(ApplicationList)
-            app_list.update_applications(stats["recentApplications"])
+            app_list.update_applications(stats["recent_applications"])
 
             # Update reminders list
             reminder_list = self.query_one(ReminderList)
-            reminder_list.update_reminders(stats["upcomingReminders"])
+            reminder_list.update_reminders(stats["upcoming_reminders"])
 
             self.update_status("Dashboard updated")
         except Exception as e:

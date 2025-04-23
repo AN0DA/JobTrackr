@@ -3,10 +3,16 @@
 from textual.app import ComposeResult
 from textual.screen import Screen
 from textual.containers import Container, Vertical
-from textual.widgets import Input, Button, Label, TextArea, Select
+from textual.widgets import Input, Button, Label, TextArea, Select, Static
+from textual.widgets import Input, Button, Label, TextArea, Select, Static, Pretty
+from textual.containers import Grid, Container, Vertical, Horizontal
 from datetime import datetime
+from textual.widgets import Input, Button, Label, TextArea, Select, Pretty
+from textual.containers import Grid, Container, Vertical, Horizontal
 
-from src.tui.api_client import APIClient
+
+from src.services.application_service import ApplicationService
+from src.services.company_service import CompanyService
 from src.tui.company_form import CompanyForm
 
 
@@ -73,6 +79,9 @@ class ApplicationForm(Screen):
                 yield Label("Description")
                 yield TextArea(id="description", disabled=self.readonly)
 
+                yield Label("Tags")
+                yield TagInput(id="tag-input")
+
                 yield Label("Notes")
                 yield TextArea(id="notes", disabled=self.readonly)
 
@@ -81,33 +90,37 @@ class ApplicationForm(Screen):
                     yield Button("Save", variant="primary", id="save-app")
                 yield Button("Close", id="close-form")
 
-    async def on_mount(self) -> None:
+    def on_mount(self) -> None:
         """Load data when the form is mounted."""
-        await self.load_companies()
+        self.load_companies()
         if self.app_id:
-            await self.load_application()
+            self.load_application()
 
-    async def load_companies(self) -> None:
+    def load_companies(self) -> None:
         """Load companies for the dropdown."""
         try:
-            client = APIClient()
-            self.companies = await client.get_companies()
+            service = CompanyService()
+            self.companies = service.get_companies()
 
             company_select = self.query_one("#company-select", Select)
             company_select.set_options([
-                (company["name"], company["id"]) for company in self.companies
+                (company["name"], str(company["id"])) for company in self.companies
             ])
         except Exception as e:
             self.app.sub_title = f"Error loading companies: {str(e)}"
 
-    async def load_application(self) -> None:
+    def load_application(self) -> None:
         """Load application data for editing."""
         try:
-            client = APIClient()
-            app_data = await client.get_application(self.app_id)
+            service = ApplicationService()
+            app_data = service.get_application(int(self.app_id))
+
+            if not app_data:
+                self.app.sub_title = f"Application {self.app_id} not found"
+                return
 
             # Populate the form fields
-            self.query_one("#job-title", Input).value = app_data["jobTitle"]
+            self.query_one("#job-title", Input).value = app_data["job_title"]
             self.query_one("#position", Input).value = app_data["position"]
 
             if app_data.get("location"):
@@ -119,7 +132,7 @@ class ApplicationForm(Screen):
             self.query_one("#status", Select).value = app_data["status"]
 
             # Format the date
-            applied_date = datetime.fromisoformat(app_data["appliedDate"]).strftime("%Y-%m-%d")
+            applied_date = datetime.fromisoformat(app_data["applied_date"]).strftime("%Y-%m-%d")
             self.query_one("#applied-date", Input).value = applied_date
 
             if app_data.get("link"):
@@ -128,12 +141,17 @@ class ApplicationForm(Screen):
             if app_data.get("description"):
                 self.query_one("#description", TextArea).text = app_data["description"]
 
+            if app_data.get("tags"):
+                tag_input = self.query_one("#tag-input", TagInput)
+                tag_input.set_tags(app_data["tags"])
+                self.query_one("#current-tags", Pretty).update(app_data["tags"])
+
             if app_data.get("notes"):
                 self.query_one("#notes", TextArea).text = app_data["notes"]
 
             # Set company if available
             if app_data.get("company"):
-                self.query_one("#company-select", Select).value = app_data["company"]["id"]
+                self.query_one("#company-select", Select).value = str(app_data["company"]["id"])
 
         except Exception as e:
             self.app.sub_title = f"Error loading application: {str(e)}"
@@ -143,7 +161,20 @@ class ApplicationForm(Screen):
         button_id = event.button.id
 
         if button_id == "new-company":
-            self.app.push_screen(CompanyForm())
+            self.app.push_screen(CompanyForm(on_saved=self.load_companies))
+
+        elif button_id == "add-tag":
+            # Get current tag input value
+            tag_input = self.query_one("#tag-input", TagInput)
+            current_value = tag_input.value.strip()
+
+            if current_value:
+                # Add to tags list
+                tag_input.tags.append(current_value)
+                # Clear input
+                tag_input.value = ""
+                # Update display
+                self.query_one("#current-tags", Pretty).update(tag_input.tags)
 
         elif button_id == "save-app":
             self.save_application()
@@ -151,7 +182,7 @@ class ApplicationForm(Screen):
         elif button_id == "close-form":
             self.app.pop_screen()
 
-    async def save_application(self) -> None:
+    def save_application(self) -> None:
         """Save the application data."""
         try:
             # Get values from form
@@ -165,6 +196,7 @@ class ApplicationForm(Screen):
             link = self.query_one("#link", Input).value
             description = self.query_one("#description", TextArea).text
             notes = self.query_one("#notes", TextArea).text
+            tags = self.query_one("#tag-input", TagInput).get_tags()
 
             # Validate required fields
             if not job_title:
@@ -189,37 +221,66 @@ class ApplicationForm(Screen):
 
             # Prepare data
             app_data = {
-                "jobTitle": job_title,
-                "companyId": company_id,
+                "job_title": job_title,
+                "company_id": int(company_id),
                 "position": position,
                 "location": location or None,
                 "salary": salary or None,
                 "status": status,
-                "appliedDate": applied_date,
+                "applied_date": applied_date,
                 "link": link or None,
                 "description": description or None,
                 "notes": notes or None,
+                "tags": tags or None
             }
 
-            client = APIClient()
+            service = ApplicationService()
 
             if self.app_id:
                 # Update existing application
-                app_data["id"] = self.app_id
-                result = await client.update_application(app_data)
+                result = service.update_application(int(self.app_id), app_data)
                 self.app.sub_title = "Application updated successfully"
             else:
                 # Create new application
-                result = await client.create_application(app_data)
+                result = service.create_application(app_data)
                 self.app.sub_title = "Application created successfully"
 
             # Return to the previous screen
             self.app.pop_screen()
 
             # Refresh the applications list if it's visible
+            from src.tui.applications import ApplicationsList
             app_list = self.app.query_one(ApplicationsList, default=None)
             if app_list:
-                await app_list.load_applications()
+                app_list.load_applications()
 
         except Exception as e:
             self.app.sub_title = f"Error saving application: {str(e)}"
+
+
+class TagInput(Input):
+    """Custom input for managing tags."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.tags = []
+
+    def validate_input(self, value):
+        """Validate input when Enter is pressed."""
+        # If the input is empty, just clear it
+        if not value.strip():
+            return ""
+
+        # Add the tag to our list
+        self.tags.append(value.strip())
+
+        # Clear the input for next tag
+        return ""
+
+    def get_tags(self):
+        """Get the current list of tags."""
+        return self.tags
+
+    def set_tags(self, tags):
+        """Set tags from a list."""
+        self.tags = list(tags) if tags else []

@@ -4,11 +4,7 @@ version = "0.1.0"
 description = "Add your description here"
 requires-python = ">=3.13"
 dependencies = [
-    "fastapi>=0.115.12",
-    "httpx>=0.28.1",
-    "pydantic-settings>=2.9.1",
-    "pydgraph>=24.2.1",
-    "strawberry-graphql[fastapi]>=0.266.0",
+    "plotext>=5.3.2",
+    "sqlalchemy>=2.0.40",
     "textual>=3.1.1",
-    "uvicorn>=0.34.2",
 ]
