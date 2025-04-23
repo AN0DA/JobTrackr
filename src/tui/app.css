@@ -1,0 +1,36 @@
+/* Main application styling */
+Screen {
+    background: #1f1f1f;
+}
+
+Dashboard {
+    layout: grid;
+    grid-size: 2;
+    grid-gutter: 1 2;
+    padding: 1;
+}
+
+StatsCard {
+    height: 100%;
+    border: solid $secondary;
+    padding: 1 2;
+}
+
+ApplicationsList {
+    padding: 1;
+}
+
+ApplicationList {
+    height: 1fr;
+    border: solid $secondary;
+}
+
+ReminderList {
+    height: 1fr;
+    border: solid $secondary;
+}
+
+.placeholder {
+    content-align: center middle;
+    color: $text-muted;
+}

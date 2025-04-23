@@ -1,0 +1,91 @@
+services:
+  appsmith:
+    image: appsmith/appsmith-ce
+    ports:
+      - "80:80"
+    volumes:
+      - appsmith-storage:/appsmith-stacks
+    networks:
+      - job-tracker-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - DGRAPH_ALPHA_HOST=dgraph-alpha
+      - DGRAPH_ALPHA_PORT=9080
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+      - DEBUG=false
+    networks:
+      - job-tracker-network
+    depends_on:
+      dgraph-alpha:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  dgraph-zero:
+    image: dgraph/dgraph:latest
+    volumes:
+      - dgraph-data:/dgraph
+    ports:
+      - "5080:5080"
+      - "6080:6080"
+    command: dgraph zero --my=dgraph-zero:5080
+    networks:
+      - job-tracker-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:6080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  dgraph-alpha:
+    image: dgraph/dgraph:latest
+    volumes:
+      - dgraph-data:/dgraph
+    ports:
+      - "8080:8080"
+      - "9080:9080"
+    command: dgraph alpha --my=dgraph-alpha:7080 --zero=dgraph-zero:5080 --security whitelist=172.19.0.0/16
+    networks:
+      - job-tracker-network
+    depends_on:
+      dgraph-zero:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  dgraph-ratel:
+    image: dgraph/ratel:latest
+    ports:
+      - "8888:8000"
+    networks:
+      - job-tracker-network
+    restart: unless-stopped
+
+networks:
+  job-tracker-network:
+
+volumes:
+  appsmith-storage:
+  dgraph-data:
