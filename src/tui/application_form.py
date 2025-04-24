@@ -1,19 +1,70 @@
-"""Form for creating/editing job applications."""
-
 from textual.app import ComposeResult
 from textual.screen import Screen
-from textual.containers import Container, Vertical
+from textual.containers import Container, Vertical, Horizontal, ScrollableContainer
 from textual.widgets import Input, Button, Label, TextArea, Select, Static
-from textual.widgets import Input, Button, Label, TextArea, Select, Static, Pretty
-from textual.containers import Grid, Container, Vertical, Horizontal
 from datetime import datetime
-from textual.widgets import Input, Button, Label, TextArea, Select, Pretty
-from textual.containers import Grid, Container, Vertical, Horizontal
-
 
 from src.services.application_service import ApplicationService
 from src.services.company_service import CompanyService
-from src.tui.company_form import CompanyForm
+
+
+class TagInput(Static):
+    """Custom widget for handling tags."""
+    
+    def __init__(self, id=None, tags=None):
+        super().__init__(id=id)
+        self.tags = tags or []
+    
+    def compose(self) -> ComposeResult:
+        """Compose the tag input widget."""
+        yield Input(placeholder="Type a tag and press Enter", id=f"{self.id}-input")
+        yield Horizontal(id=f"{self.id}-tags")
+        yield Button("Add Tag", id=f"{self.id}-add")
+    
+    def on_mount(self):
+        """Initialize tags when mounted."""
+        self._refresh_tags()
+    
+    def on_input_submitted(self, event: Input.Submitted):
+        """Handle Enter key to add a tag."""
+        if event.input.id == f"{self.id}-input":
+            self._add_tag(event.value)
+            event.input.value = ""
+    
+    def on_button_pressed(self, event: Button.Pressed):
+        """Handle Add Tag button press."""
+        if event.button.id == f"{self.id}-add":
+            input = self.query_one(f"#{self.id}-input", Input)
+            if input.value.strip():
+                self._add_tag(input.value)
+                input.value = ""
+    
+    def _add_tag(self, tag):
+        """Add a tag to the list."""
+        tag = tag.strip()
+        if tag and tag not in self.tags:
+            self.tags.append(tag)
+            self._refresh_tags()
+    
+    def _refresh_tags(self):
+        """Refresh the tags display."""
+        tags_container = self.query_one(f"#{self.id}-tags", Horizontal)
+        tags_container.remove_children()
+        
+        for tag in self.tags:
+            # Create a mini button for each tag
+            tag_btn = Button(f"{tag} ×", classes="tag-button", id=f"tag-{len(tags_container.children)}")
+            tags_container.mount(tag_btn)
+    
+    def get_tags(self):
+        """Get the current list of tags."""
+        return self.tags
+    
+    def set_tags(self, tags):
+        """Set tags from a list."""
+        self.tags = list(tags) if tags else []
+        if self.is_mounted:
+            self._refresh_tags()
 
 
 class ApplicationForm(Screen):
@@ -41,51 +92,69 @@ class ApplicationForm(Screen):
                 id="form-title"
             )
 
-            with Vertical(id="form-fields"):
-                yield Label("Job Title")
-                yield Input(id="job-title", disabled=self.readonly)
+            # Use ScrollableContainer to ensure all fields are accessible
+            with ScrollableContainer(id="form-container"):
+                with Vertical(id="form-fields"):
+                    # Essential fields section
+                    yield Label("Essential Information", classes="section-header")
+                    
+                    yield Label("Job Title *", classes="field-label")
+                    yield Input(id="job-title", disabled=self.readonly)
 
-                yield Label("Company")
-                with Vertical(id="company-field"):
-                    yield Select([], id="company-select", disabled=self.readonly)
-                    if not self.readonly:
-                        yield Button("+ New Company", id="new-company", variant="primary")
+                    yield Label("Company *", classes="field-label")
+                    with Vertical(id="company-field"):
+                        yield Select([], id="company-select", disabled=self.readonly)
+                        if not self.readonly:
+                            yield Button("+ New Company", id="new-company", variant="primary")
 
-                yield Label("Position")
-                yield Input(id="position", disabled=self.readonly)
+                    yield Label("Position *", classes="field-label")
+                    yield Input(id="position", disabled=self.readonly)
 
-                yield Label("Location")
-                yield Input(id="location", disabled=self.readonly)
+                    yield Label("Status *", classes="field-label")
+                    yield Select(
+                        [(status, status) for status in [
+                            "SAVED", "APPLIED", "PHONE_SCREEN", "INTERVIEW",
+                            "TECHNICAL_INTERVIEW", "OFFER", "ACCEPTED", "REJECTED", "WITHDRAWN"
+                        ]],
+                        id="status",
+                        disabled=self.readonly
+                    )
 
-                yield Label("Salary")
-                yield Input(id="salary", disabled=self.readonly)
+                    yield Label("Applied Date *", classes="field-label")
+                    yield Input(
+                        id="applied-date",
+                        placeholder="YYYY-MM-DD",
+                        disabled=self.readonly,
+                        value=datetime.now().strftime("%Y-%m-%d") if not self.app_id and not self.readonly else ""
+                    )
+                    
+                    # Additional details section
+                    yield Label("Additional Details", classes="section-header")
 
-                yield Label("Status")
-                yield Select(
-                    [(status, status) for status in [
-                        "SAVED", "APPLIED", "PHONE_SCREEN", "INTERVIEW",
-                        "TECHNICAL_INTERVIEW", "OFFER", "ACCEPTED", "REJECTED", "WITHDRAWN"
-                    ]],
-                    id="status",
-                    disabled=self.readonly
-                )
+                    yield Label("Location", classes="field-label")
+                    yield Input(id="location", placeholder="City, State or Remote", disabled=self.readonly)
 
-                yield Label("Applied Date")
-                yield Input(id="applied-date", placeholder="YYYY-MM-DD", disabled=self.readonly)
+                    yield Label("Salary", classes="field-label")
+                    yield Input(id="salary", placeholder="e.g. $100,000/year", disabled=self.readonly)
 
-                yield Label("Link")
-                yield Input(id="link", disabled=self.readonly)
+                    yield Label("Link", classes="field-label")
+                    yield Input(id="link", placeholder="https://...", disabled=self.readonly)
 
-                yield Label("Description")
-                yield TextArea(id="description", disabled=self.readonly)
+                    # Description and notes section
+                    yield Label("Content", classes="section-header")
+                    
+                    yield Label("Description", classes="field-label")
+                    yield TextArea(id="description", disabled=self.readonly)
 
-                yield Label("Tags")
-                yield TagInput(id="tag-input")
+                    yield Label("Notes", classes="field-label")
+                    yield TextArea(id="notes", disabled=self.readonly)
 
-                yield Label("Notes")
-                yield TextArea(id="notes", disabled=self.readonly)
+                    yield Label("Tags", classes="field-label")
+                    yield TagInput(id="tag-input")
+            
+            yield Label("* Required fields", id="required-fields-note")
 
-            with Vertical(id="form-actions"):
+            with Horizontal(id="form-actions"):
                 if not self.readonly:
                     yield Button("Save", variant="primary", id="save-app")
                 yield Button("Close", id="close-form")
@@ -95,6 +164,16 @@ class ApplicationForm(Screen):
         self.load_companies()
         if self.app_id:
             self.load_application()
+    
+    # def on_resize(self) -> None:
+    #     """Handle resize events by adjusting the form container."""
+    #     form_container = self.query_one("#form-container", ScrollableContainer)
+    #     form_actions = self.query_one("#form-actions", Horizontal)
+    #
+    #     # Make sure the form container adjusts to leave space for actions
+    #     # This helps on smaller screens
+    #     action_height = form_actions.region.height
+    #     form_container.styles.height = f"100vh - {action_height}px"
 
     def load_companies(self) -> None:
         """Load companies for the dropdown."""
@@ -106,6 +185,11 @@ class ApplicationForm(Screen):
             company_select.set_options([
                 (company["name"], str(company["id"])) for company in self.companies
             ])
+            
+            # Set default selection for new applications
+            if not self.app_id and self.companies:
+                company_select.value = str(self.companies[0]["id"])
+            
         except Exception as e:
             self.app.sub_title = f"Error loading companies: {str(e)}"
 
@@ -114,7 +198,7 @@ class ApplicationForm(Screen):
         try:
             service = ApplicationService()
             app_data = service.get_application(int(self.app_id))
-
+            
             if not app_data:
                 self.app.sub_title = f"Application {self.app_id} not found"
                 return
@@ -141,17 +225,17 @@ class ApplicationForm(Screen):
             if app_data.get("description"):
                 self.query_one("#description", TextArea).text = app_data["description"]
 
-            if app_data.get("tags"):
-                tag_input = self.query_one("#tag-input", TagInput)
-                tag_input.set_tags(app_data["tags"])
-                self.query_one("#current-tags", Pretty).update(app_data["tags"])
-
             if app_data.get("notes"):
                 self.query_one("#notes", TextArea).text = app_data["notes"]
 
             # Set company if available
             if app_data.get("company"):
                 self.query_one("#company-select", Select).value = str(app_data["company"]["id"])
+                
+            # Handle tags
+            if app_data.get("tags"):
+                tag_input = self.query_one("#tag-input", TagInput)
+                tag_input.set_tags(app_data["tags"])
 
         except Exception as e:
             self.app.sub_title = f"Error loading application: {str(e)}"
@@ -161,20 +245,8 @@ class ApplicationForm(Screen):
         button_id = event.button.id
 
         if button_id == "new-company":
+            from src.tui.company_form import CompanyForm
             self.app.push_screen(CompanyForm(on_saved=self.load_companies))
-
-        elif button_id == "add-tag":
-            # Get current tag input value
-            tag_input = self.query_one("#tag-input", TagInput)
-            current_value = tag_input.value.strip()
-
-            if current_value:
-                # Add to tags list
-                tag_input.tags.append(current_value)
-                # Clear input
-                tag_input.value = ""
-                # Update display
-                self.query_one("#current-tags", Pretty).update(tag_input.tags)
 
         elif button_id == "save-app":
             self.save_application()
@@ -256,31 +328,3 @@ class ApplicationForm(Screen):
 
         except Exception as e:
             self.app.sub_title = f"Error saving application: {str(e)}"
-
-
-class TagInput(Input):
-    """Custom input for managing tags."""
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.tags = []
-
-    def validate_input(self, value):
-        """Validate input when Enter is pressed."""
-        # If the input is empty, just clear it
-        if not value.strip():
-            return ""
-
-        # Add the tag to our list
-        self.tags.append(value.strip())
-
-        # Clear the input for next tag
-        return ""
-
-    def get_tags(self):
-        """Get the current list of tags."""
-        return self.tags
-
-    def set_tags(self, tags):
-        """Set tags from a list."""
-        self.tags = list(tags) if tags else []

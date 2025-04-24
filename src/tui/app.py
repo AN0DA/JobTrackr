@@ -81,9 +81,9 @@ class JobTrackerApp(App):
         self.sub_title = f"Refreshed {active_tab_id} data"
 
     def action_new_application(self) -> None:
-        """Open the quick application creation dialog."""
-        from src.tui.quick_add import QuickAddDialog
-        self.push_screen(QuickAddDialog())
+        """Open the application creation form."""
+        from src.tui.application_form import ApplicationForm
+        self.push_screen(ApplicationForm())
 
     def action_search(self) -> None:
         """Open the search dialog."""

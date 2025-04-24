@@ -63,10 +63,32 @@ StatsCard {
     text-style: bold;
     text-align: center;
     padding-bottom: 1;
+    background: $accent;
+    color: $text;
+}
+
+#form-container {
+    height: 1fr;
+    margin: 1 0;
+    border: solid $primary-darken-2;
+    padding: 0 1;
 }
 
 #form-fields {
-    margin: 1 0;
+    padding: 1 0;
+    width: 100%;
+}
+
+.section-header {
+    text-style: bold;
+    background: $boost;
+    padding: 1;
+    margin-top: 1;
+    margin-bottom: 1;
+}
+
+.field-label {
+    margin-top: 1;
 }
 
 #company-field {
@@ -78,6 +100,26 @@ StatsCard {
     dock: bottom;
     height: 3;
     content-align: center middle;
+}
+
+#required-fields-note {
+    margin: 1 0;
+    color: $warning;
+    text-style: italic;
+}
+
+TagInput {
+    height: auto;
+    margin-bottom: 1;
+}
+
+.tag-button {
+    background: $primary-darken-1;
+    color: $text;
+    margin-right: 1;
+    height: 1;
+    min-width: 0;
+    padding: 0 1;
 }
 
 /* Applications list */
@@ -310,19 +352,4 @@ PlotChart, TimeSeriesChart {
 
 #export-form {
     margin: 1 0;
-}
-
-
-TagInput {
-    height: auto;
-    margin-bottom: 1;
-}
-
-.tag-button {
-    background: $primary-darken-1;
-    color: $text;
-    margin-right: 1;
-    height: 1;
-    min-width: 0;
-    padding: 0 1;
 }
