@@ -22,31 +22,62 @@ class ApplicationContextMenu(ModalScreen):
             with Vertical(id="menu-actions"):
                 # Status transitions based on current status
                 if self.status == "SAVED":
-                    yield Button("➤ Mark as APPLIED", variant="primary", id="change-to-applied")
+                    yield Button(
+                        "➤ Mark as APPLIED", variant="primary", id="change-to-applied"
+                    )
 
                 elif self.status == "APPLIED":
-                    yield Button("➤ Got PHONE SCREEN", variant="primary", id="change-to-phone")
-                    yield Button("➤ Got INTERVIEW", variant="primary", id="change-to-interview")
-                    yield Button("➤ Mark as REJECTED", variant="error", id="change-to-rejected")
+                    yield Button(
+                        "➤ Got PHONE SCREEN", variant="primary", id="change-to-phone"
+                    )
+                    yield Button(
+                        "➤ Got INTERVIEW", variant="primary", id="change-to-interview"
+                    )
+                    yield Button(
+                        "➤ Mark as REJECTED", variant="error", id="change-to-rejected"
+                    )
 
-                elif self.status in ["PHONE_SCREEN", "INTERVIEW", "TECHNICAL_INTERVIEW"]:
-                    yield Button("➤ Next Interview Stage", variant="primary", id="change-to-next-interview")
-                    yield Button("➤ Got an OFFER", variant="success", id="change-to-offer")
-                    yield Button("➤ Mark as REJECTED", variant="error", id="change-to-rejected")
+                elif self.status in [
+                    "PHONE_SCREEN",
+                    "INTERVIEW",
+                    "TECHNICAL_INTERVIEW",
+                ]:
+                    yield Button(
+                        "➤ Next Interview Stage",
+                        variant="primary",
+                        id="change-to-next-interview",
+                    )
+                    yield Button(
+                        "➤ Got an OFFER", variant="success", id="change-to-offer"
+                    )
+                    yield Button(
+                        "➤ Mark as REJECTED", variant="error", id="change-to-rejected"
+                    )
 
                 elif self.status == "OFFER":
-                    yield Button("➤ Mark as ACCEPTED", variant="success", id="change-to-accepted")
-                    yield Button("➤ Mark as REJECTED", variant="error", id="change-to-rejected")
-                    yield Button("➤ Mark as WITHDRAWN", variant="warning", id="change-to-withdrawn")
+                    yield Button(
+                        "➤ Mark as ACCEPTED", variant="success", id="change-to-accepted"
+                    )
+                    yield Button(
+                        "➤ Mark as REJECTED", variant="error", id="change-to-rejected"
+                    )
+                    yield Button(
+                        "➤ Mark as WITHDRAWN",
+                        variant="warning",
+                        id="change-to-withdrawn",
+                    )
 
                 # Common actions for all statuses
                 yield Button("Change Status...", id="change-status")
                 yield Label("─" * 30, classes="menu-divider")
                 yield Button("View Details", id="view-details")
+                yield Button("View Detailed Timeline", id="view-details-timeline")
                 yield Button("Edit Application", id="edit-application")
                 yield Button("Add Reminder", id="add-reminder")
                 yield Label("─" * 30, classes="menu-divider")
-                yield Button("Delete Application", variant="error", id="delete-application")
+                yield Button(
+                    "Delete Application", variant="error", id="delete-application"
+                )
                 yield Label("─" * 30, classes="menu-divider")
                 yield Button("Close Menu", id="close-menu")
 
@@ -89,14 +120,18 @@ class ApplicationContextMenu(ModalScreen):
             # If a specific status was selected, update directly
             if new_status:
                 from src.services.application_service import ApplicationService
+
                 service = ApplicationService()
                 try:
-                    service.update_application(self.application_id, {"status": new_status})
+                    service.update_application(
+                        self.application_id, {"status": new_status}
+                    )
                     self.app.sub_title = f"Status updated to {new_status}"
 
                     # Refresh applications list if visible
                     from src.tui.applications import ApplicationsList
-                    app_list = self.app.query_one(ApplicationsList, default=None)
+
+                    app_list = self.app.query_one(ApplicationsList)
                     if app_list:
                         app_list.load_applications()
                 except Exception as e:
@@ -108,20 +143,35 @@ class ApplicationContextMenu(ModalScreen):
 
         if button_id == "change-status":
             from src.tui.status_transition import StatusTransitionDialog
-            self.app.push_screen(StatusTransitionDialog(self.application_id, self.status))
+
+            self.app.push_screen(
+                StatusTransitionDialog(self.application_id, self.status)
+            )
 
         elif button_id == "view-details":
             from src.tui.application_form import ApplicationForm
-            self.app.push_screen(ApplicationForm(app_id=self.application_id, readonly=True))
+
+            self.app.push_screen(
+                ApplicationForm(app_id=self.application_id, readonly=True)
+            )
 
         elif button_id == "edit-application":
             from src.tui.application_form import ApplicationForm
+
             self.app.push_screen(ApplicationForm(app_id=self.application_id))
 
         elif button_id == "add-reminder":
             from src.tui.reminder_form import ReminderForm
+
             self.app.push_screen(ReminderForm(application_id=self.application_id))
 
         elif button_id == "delete-application":
             from src.tui.applications import DeleteConfirmationModal
+
             self.app.push_screen(DeleteConfirmationModal(self.application_id))
+
+        elif button_id == "view-details-timeline":
+            from src.tui.application_detail import ApplicationDetail
+
+            self.app.pop_screen()  # Close menu
+            self.app.push_screen(ApplicationDetail(int(self.application_id)))

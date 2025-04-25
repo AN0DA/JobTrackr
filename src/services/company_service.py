@@ -1,7 +1,7 @@
 import logging
 from typing import List, Optional, Dict, Any
 
-from src.db.models import Company
+from src.db.models import Company, CompanyRelationship, CompanyType
 from src.db.database import get_session
 
 logger = logging.getLogger(__name__)
@@ -30,7 +30,10 @@ class CompanyService:
         session = get_session()
         try:
             companies = session.query(Company).all()
-            return [self._company_to_dict(company, include_details=False) for company in companies]
+            return [
+                self._company_to_dict(company, include_details=False)
+                for company in companies
+            ]
         except Exception as e:
             logger.error(f"Error fetching companies: {e}")
             raise
@@ -47,8 +50,7 @@ class CompanyService:
                 website=data.get("website"),
                 industry=data.get("industry"),
                 size=data.get("size"),
-                logo=data.get("logo"),
-                notes=data.get("notes")
+                notes=data.get("notes"),
             )
 
             # Add to session and commit
@@ -82,8 +84,6 @@ class CompanyService:
                 company.industry = data["industry"]
             if "size" in data:
                 company.size = data["size"]
-            if "logo" in data:
-                company.logo = data["logo"]
             if "notes" in data:
                 company.notes = data["notes"]
 
@@ -109,7 +109,9 @@ class CompanyService:
 
             # Check if company has applications
             if company.applications:
-                raise ValueError(f"Cannot delete company with ID {id} because it has associated applications")
+                raise ValueError(
+                    f"Cannot delete company with ID {id} because it has associated applications"
+                )
 
             session.delete(company)
             session.commit()
@@ -121,7 +123,118 @@ class CompanyService:
         finally:
             session.close()
 
-    def _company_to_dict(self, company: Company, include_details: bool = True) -> Dict[str, Any]:
+    def get_company_types(self) -> List[str]:
+        """Get all available company types."""
+        return [ct.value for ct in CompanyType]
+
+    def create_relationship(
+        self, source_id: int, target_id: int, relationship_type: str, notes: str = None
+    ) -> Dict[str, Any]:
+        """Create a new relationship between companies."""
+        session = get_session()
+        try:
+            # Verify both companies exist
+            source = session.query(Company).filter(Company.id == source_id).first()
+            target = session.query(Company).filter(Company.id == target_id).first()
+
+            if not source or not target:
+                raise ValueError("Source or target company not found")
+
+            relationship = CompanyRelationship(
+                source_company_id=source_id,
+                target_company_id=target_id,
+                relationship_type=relationship_type,
+                notes=notes,
+            )
+
+            session.add(relationship)
+            session.commit()
+            session.refresh(relationship)
+
+            return {
+                "id": relationship.id,
+                "source_company_id": relationship.source_company_id,
+                "target_company_id": relationship.target_company_id,
+                "relationship_type": relationship.relationship_type,
+                "notes": relationship.notes,
+            }
+        except Exception as e:
+            session.rollback()
+            logger.error(f"Error creating company relationship: {e}")
+            raise
+        finally:
+            session.close()
+
+    def get_related_companies(self, company_id: int) -> List[Dict[str, Any]]:
+        """Get companies related to the given company."""
+        session = get_session()
+        try:
+            # Get outgoing relationships
+            outgoing = (
+                session.query(CompanyRelationship)
+                .filter(CompanyRelationship.source_company_id == company_id)
+                .all()
+            )
+
+            # Get incoming relationships
+            incoming = (
+                session.query(CompanyRelationship)
+                .filter(CompanyRelationship.target_company_id == company_id)
+                .all()
+            )
+
+            results = []
+
+            # Process outgoing relationships
+            for rel in outgoing:
+                target = (
+                    session.query(Company)
+                    .filter(Company.id == rel.target_company_id)
+                    .first()
+                )
+                if target:
+                    results.append(
+                        {
+                            "relationship_id": rel.id,
+                            "company_id": target.id,
+                            "company_name": target.name,
+                            "company_type": target.type,
+                            "relationship_type": rel.relationship_type,
+                            "direction": "outgoing",
+                            "notes": rel.notes,
+                        }
+                    )
+
+            # Process incoming relationships
+            for rel in incoming:
+                source = (
+                    session.query(Company)
+                    .filter(Company.id == rel.source_company_id)
+                    .first()
+                )
+                if source:
+                    results.append(
+                        {
+                            "relationship_id": rel.id,
+                            "company_id": source.id,
+                            "company_name": source.name,
+                            "company_type": source.type,
+                            "relationship_type": rel.relationship_type,
+                            "direction": "incoming",
+                            "notes": rel.notes,
+                        }
+                    )
+
+            return results
+        except Exception as e:
+            logger.error(f"Error getting related companies: {e}")
+            raise
+        finally:
+            session.close()
+
+    def _company_to_dict(
+        self, company: Company, include_details: bool = True
+    ) -> Dict[str, Any]:
         """Convert a Company object to a dictionary."""
         result = {
             "id": company.id,
@@ -129,12 +242,13 @@ class CompanyService:
         }
 
         if include_details:
-            result.update({
-                "website": company.website,
-                "industry": company.industry,
-                "size": company.size,
-                "logo": company.logo,
-                "notes": company.notes
-            })
+            result.update(
+                {
+                    "website": company.website,
+                    "industry": company.industry,
+                    "size": company.size,
+                    "notes": company.notes,
+                }
+            )
 
         return result

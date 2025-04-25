@@ -20,12 +20,6 @@ class ApplicationsList(Static):
         ("v", "view_application", "View"),
         ("s", "change_status", "Change Status"),
         ("r", "refresh_applications", "Refresh"),
-        # Status transition shortcuts
-        ("1", "mark_applied", "Applied"),
-        ("2", "mark_interview", "Interview"),
-        ("3", "mark_offer", "Offer"),
-        ("4", "mark_accepted", "Accepted"),
-        ("5", "mark_rejected", "Rejected"),
     ]
 
     def __init__(self):
@@ -39,12 +33,23 @@ class ApplicationsList(Static):
             with Horizontal(id="filters"):
                 yield Static("Filter by status:", classes="label")
                 yield Select(
-                    [(status, status) for status in [
-                        "All", "SAVED", "APPLIED", "PHONE_SCREEN", "INTERVIEW",
-                        "TECHNICAL_INTERVIEW", "OFFER", "ACCEPTED", "REJECTED", "WITHDRAWN"
-                    ]],
+                    [
+                        (status, status)
+                        for status in [
+                            "All",
+                            "SAVED",
+                            "APPLIED",
+                            "PHONE_SCREEN",
+                            "INTERVIEW",
+                            "TECHNICAL_INTERVIEW",
+                            "OFFER",
+                            "ACCEPTED",
+                            "REJECTED",
+                            "WITHDRAWN",
+                        ]
+                    ],
                     value="All",
-                    id="status-filter"
+                    id="status-filter",
                 )
                 yield Button("New Application", variant="primary", id="new-app")
 
@@ -59,7 +64,13 @@ class ApplicationsList(Static):
         """Set up the screen when mounted."""
         table = self.query_one("#applications-table", DataTable)
         table.add_columns(
-            "ID", "Job Title", "Company", "Position", "Location", "Status", "Applied Date"
+            "ID",
+            "Job Title",
+            "Company",
+            "Position",
+            "Location",
+            "Status",
+            "Applied Date",
         )
         table.cursor_type = "row"
         table.can_focus = True
@@ -97,7 +108,7 @@ class ApplicationsList(Static):
                     app["position"],
                     app.get("location", ""),
                     app["status"],
-                    app["applied_date"]
+                    app["applied_date"],
                 )
 
             self.update_status(f"Loaded {len(applications)} applications")
@@ -109,16 +120,6 @@ class ApplicationsList(Static):
         if event.select.id == "status-filter":
             status = event.value if event.value != "All" else None
             self.load_applications(status)
-
-    def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
-        """Enable buttons when a row is selected."""
-        view_btn = self.query_one("#view-app", Button)
-        edit_btn = self.query_one("#edit-app", Button)
-        delete_btn = self.query_one("#delete-app", Button)
-
-        view_btn.disabled = False
-        edit_btn.disabled = False
-        delete_btn.disabled = False
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button presses."""
@@ -155,23 +156,41 @@ class ApplicationsList(Static):
         delete_btn.disabled = False
 
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
-        """Show context menu when a row is selected."""
+        """Open the application detail view when a row is selected."""
         table = self.query_one("#applications-table", DataTable)
-        row = table.get_row_at(event.row_key)
+        # Use get_row with the RowKey provided by the event
+        app_id = table.get_row(event.row_key)[0]
 
-        # Extract data from the row
-        app_id = row[0]
-        job_title = row[1]
-        status = row[5]
+        # Open application detail view
+        from src.tui.application_detail import ApplicationDetail
 
-        # Show context menu
-        from src.tui.context_menu import ApplicationContextMenu
-        self.app.push_screen(ApplicationContextMenu(app_id, job_title, status))
+        self.app.push_screen(ApplicationDetail(int(app_id)))
 
+    def _sort_applications(self, applications):
+        """Sort applications based on current sort settings."""
+        # Define sort keys for each column
+        sort_keys = {
+            "ID": lambda app: int(app["id"]),
+            "Job Title": lambda app: app["job_title"].lower(),
+            "Company": lambda app: app.get("company", {}).get("name", "").lower(),
+            "Position": lambda app: app["position"].lower(),
+            "Location": lambda app: (app.get("location") or "").lower(),
+            "Status": lambda app: app["status"],
+            "Applied Date": lambda app: app["applied_date"],
+        }
+
+        # Get sort key function
+        sort_key = sort_keys.get(self.sort_column, lambda app: app["applied_date"])
+
+        # Sort applications
+        applications.sort(key=sort_key, reverse=not self.sort_ascending)
+
+    # Maintain all the original action methods
     def action_add_application(self) -> None:
-        """Add a new application."""
-        from src.tui.quick_add import QuickAddDialog
-        self.app.push_screen(QuickAddDialog())
+        """Open the application creation form."""
+        from src.tui.application_form import ApplicationForm
+
+        self.app.push_screen(ApplicationForm())
 
     def action_delete_application(self) -> None:
         """Delete the selected application."""
@@ -186,6 +205,7 @@ class ApplicationsList(Static):
         if table.cursor_row is not None:
             app_id = table.get_row_at(table.cursor_row)[0]
             from src.tui.application_form import ApplicationForm
+
             self.app.push_screen(ApplicationForm(app_id=app_id))
 
     def action_view_application(self) -> None:
@@ -194,6 +214,7 @@ class ApplicationsList(Static):
         if table.cursor_row is not None:
             app_id = table.get_row_at(table.cursor_row)[0]
             from src.tui.application_form import ApplicationForm
+
             self.app.push_screen(ApplicationForm(app_id=app_id, readonly=True))
 
     def action_change_status(self) -> None:
@@ -203,91 +224,12 @@ class ApplicationsList(Static):
             app_id = table.get_row_at(table.cursor_row)[0]
             status = table.get_row_at(table.cursor_row)[5]
             from src.tui.status_transition import StatusTransitionDialog
+
             self.app.push_screen(StatusTransitionDialog(app_id, status))
 
     def action_refresh_applications(self) -> None:
         """Refresh the applications list."""
         self.load_applications()
-
-    def _update_application_status(self, new_status: str) -> None:
-        """Update the status of the selected application."""
-        table = self.query_one("#applications-table", DataTable)
-        if table.cursor_row is not None:
-            app_id = table.get_row_at(table.cursor_row)[0]
-            current_status = table.get_row_at(table.cursor_row)[5]
-
-            if current_status == new_status:
-                self.app.sub_title = f"Application already has status {new_status}"
-                return
-
-            try:
-                service = ApplicationService()
-                service.update_application(int(app_id), {"status": new_status})
-                self.app.sub_title = f"Status updated to {new_status}"
-                self.load_applications()
-            except Exception as e:
-                self.app.sub_title = f"Error updating status: {str(e)}"
-
-    def _sort_applications(self, applications):
-        """Sort applications based on current sort settings."""
-        # Define sort keys for each column
-        sort_keys = {
-            "ID": lambda app: int(app["id"]),
-            "Job Title": lambda app: app["job_title"].lower(),
-            "Company": lambda app: app.get("company", {}).get("name", "").lower(),
-            "Position": lambda app: app["position"].lower(),
-            "Location": lambda app: (app.get("location") or "").lower(),
-            "Status": lambda app: app["status"],
-            "Applied Date": lambda app: app["applied_date"]
-        }
-
-        # Get sort key function
-        sort_key = sort_keys.get(self.sort_column, lambda app: app["applied_date"])
-
-        # Sort applications
-        applications.sort(
-            key=sort_key,
-            reverse=not self.sort_ascending
-        )
-
-    def on_data_table_header_clicked(self, event: DataTable.HeaderSelected) -> None:
-        """Handle column header clicks for sorting."""
-        # Change sort direction if clicking the same column
-        if self.sort_column == event.column.label:
-            self.sort_ascending = not self.sort_ascending
-        else:
-            self.sort_column = event.column.label
-            # Default to ascending for all columns except date
-            self.sort_ascending = event.column.label != "Applied Date"
-
-        # Update status message
-        direction = "ascending" if self.sort_ascending else "descending"
-        self.update_status(f"Sorting by {self.sort_column} ({direction})")
-
-        # Reload applications with new sort
-        current_status = self.query_one("#status-filter", Select).value
-        status = None if current_status == "All" else current_status
-        self.load_applications(status)
-
-    def action_mark_applied(self) -> None:
-        """Mark the selected application as APPLIED."""
-        self._update_application_status("APPLIED")
-
-    def action_mark_interview(self) -> None:
-        """Mark the selected application as INTERVIEW."""
-        self._update_application_status("INTERVIEW")
-
-    def action_mark_offer(self) -> None:
-        """Mark the selected application as OFFER."""
-        self._update_application_status("OFFER")
-
-    def action_mark_accepted(self) -> None:
-        """Mark the selected application as ACCEPTED."""
-        self._update_application_status("ACCEPTED")
-
-    def action_mark_rejected(self) -> None:
-        """Mark the selected application as REJECTED."""
-        self._update_application_status("REJECTED")
 
 
 class DeleteConfirmationModal(ModalScreen):
@@ -303,9 +245,9 @@ class DeleteConfirmationModal(ModalScreen):
             Horizontal(
                 Button("Cancel", variant="primary", id="cancel"),
                 Button("Delete", variant="error", id="confirm"),
-                id="buttons"
+                id="buttons",
             ),
-            id="dialog"
+            id="dialog",
         )
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
@@ -327,7 +269,7 @@ class DeleteConfirmationModal(ModalScreen):
             self.app.pop_screen()
 
             # Refresh the applications list if it's visible
-            app_list = self.app.query_one(ApplicationsList, default=None)
+            app_list = self.app.query_one(ApplicationsList)
             if app_list:
                 app_list.load_applications()
 

@@ -3,7 +3,6 @@
 from textual.app import ComposeResult
 from textual.containers import Container, Vertical, Horizontal, Grid
 from textual.widgets import Static, DataTable
-from datetime import datetime, timedelta
 
 from src.services.analytics_service import AnalyticsService
 from src.tui.widgets.stats_card import StatsCard
@@ -28,12 +27,16 @@ class Analytics(Static):
                 # Status breakdown chart
                 with Vertical(id="status-chart-container"):
                     yield Static("Applications by Status", classes="chart-title")
-                    yield PlotChart(title="Status Distribution", id="status-chart", color="cyan")
+                    yield PlotChart(
+                        title="Status Distribution", id="status-chart", color="cyan"
+                    )
 
                 # Timeline chart
                 with Vertical(id="timeline-chart-container"):
                     yield Static("Applications Over Time", classes="chart-title")
-                    yield TimeSeriesChart(title="Weekly Applications", id="timeline-chart", color="green")
+                    yield TimeSeriesChart(
+                        title="Weekly Applications", id="timeline-chart", color="green"
+                    )
 
             with Vertical(id="top-companies"):
                 yield Static("Most Applied Companies", classes="section-title")
@@ -47,7 +50,9 @@ class Analytics(Static):
         """Set up the tables and load data when mounted."""
         # Set up tables
         companies_table = self.query_one("#companies-table", DataTable)
-        companies_table.add_columns("Company", "Applications", "Responses", "Interviews")
+        companies_table.add_columns(
+            "Company", "Applications", "Responses", "Interviews"
+        )
 
         activity_table = self.query_one("#activity-table", DataTable)
         activity_table.add_columns("Date", "Type", "Company", "Details")
@@ -62,10 +67,18 @@ class Analytics(Static):
             data = service.get_analytics()
 
             # Update stats cards
-            self.query_one("#response-rate", StatsCard).update_value(f"{data['response_rate']}%")
-            self.query_one("#interview-rate", StatsCard).update_value(f"{data['interview_rate']}%")
-            self.query_one("#time-to-interview", StatsCard).update_value(f"{data['avg_days_to_interview']} days")
-            self.query_one("#apps-per-week", StatsCard).update_value(f"{data['apps_per_week']}")
+            self.query_one("#response-rate", StatsCard).update_value(
+                f"{data['response_rate']}%"
+            )
+            self.query_one("#interview-rate", StatsCard).update_value(
+                f"{data['interview_rate']}%"
+            )
+            self.query_one("#time-to-interview", StatsCard).update_value(
+                f"{data['avg_days_to_interview']} days"
+            )
+            self.query_one("#apps-per-week", StatsCard).update_value(
+                f"{data['apps_per_week']}"
+            )
 
             # Update status chart
             status_chart = self.query_one("#status-chart", PlotChart)
@@ -84,7 +97,7 @@ class Analytics(Static):
                     company["name"],
                     str(company["applications"]),
                     str(company["responses"]),
-                    str(company["interviews"])
+                    str(company["interviews"]),
                 )
 
             # Update activity table
@@ -95,7 +108,7 @@ class Analytics(Static):
                     activity["date"],
                     activity["type"],
                     activity["company"],
-                    activity["details"]
+                    activity["details"],
                 )
 
             self.app.sub_title = "Analytics loaded successfully"

@@ -20,7 +20,10 @@ class StatusTransitionDialog(ModalScreen):
 
     def compose(self) -> ComposeResult:
         with Container(id="transition-dialog"):
-            yield Label(f"Change Status for Application #{self.application_id}", id="dialog-title")
+            yield Label(
+                f"Change Status for Application #{self.application_id}",
+                id="dialog-title",
+            )
 
             with Vertical(id="transition-form"):
                 yield Label("Current Status:", classes="field-label")
@@ -30,18 +33,27 @@ class StatusTransitionDialog(ModalScreen):
                 yield Select(
                     [(status.value, status.value) for status in ApplicationStatus],
                     id="new-status",
-                    value=self.current_status
+                    value=self.current_status,
                 )
 
                 yield Label("Add Note:", classes="field-label")
-                yield TextArea(id="status-note", placeholder="Optional note about this status change")
+                yield TextArea(
+                    id="status-note",
+                    tooltip="Optional note about this status change",
+                )
 
                 yield Label("Create Reminder:", classes="field-label")
                 with Horizontal(id="reminder-container"):
-                    yield Button("+ Tomorrow", id="reminder-tomorrow", variant="primary")
-                    yield Button("+ 3 Days", id="reminder-three-days", variant="primary")
+                    yield Button(
+                        "+ Tomorrow", id="reminder-tomorrow", variant="primary"
+                    )
+                    yield Button(
+                        "+ 3 Days", id="reminder-three-days", variant="primary"
+                    )
                     yield Button("+ 1 Week", id="reminder-week", variant="primary")
-                    yield Button("+ 2 Weeks", id="reminder-two-weeks", variant="primary")
+                    yield Button(
+                        "+ 2 Weeks", id="reminder-two-weeks", variant="primary"
+                    )
 
             with Horizontal(id="dialog-buttons"):
                 yield Button("Cancel", id="cancel-transition")
@@ -97,16 +109,19 @@ class StatusTransitionDialog(ModalScreen):
 
             # Create interaction record for the status change
             if note:
-                service.add_interaction({
-                    "application_id": self.application_id,
-                    "type": "NOTE",
-                    "notes": f"Status changed from {self.current_status} to {new_status}. Note: {note}",
-                    "date": datetime.now().isoformat()
-                })
+                service.add_interaction(
+                    {
+                        "application_id": self.application_id,
+                        "type": "NOTE",
+                        "notes": f"Status changed from {self.current_status} to {new_status}. Note: {note}",
+                        "date": datetime.now().isoformat(),
+                    }
+                )
 
             # Add reminder if one was selected
-            if hasattr(self, 'reminder_date'):
+            if hasattr(self, "reminder_date"):
                 from src.services.reminder_service import ReminderService
+
                 reminder_service = ReminderService()
 
                 # Create different reminder messages based on status
@@ -119,20 +134,23 @@ class StatusTransitionDialog(ModalScreen):
                 else:
                     title = f"Follow up ({new_status})"
 
-                reminder_service.create_reminder({
-                    "title": title,
-                    "description": f"Follow up on application (previous status: {new_status})",
-                    "date": self.reminder_date.isoformat(),
-                    "completed": False,
-                    "application_id": self.application_id
-                })
+                reminder_service.create_reminder(
+                    {
+                        "title": title,
+                        "description": f"Follow up on application (previous status: {new_status})",
+                        "date": self.reminder_date.isoformat(),
+                        "completed": False,
+                        "application_id": self.application_id,
+                    }
+                )
 
             self.app.sub_title = f"Status updated to {new_status}"
             self.app.pop_screen()
 
             # Refresh applications list if visible
             from src.tui.applications import ApplicationsList
-            app_list = self.app.query_one(ApplicationsList, default=None)
+
+            app_list = self.app.query_one(ApplicationsList)
             if app_list:
                 app_list.load_applications()
 

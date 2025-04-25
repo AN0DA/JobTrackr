@@ -1,6 +1,13 @@
-import json
-
-from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey, Table
+from sqlalchemy import (
+    Column,
+    Integer,
+    String,
+    Text,
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Table,
+)
 from sqlalchemy.orm import relationship
 from datetime import datetime
 import enum
@@ -23,6 +30,7 @@ class ApplicationStatus(enum.Enum):
 
 class InteractionType(enum.Enum):
     NOTE = "NOTE"
+    LINKEDIN = "LINKEDIN"
     EMAIL = "EMAIL"
     PHONE_CALL = "PHONE_CALL"
     INTERVIEW = "INTERVIEW"
@@ -30,66 +38,92 @@ class InteractionType(enum.Enum):
     FOLLOW_UP = "FOLLOW_UP"
 
 
-class DocumentType(enum.Enum):
-    RESUME = "RESUME"
-    COVER_LETTER = "COVER_LETTER"
-    PORTFOLIO = "PORTFOLIO"
-    OFFER_LETTER = "OFFER_LETTER"
-    OTHER = "OTHER"
-
-
 # Association tables for many-to-many relationships
 application_contact = Table(
-    'application_contact',
+    "application_contact",
     Base.metadata,
-    Column('application_id', ForeignKey('applications.id'), primary_key=True),
-    Column('contact_id', ForeignKey('contacts.id'), primary_key=True)
-)
-
-application_document = Table(
-    'application_document',
-    Base.metadata,
-    Column('application_id', ForeignKey('applications.id'), primary_key=True),
-    Column('document_id', ForeignKey('documents.id'), primary_key=True)
+    Column("application_id", ForeignKey("applications.id"), primary_key=True),
+    Column("contact_id", ForeignKey("contacts.id"), primary_key=True),
 )
 
 interaction_contact = Table(
-    'interaction_contact',
+    "interaction_contact",
     Base.metadata,
-    Column('interaction_id', ForeignKey('interactions.id'), primary_key=True),
-    Column('contact_id', ForeignKey('contacts.id'), primary_key=True)
-)
-
-interaction_document = Table(
-    'interaction_document',
-    Base.metadata,
-    Column('interaction_id', ForeignKey('interactions.id'), primary_key=True),
-    Column('document_id', ForeignKey('documents.id'), primary_key=True)
+    Column("interaction_id", ForeignKey("interactions.id"), primary_key=True),
+    Column("contact_id", ForeignKey("contacts.id"), primary_key=True),
 )
 
 
-# Data models
+# Add this enum to the top near other enums
+class CompanyType(enum.Enum):
+    DIRECT_EMPLOYER = "DIRECT_EMPLOYER"  # Company that directly employs people
+    RECRUITER = "RECRUITER"  # Recruitment agency
+    STAFFING = "STAFFING"  # Staffing/contracting company
+    CLIENT = "CLIENT"  # Client company (for contractors)
+    OTHER = "OTHER"  # Other type
+
+
+# Add this new model for company relationships
+class CompanyRelationship(Base):
+    __tablename__ = "company_relationships"
+
+    id = Column(Integer, primary_key=True)
+    source_company_id = Column(Integer, ForeignKey("companies.id"), nullable=False)
+    target_company_id = Column(Integer, ForeignKey("companies.id"), nullable=False)
+    relationship_type = Column(
+        String, nullable=False
+    )  # e.g., "recruits_for", "parent_company", etc.
+    notes = Column(Text)
+
+    # Relationships
+    source_company = relationship(
+        "Company",
+        foreign_keys=[source_company_id],
+        back_populates="outgoing_relationships",
+    )
+    target_company = relationship(
+        "Company",
+        foreign_keys=[target_company_id],
+        back_populates="incoming_relationships",
+    )
+
+    def __repr__(self):
+        return f"<CompanyRelationship(source={self.source_company_id}, target={self.target_company_id}, type='{self.relationship_type}')>"
+
+
+# Then update the Company class to include the type field and relationships
 class Company(Base):
-    __tablename__ = 'companies'
+    __tablename__ = "companies"
 
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False, index=True)
     website = Column(String)
     industry = Column(String, index=True)
     size = Column(String)
-    logo = Column(String)
+    type = Column(
+        String, default=CompanyType.DIRECT_EMPLOYER.value
+    )  # Default to direct employer
     notes = Column(Text)
 
     # Relationships
     applications = relationship("Application", back_populates="company")
     contacts = relationship("Contact", back_populates="company")
-
-    def __repr__(self):
-        return f"<Company(id={self.id}, name='{self.name}')>"
+    outgoing_relationships = relationship(
+        "CompanyRelationship",
+        foreign_keys=[CompanyRelationship.source_company_id],
+        back_populates="source_company",
+        cascade="all, delete-orphan",
+    )
+    incoming_relationships = relationship(
+        "CompanyRelationship",
+        foreign_keys=[CompanyRelationship.target_company_id],
+        back_populates="target_company",
+        cascade="all, delete-orphan",
+    )
 
 
 class Application(Base):
-    __tablename__ = 'applications'
+    __tablename__ = "applications"
 
     id = Column(Integer, primary_key=True)
     job_title = Column(String, nullable=False, index=True)
@@ -102,41 +136,34 @@ class Application(Base):
     description = Column(Text)
     notes = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, index=True)
-
-    _tags = Column(String, name='tags')  # Store tags as JSON string
-
-    @property
-    def tags(self):
-        """Get tags as a list."""
-        if self._tags:
-            return json.loads(self._tags)
-        return []
-
-    @tags.setter
-    def tags(self, value):
-        """Set tags from a list."""
-        if value:
-            self._tags = json.dumps(value)
-        else:
-            self._tags = None
+    updated_at = Column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, index=True
+    )
 
     # Foreign keys
-    company_id = Column(Integer, ForeignKey('companies.id'))
+    company_id = Column(Integer, ForeignKey("companies.id"))
 
     # Relationships
     company = relationship("Company", back_populates="applications")
-    contacts = relationship("Contact", secondary=application_contact, back_populates="applications")
-    interactions = relationship("Interaction", back_populates="application", cascade="all, delete-orphan")
-    documents = relationship("Document", secondary=application_document, back_populates="applications")
-    reminders = relationship("Reminder", back_populates="application", cascade="all, delete-orphan")
+    contacts = relationship(
+        "Contact", secondary=application_contact, back_populates="applications"
+    )
+    interactions = relationship(
+        "Interaction", back_populates="application", cascade="all, delete-orphan"
+    )
+    reminders = relationship(
+        "Reminder", back_populates="application", cascade="all, delete-orphan"
+    )
+    change_records = relationship(
+        "ChangeRecord", back_populates="application", cascade="all, delete-orphan"
+    )
 
     def __repr__(self):
         return f"<Application(id={self.id}, job_title='{self.job_title}', company_id={self.company_id})>"
 
 
 class Contact(Base):
-    __tablename__ = 'contacts'
+    __tablename__ = "contacts"
 
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False, index=True)
@@ -146,19 +173,23 @@ class Contact(Base):
     notes = Column(Text)
 
     # Foreign keys
-    company_id = Column(Integer, ForeignKey('companies.id'))
+    company_id = Column(Integer, ForeignKey("companies.id"))
 
     # Relationships
     company = relationship("Company", back_populates="contacts")
-    applications = relationship("Application", secondary=application_contact, back_populates="contacts")
-    interactions = relationship("Interaction", secondary=interaction_contact, back_populates="contacts")
+    applications = relationship(
+        "Application", secondary=application_contact, back_populates="contacts"
+    )
+    interactions = relationship(
+        "Interaction", secondary=interaction_contact, back_populates="contacts"
+    )
 
     def __repr__(self):
         return f"<Contact(id={self.id}, name='{self.name}')>"
 
 
 class Interaction(Base):
-    __tablename__ = 'interactions'
+    __tablename__ = "interactions"
 
     id = Column(Integer, primary_key=True)
     type = Column(String, nullable=False, index=True)
@@ -166,37 +197,20 @@ class Interaction(Base):
     notes = Column(Text)
 
     # Foreign keys
-    application_id = Column(Integer, ForeignKey('applications.id'))
+    application_id = Column(Integer, ForeignKey("applications.id"))
 
     # Relationships
     application = relationship("Application", back_populates="interactions")
-    contacts = relationship("Contact", secondary=interaction_contact, back_populates="interactions")
-    documents = relationship("Document", secondary=interaction_document, back_populates="interactions")
+    contacts = relationship(
+        "Contact", secondary=interaction_contact, back_populates="interactions"
+    )
 
     def __repr__(self):
         return f"<Interaction(id={self.id}, type='{self.type}')>"
 
 
-class Document(Base):
-    __tablename__ = 'documents'
-
-    id = Column(Integer, primary_key=True)
-    name = Column(String, nullable=False)
-    type = Column(String, nullable=False, index=True)
-    url = Column(String)
-    content = Column(Text)
-    created_at = Column(DateTime, default=datetime.utcnow, index=True)
-
-    # Relationships
-    applications = relationship("Application", secondary=application_document, back_populates="documents")
-    interactions = relationship("Interaction", secondary=interaction_document, back_populates="documents")
-
-    def __repr__(self):
-        return f"<Document(id={self.id}, name='{self.name}', type='{self.type}')>"
-
-
 class Reminder(Base):
-    __tablename__ = 'reminders'
+    __tablename__ = "reminders"
 
     id = Column(Integer, primary_key=True)
     title = Column(String, nullable=False)
@@ -205,10 +219,38 @@ class Reminder(Base):
     completed = Column(Boolean, default=False, index=True)
 
     # Foreign keys
-    application_id = Column(Integer, ForeignKey('applications.id'))
+    application_id = Column(Integer, ForeignKey("applications.id"))
 
     # Relationships
     application = relationship("Application", back_populates="reminders")
 
     def __repr__(self):
         return f"<Reminder(id={self.id}, title='{self.title}')>"
+
+
+class ChangeType(enum.Enum):
+    STATUS_CHANGE = "STATUS_CHANGE"
+    INTERACTION_ADDED = "INTERACTION_ADDED"
+    CONTACT_ADDED = "CONTACT_ADDED"
+    REMINDER_ADDED = "REMINDER_ADDED"
+    APPLICATION_UPDATED = "APPLICATION_UPDATED"
+    NOTE_ADDED = "NOTE_ADDED"
+    DOCUMENT_ADDED = "DOCUMENT_ADDED"
+
+
+class ChangeRecord(Base):
+    __tablename__ = "change_records"
+
+    id = Column(Integer, primary_key=True)
+    application_id = Column(Integer, ForeignKey("applications.id"), nullable=False)
+    timestamp = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    change_type = Column(String, nullable=False, index=True)
+    old_value = Column(String)
+    new_value = Column(String)
+    notes = Column(Text)
+
+    # Relationships
+    application = relationship("Application", back_populates="change_records")
+
+    def __repr__(self):
+        return f"<ChangeRecord(id={self.id}, app_id={self.application_id}, type='{self.change_type}')>"

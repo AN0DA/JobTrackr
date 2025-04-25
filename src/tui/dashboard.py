@@ -1,9 +1,10 @@
 """Dashboard screen for the Job Tracker TUI."""
 
-from textual.widgets import Static
-from textual.containers import Grid, Container
+from textual.widgets import Static, Button
+from textual.containers import Grid, Container, Vertical, Horizontal
 from textual.app import ComposeResult
 
+from src.tui.widgets.progress_bar import ProgressBar
 from src.tui.widgets.stats_card import StatsCard
 from src.tui.widgets.application_list import ApplicationList
 from src.tui.widgets.reminder_list import ReminderList
@@ -15,16 +16,54 @@ class Dashboard(Static):
 
     def compose(self) -> ComposeResult:
         """Compose the dashboard layout."""
-        with Container():
-            with Grid(id="stats-grid"):
-                yield StatsCard("Total Applications", "0", id="total-apps")
-                yield StatsCard("Applied", "0", id="applied-apps")
-                yield StatsCard("Interviews", "0", id="interview-apps")
-                yield StatsCard("Offers", "0", id="offer-apps")
+        with Container(id="dashboard-container"):
+            # Header with welcome and summary
+            with Container(id="dashboard-header", classes="content-box"):
+                yield Static("Your Job Search Dashboard", id="dashboard-title")
 
-            with Grid(id="lists-grid"):
-                yield ApplicationList(title="Recent Applications")
-                yield ReminderList(title="Upcoming Reminders")
+                with Horizontal(id="quick-actions"):
+                    yield Button("➕ New Application", variant="primary", id="new-app")
+                    yield Button("📅 Today's Tasks", id="view-today")
+                    yield Button("📊 Analytics", id="view-analytics")
+
+            # Stats summary cards
+            with Container(id="stats-section", classes="content-box"):
+                yield Static("Overview", classes="section-heading")
+
+                with Grid(id="stats-grid"):
+                    yield StatsCard("Active Applications", "0", id="active-apps")
+                    yield StatsCard("This Week", "0", id="weekly-apps")
+                    yield StatsCard("Interview Rate", "0%", id="interview-rate")
+                    yield StatsCard("Response Rate", "0%", id="response-rate")
+
+            # Main content in two columns
+            with Horizontal(id="dashboard-content"):
+                # Left column - Recent applications and activity
+                with Vertical(id="left-column"):
+                    with Container(classes="content-box"):
+                        yield Static("Recent Applications", classes="section-heading")
+                        yield ApplicationList(title="", id="recent-apps-list")
+                        yield Button("View All Applications", id="view-all-apps")
+
+                    with Container(classes="content-box"):
+                        yield Static("Recent Activity", classes="section-heading")
+                        with Container(id="activity-feed"):
+                            # Activity items will be added dynamically
+                            pass
+
+                # Right column - Reminders and progress
+                with Vertical(id="right-column"):
+                    with Container(classes="content-box"):
+                        yield Static("Upcoming Reminders", classes="section-heading")
+                        yield ReminderList(title="", id="reminders-list")
+                        yield Button("+ Add Reminder", id="add-reminder")
+
+                    with Container(classes="content-box"):
+                        yield Static("Job Search Progress", classes="section-heading")
+                        yield ProgressBar(total=100, value=0, id="job-search-progress")
+                        yield Static(
+                            "You've applied to 0 jobs this week", id="progress-text"
+                        )
 
     def on_mount(self) -> None:
         """Load dashboard data when mounted."""
@@ -51,7 +90,11 @@ class Dashboard(Static):
             for status_count in stats["applications_by_status"]:
                 if status_count["status"] == "APPLIED":
                     applied_card.update_value(str(status_count["count"]))
-                elif status_count["status"] in ["INTERVIEW", "PHONE_SCREEN", "TECHNICAL_INTERVIEW"]:
+                elif status_count["status"] in [
+                    "INTERVIEW",
+                    "PHONE_SCREEN",
+                    "TECHNICAL_INTERVIEW",
+                ]:
                     interview_count += status_count["count"]
                 elif status_count["status"] == "OFFER":
                     offer_card.update_value(str(status_count["count"]))

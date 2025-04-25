@@ -2,17 +2,23 @@
 
 from textual.app import ComposeResult
 from textual.screen import Screen
-from textual.containers import Container, Vertical
-from textual.widgets import Input, Button, Label, TextArea
+from textual.containers import Container, Vertical, Horizontal
+from textual.widgets import Input, Button, Label, TextArea, Select, Static
 from typing import Callable, Optional
 
+from src.db.models import CompanyType
 from src.services.company_service import CompanyService
 
 
 class CompanyForm(Screen):
     """Form for creating a new company."""
 
-    def __init__(self, company_id: str = None, readonly: bool = False, on_saved: Optional[Callable] = None):
+    def __init__(
+        self,
+        company_id: str = None,
+        readonly: bool = False,
+        on_saved: Optional[Callable] = None,
+    ):
         """Initialize the form.
 
         Args:
@@ -27,34 +33,48 @@ class CompanyForm(Screen):
 
     def compose(self) -> ComposeResult:
         """Compose the form layout."""
-        with Container(id="company-form"):
-            yield Label(
-                "View Company" if self.readonly else
-                "Edit Company" if self.company_id else
-                "New Company",
-                id="form-title"
-            )
+        with Container(id="company-form-container", classes="modal-container"):
+            with Container(id="company-form", classes="modal-content"):
+                yield Static(
+                    "New Company" if not self.company_id else "Edit Company",
+                    id="company-form-title",
+                    classes="modal-title",
+                )
 
-            with Vertical(id="form-fields"):
-                yield Label("Company Name")
-                yield Input(id="company-name", disabled=self.readonly)
+                with Vertical(id="company-fields"):
+                    # Basic information
+                    yield Label("Company Name *", classes="field-label")
+                    yield Input(id="company-name", disabled=self.readonly)
 
-                yield Label("Website")
-                yield Input(id="website", disabled=self.readonly)
+                    yield Label("Website", classes="field-label")
+                    yield Input(id="website", disabled=self.readonly)
 
-                yield Label("Industry")
-                yield Input(id="industry", disabled=self.readonly)
+                    # Additional information
+                    yield Label("Company Type", classes="field-label")
+                    yield Select(
+                        [(ct.value, ct.value) for ct in CompanyType],
+                        id="company-type",
+                        disabled=self.readonly,
+                        value=CompanyType.DIRECT_EMPLOYER.value,
+                    )
 
-                yield Label("Size")
-                yield Input(id="size", disabled=self.readonly)
+                    yield Label("Industry", classes="field-label")
+                    yield Input(id="industry", disabled=self.readonly)
 
-                yield Label("Notes")
-                yield TextArea(id="notes", disabled=self.readonly)
+                    yield Label("Size", classes="field-label")
+                    yield Input(
+                        id="size",
+                        placeholder="e.g. 1-50, 51-200, 201-500, etc.",
+                        disabled=self.readonly,
+                    )
 
-            with Vertical(id="form-actions"):
-                if not self.readonly:
-                    yield Button("Save", variant="primary", id="save-company")
-                yield Button("Cancel", id="cancel")
+                    yield Label("Notes", classes="field-label")
+                    yield TextArea(id="notes", disabled=self.readonly)
+
+                with Horizontal(id="company-form-actions", classes="modal-actions"):
+                    if not self.readonly:
+                        yield Button("Save", variant="primary", id="save-company")
+                    yield Button("Cancel", id="cancel")
 
     def on_mount(self) -> None:
         """Load data when mounted."""
@@ -83,6 +103,11 @@ class CompanyForm(Screen):
             if company_data.get("size"):
                 self.query_one("#size", Input).value = company_data["size"]
 
+            if company_data.get("company_type"):
+                self.query_one("#company-type", Select).value = company_data[
+                    "company_type"
+                ]
+
             if company_data.get("notes"):
                 self.query_one("#notes", TextArea).text = company_data["notes"]
 
@@ -107,6 +132,7 @@ class CompanyForm(Screen):
             website = self.query_one("#website", Input).value
             industry = self.query_one("#industry", Input).value
             size = self.query_one("#size", Input).value
+            company_type = self.query_one("#company-type", Select).value
             notes = self.query_one("#notes", TextArea).text
 
             # Validate required fields
@@ -120,6 +146,7 @@ class CompanyForm(Screen):
                 "website": website or None,
                 "industry": industry or None,
                 "size": size or None,
+                "company_type": company_type,
                 "notes": notes or None,
             }
 
@@ -127,11 +154,11 @@ class CompanyForm(Screen):
 
             if self.company_id:
                 # Update existing company
-                result = service.update_company(int(self.company_id), company_data)
+                service.update_company(int(self.company_id), company_data)
                 self.app.sub_title = "Company updated successfully"
             else:
                 # Create new company
-                result = service.create_company(company_data)
+                service.create_company(company_data)
                 self.app.sub_title = "Company created successfully"
 
             # Call the on_saved callback if provided

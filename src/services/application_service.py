@@ -2,10 +2,16 @@ import logging
 from datetime import datetime
 from typing import List, Optional, Dict, Any
 
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import joinedload
 from sqlalchemy import func, or_, desc
-
-from src.db.models import Application, Company, Contact, Interaction, Document, Reminder, ApplicationStatus
+from src.services.change_record_service import ChangeRecordService
+from src.db.models import ChangeType
+from src.db.models import (
+    Application,
+    Company,
+    Reminder,
+    ApplicationStatus,
+)
 from src.db.database import get_session
 
 logger = logging.getLogger(__name__)
@@ -30,40 +36,53 @@ class ApplicationService:
             session.close()
 
     def get_applications(
-            self,
-            status: Optional[str] = None,
-            offset: int = 0,
-            limit: int = 10,
-            sort_by: str = "applied_date",
-            sort_desc: bool = True
+        self,
+        status: Optional[str] = None,
+        offset: int = 0,
+        limit: int = 10,
+        sort_by: str = "applied_date",
+        sort_desc: bool = True,
     ) -> List[Dict[str, Any]]:
         """Get applications with optional filtering and sorting."""
         session = get_session()
         try:
-            query = session.query(Application).options(
-                joinedload(Application.company)
-            )
+            query = session.query(Application).options(joinedload(Application.company))
 
             if status:
                 query = query.filter(Application.status == status)
 
             # Apply sorting
             if sort_by == "job_title":
-                query = query.order_by(desc(Application.job_title) if sort_desc else Application.job_title)
+                query = query.order_by(
+                    desc(Application.job_title) if sort_desc else Application.job_title
+                )
             elif sort_by == "position":
-                query = query.order_by(desc(Application.position) if sort_desc else Application.position)
+                query = query.order_by(
+                    desc(Application.position) if sort_desc else Application.position
+                )
             elif sort_by == "company":
-                query = query.join(Company).order_by(desc(Company.name) if sort_desc else Company.name)
+                query = query.join(Company).order_by(
+                    desc(Company.name) if sort_desc else Company.name
+                )
             elif sort_by == "status":
-                query = query.order_by(desc(Application.status) if sort_desc else Application.status)
+                query = query.order_by(
+                    desc(Application.status) if sort_desc else Application.status
+                )
             else:  # Default to applied_date
-                query = query.order_by(desc(Application.applied_date) if sort_desc else Application.applied_date)
+                query = query.order_by(
+                    desc(Application.applied_date)
+                    if sort_desc
+                    else Application.applied_date
+                )
 
             # Apply pagination
             applications = query.offset(offset).limit(limit).all()
 
             # Convert to dictionaries
-            return [self._application_to_dict(app, include_details=False) for app in applications]
+            return [
+                self._application_to_dict(app, include_details=False)
+                for app in applications
+            ]
 
         except Exception as e:
             logger.error(f"Error fetching applications: {e}")
@@ -75,9 +94,6 @@ class ApplicationService:
         """Create a new application."""
         session = get_session()
         try:
-            # Process tags if present
-            tags = data.pop("tags", None)
-
             # Create application object
             app = Application(
                 job_title=data["job_title"],
@@ -85,17 +101,14 @@ class ApplicationService:
                 location=data.get("location"),
                 salary=data.get("salary"),
                 status=data["status"],
-                applied_date=datetime.fromisoformat(data["applied_date"]) if isinstance(data["applied_date"], str) else
-                data["applied_date"],
+                applied_date=datetime.fromisoformat(data["applied_date"])
+                if isinstance(data["applied_date"], str)
+                else data["applied_date"],
                 link=data.get("link"),
                 description=data.get("description"),
                 notes=data.get("notes"),
-                company_id=data["company_id"]
+                company_id=data["company_id"],
             )
-
-            # Set tags if they were provided
-            if tags:
-                app.tags = tags
 
             # Add to session and commit
             session.add(app)
@@ -111,7 +124,7 @@ class ApplicationService:
             session.close()
 
     def update_application(self, id: int, data: Dict[str, Any]) -> Dict[str, Any]:
-        """Update an existing application."""
+        """Update an existing application and record the changes."""
         session = get_session()
         try:
             # Get application
@@ -119,13 +132,25 @@ class ApplicationService:
             if not app:
                 raise ValueError(f"Application with ID {id} not found")
 
-            # Handle tags separately
-            if "tags" in data:
-                app.tags = data.pop("tags")
+            # Track changes for important fields
+            change_records = []
 
-            # Update other fields
+            # Check for status change
+            if "status" in data and data["status"] != app.status:
+                change_records.append(
+                    {
+                        "application_id": id,
+                        "change_type": ChangeType.STATUS_CHANGE.value,
+                        "old_value": app.status,
+                        "new_value": data["status"],
+                        "notes": f"Status changed from {app.status} to {data['status']}",
+                    }
+                )
+
+            # Update fields
             for key, value in data.items():
                 if hasattr(app, key):
+                    # Special case for applied_date
                     if key == "applied_date" and isinstance(value, str):
                         setattr(app, key, datetime.fromisoformat(value))
                     else:
@@ -134,6 +159,11 @@ class ApplicationService:
             # Commit changes
             session.commit()
             session.refresh(app)
+
+            # Record changes
+            change_record_service = ChangeRecordService()
+            for record in change_records:
+                change_record_service.create_change_record(record)
 
             return self._application_to_dict(app)
         except Exception as e:
@@ -147,40 +177,46 @@ class ApplicationService:
         """Search for applications by keyword."""
         session = get_session()
         try:
-            # Use ilike for case-insensitive search across multiple columns
             search_pattern = f"%{search_term}%"
 
-            query = session.query(Application).join(
-                Company, Application.company_id == Company.id, isouter=True
-            ).filter(
-                or_(
-                    Application.job_title.ilike(search_pattern),
-                    Application.position.ilike(search_pattern),
-                    Application.description.ilike(search_pattern),
-                    Application.notes.ilike(search_pattern),
-                    Application.location.ilike(search_pattern),
-                    Company.name.ilike(search_pattern)
-                )
-            ).order_by(Application.applied_date.desc())
+            # Create base query
+            query = session.query(Application).join(Company, isouter=True)
+
+            # Add search conditions
+            search_fields = [
+                Application.job_title,
+                Application.position,
+                Application.description,
+                Application.notes,
+                Application.location,
+                Company.name,
+            ]
+
+            conditions = [field.ilike(search_pattern) for field in search_fields]
+            query = query.filter(or_(*conditions)).order_by(
+                Application.applied_date.desc()
+            )
 
             applications = query.all()
-            return [self._application_to_dict(app, include_details=False) for app in applications]
-
-        except Exception as e:
-            logger.error(f"Error searching applications: {e}")
-            raise
+            return [
+                self._application_to_dict(app, include_details=False)
+                for app in applications
+            ]
         finally:
             session.close()
 
-    def get_applications_for_export(self, include_notes=True, include_interactions=True, include_reminders=True) -> \
-    List[Dict[str, Any]]:
+    def get_applications_for_export(
+        self, include_notes=True, include_interactions=True, include_reminders=True
+    ) -> List[Dict[str, Any]]:
         """Get all applications with optional details for export."""
         session = get_session()
         try:
             # Base query for applications with company info
-            query = session.query(Application).options(
-                joinedload(Application.company)
-            ).order_by(Application.applied_date.desc())
+            query = (
+                session.query(Application)
+                .options(joinedload(Application.company))
+                .order_by(Application.applied_date.desc())
+            )
 
             applications = query.all()
             result = []
@@ -197,12 +233,8 @@ class ApplicationService:
                     "salary": app.salary or "",
                     "status": app.status,
                     "applied_date": app.applied_date.isoformat(),
-                    "link": app.link or ""
+                    "link": app.link or "",
                 }
-
-                # Add tags
-                if app.tags:
-                    app_data["tags"] = ", ".join(app.tags)
 
                 # Add notes if requested
                 if include_notes:
@@ -212,24 +244,32 @@ class ApplicationService:
                 # Add interactions if requested
                 if include_interactions and app.interactions:
                     interactions = []
-                    for i, interaction in enumerate(sorted(app.interactions, key=lambda x: x.date)):
-                        interactions.append({
-                            "date": interaction.date.isoformat(),
-                            "type": interaction.type,
-                            "notes": interaction.notes or ""
-                        })
+                    for i, interaction in enumerate(
+                        sorted(app.interactions, key=lambda x: x.date)
+                    ):
+                        interactions.append(
+                            {
+                                "date": interaction.date.isoformat(),
+                                "type": interaction.type,
+                                "notes": interaction.notes or "",
+                            }
+                        )
                     app_data["interactions"] = interactions
 
                 # Add reminders if requested
                 if include_reminders and app.reminders:
                     reminders = []
-                    for i, reminder in enumerate(sorted(app.reminders, key=lambda x: x.date)):
-                        reminders.append({
-                            "title": reminder.title,
-                            "date": reminder.date.isoformat(),
-                            "completed": "Yes" if reminder.completed else "No",
-                            "description": reminder.description or ""
-                        })
+                    for i, reminder in enumerate(
+                        sorted(app.reminders, key=lambda x: x.date)
+                    ):
+                        reminders.append(
+                            {
+                                "title": reminder.title,
+                                "date": reminder.date.isoformat(),
+                                "completed": "Yes" if reminder.completed else "No",
+                                "description": reminder.description or "",
+                            }
+                        )
                     app_data["reminders"] = reminders
 
                 result.append(app_data)
@@ -242,7 +282,9 @@ class ApplicationService:
         finally:
             session.close()
 
-    def _application_to_dict(self, app: Application, include_details: bool = True) -> Dict[str, Any]:
+    def _application_to_dict(
+        self, app: Application, include_details: bool = True
+    ) -> Dict[str, Any]:
         """Convert an Application object to a dictionary."""
         result = {
             "id": app.id,
@@ -255,22 +297,22 @@ class ApplicationService:
 
         # Add company information if available
         if app.company:
-            result["company"] = {
-                "id": app.company.id,
-                "name": app.company.name
-            }
+            result["company"] = {"id": app.company.id, "name": app.company.name}
 
         # Include additional details if requested
         if include_details:
-            result.update({
-                "location": app.location,
-                "salary": app.salary,
-                "link": app.link,
-                "description": app.description,
-                "notes": app.notes,
-                "tags": app.tags,  # Now properly handled
-                "updated_at": app.updated_at.isoformat() if app.updated_at else None,
-            })
+            result.update(
+                {
+                    "location": app.location,
+                    "salary": app.salary,
+                    "link": app.link,
+                    "description": app.description,
+                    "notes": app.notes,  # Now properly handled
+                    "updated_at": app.updated_at.isoformat()
+                    if app.updated_at
+                    else None,
+                }
+            )
 
         return result
 
@@ -302,27 +344,43 @@ class ApplicationService:
             # Get counts by status
             status_counts = []
             for status in ApplicationStatus:
-                count = session.query(func.count(Application.id)).filter(
-                    Application.status == status.value).scalar() or 0
-                status_counts.append({
-                    "status": status.value,
-                    "count": count
-                })
+                count = (
+                    session.query(func.count(Application.id))
+                    .filter(Application.status == status.value)
+                    .scalar()
+                    or 0
+                )
+                status_counts.append({"status": status.value, "count": count})
 
             # Get recent applications
-            recent_apps = session.query(Application).order_by(Application.applied_date.desc()).limit(5).all()
-            recent_applications = [self._application_to_dict(app, include_details=False) for app in recent_apps]
+            recent_apps = (
+                session.query(Application)
+                .order_by(Application.applied_date.desc())
+                .limit(5)
+                .all()
+            )
+            recent_applications = [
+                self._application_to_dict(app, include_details=False)
+                for app in recent_apps
+            ]
 
             # Get upcoming reminders
-            upcoming_reminders = session.query(Reminder).filter(Reminder.completed == False).order_by(
-                Reminder.date).limit(5).all()
-            reminders = [self._reminder_to_dict(reminder) for reminder in upcoming_reminders]
+            upcoming_reminders = (
+                session.query(Reminder)
+                .filter(Reminder.completed is False)
+                .order_by(Reminder.date)
+                .limit(5)
+                .all()
+            )
+            reminders = [
+                self._reminder_to_dict(reminder) for reminder in upcoming_reminders
+            ]
 
             return {
                 "total_applications": total_count,
                 "applications_by_status": status_counts,
                 "recent_applications": recent_applications,
-                "upcoming_reminders": reminders
+                "upcoming_reminders": reminders,
             }
         except Exception as e:
             logger.error(f"Error fetching dashboard stats: {e}")
@@ -340,8 +398,10 @@ class ApplicationService:
             interaction = Interaction(
                 application_id=data["application_id"],
                 type=data["type"],
-                date=datetime.fromisoformat(data["date"]) if isinstance(data["date"], str) else data["date"],
-                notes=data.get("notes")
+                date=datetime.fromisoformat(data["date"])
+                if isinstance(data["date"], str)
+                else data["date"],
+                notes=data.get("notes"),
             )
 
             # Add to session and commit
@@ -354,7 +414,7 @@ class ApplicationService:
                 "type": interaction.type,
                 "date": interaction.date.isoformat(),
                 "notes": interaction.notes,
-                "application_id": interaction.application_id
+                "application_id": interaction.application_id,
             }
         except Exception as e:
             session.rollback()
@@ -363,7 +423,9 @@ class ApplicationService:
         finally:
             session.close()
 
-    def _application_to_dict(self, app: Application, include_details: bool = True) -> Dict[str, Any]:
+    def _application_to_dict(
+        self, app: Application, include_details: bool = True
+    ) -> Dict[str, Any]:
         """Convert an Application object to a dictionary."""
         result = {
             "id": app.id,
@@ -376,21 +438,22 @@ class ApplicationService:
 
         # Add company information if available
         if app.company:
-            result["company"] = {
-                "id": app.company.id,
-                "name": app.company.name
-            }
+            result["company"] = {"id": app.company.id, "name": app.company.name}
 
         # Include additional details if requested
         if include_details:
-            result.update({
-                "location": app.location,
-                "salary": app.salary,
-                "link": app.link,
-                "description": app.description,
-                "notes": app.notes,
-                "updated_at": app.updated_at.isoformat() if app.updated_at else None,
-            })
+            result.update(
+                {
+                    "location": app.location,
+                    "salary": app.salary,
+                    "link": app.link,
+                    "description": app.description,
+                    "notes": app.notes,
+                    "updated_at": app.updated_at.isoformat()
+                    if app.updated_at
+                    else None,
+                }
+            )
 
         return result
 
@@ -402,5 +465,5 @@ class ApplicationService:
             "description": reminder.description,
             "date": reminder.date.isoformat(),
             "completed": reminder.completed,
-            "application_id": reminder.application_id
+            "application_id": reminder.application_id,
         }

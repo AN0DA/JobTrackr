@@ -42,5 +42,5 @@ class ReminderList(Static):
             table.add_row(
                 reminder["title"],
                 reminder["date"],
-                "✓" if reminder["completed"] else "✗"
+                "✓" if reminder["completed"] else "✗",
             )

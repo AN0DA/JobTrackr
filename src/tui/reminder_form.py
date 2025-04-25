@@ -21,7 +21,7 @@ class ReminderForm(ModalScreen):
         with Container(id="reminder-form-dialog"):
             yield Label(
                 "Edit Reminder" if self.reminder_id else "New Reminder",
-                id="dialog-title"
+                id="dialog-title",
             )
 
             with Vertical(id="reminder-form"):
@@ -35,7 +35,7 @@ class ReminderForm(ModalScreen):
                 yield Input(
                     placeholder="YYYY-MM-DD",
                     id="reminder-date",
-                    value=datetime.now().strftime("%Y-%m-%d")
+                    value=datetime.now().strftime("%Y-%m-%d"),
                 )
 
                 yield Label("Quick Date:", classes="field-label")
@@ -66,7 +66,9 @@ class ReminderForm(ModalScreen):
             self.query_one("#reminder-title", Input).value = reminder["title"]
 
             if reminder.get("description"):
-                self.query_one("#reminder-description", TextArea).text = reminder["description"]
+                self.query_one("#reminder-description", TextArea).text = reminder[
+                    "description"
+                ]
 
             # Format the date
             date = datetime.fromisoformat(reminder["date"]).strftime("%Y-%m-%d")
@@ -127,17 +129,17 @@ class ReminderForm(ModalScreen):
                 "description": description or None,
                 "date": date,
                 "completed": False,
-                "application_id": self.application_id
+                "application_id": self.application_id,
             }
 
             # Save reminder
             service = ReminderService()
 
             if self.reminder_id:
-                result = service.update_reminder(self.reminder_id, reminder_data)
+                service.update_reminder(self.reminder_id, reminder_data)
                 self.app.sub_title = "Reminder updated successfully"
             else:
-                result = service.create_reminder(reminder_data)
+                service.create_reminder(reminder_data)
                 self.app.sub_title = "Reminder created successfully"
 
             # Close the form
@@ -145,7 +147,8 @@ class ReminderForm(ModalScreen):
 
             # Refresh dashboard if visible
             from src.tui.dashboard import Dashboard
-            dashboard = self.app.query_one(Dashboard, default=None)
+
+            dashboard = self.app.query_one(Dashboard)
             if dashboard:
                 dashboard.refresh_data()
 

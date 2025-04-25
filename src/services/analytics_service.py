@@ -32,31 +32,57 @@ class AnalyticsService:
                 return self._get_empty_analytics()
 
             # Get status counts
-            status_counts = session.query(
-                Application.status, func.count(Application.id)
-            ).group_by(Application.status).all()
-            result["status_counts"] = [(status, count) for status, count in status_counts]
+            status_counts = (
+                session.query(Application.status, func.count(Application.id))
+                .group_by(Application.status)
+                .all()
+            )
+            result["status_counts"] = [
+                (status, count) for status, count in status_counts
+            ]
 
             # Calculate response rate
-            applied_count = sum(count for status, count in status_counts if status != "SAVED")
-            responded_count = sum(count for status, count in status_counts
-                                  if status in ["PHONE_SCREEN", "INTERVIEW", "TECHNICAL_INTERVIEW", "OFFER", "ACCEPTED",
-                                                "REJECTED"])
+            applied_count = sum(
+                count for status, count in status_counts if status != "SAVED"
+            )
+            responded_count = sum(
+                count
+                for status, count in status_counts
+                if status
+                in [
+                    "PHONE_SCREEN",
+                    "INTERVIEW",
+                    "TECHNICAL_INTERVIEW",
+                    "OFFER",
+                    "ACCEPTED",
+                    "REJECTED",
+                ]
+            )
 
-            response_rate = int((responded_count / applied_count * 100) if applied_count > 0 else 0)
+            response_rate = int(
+                (responded_count / applied_count * 100) if applied_count > 0 else 0
+            )
             result["response_rate"] = response_rate
 
             # Calculate interview rate
-            interview_count = sum(count for status, count in status_counts
-                                  if status in ["INTERVIEW", "TECHNICAL_INTERVIEW", "OFFER", "ACCEPTED", "REJECTED"])
+            interview_count = sum(
+                count
+                for status, count in status_counts
+                if status
+                in ["INTERVIEW", "TECHNICAL_INTERVIEW", "OFFER", "ACCEPTED", "REJECTED"]
+            )
 
-            interview_rate = int((interview_count / applied_count * 100) if applied_count > 0 else 0)
+            interview_rate = int(
+                (interview_count / applied_count * 100) if applied_count > 0 else 0
+            )
             result["interview_rate"] = interview_rate
 
             # Calculate average time to interview
             # This requires more complex query to find applications that progressed to interview
             # For now we'll use a placeholder
-            result["avg_days_to_interview"] = self._calculate_avg_days_to_interview(session)
+            result["avg_days_to_interview"] = self._calculate_avg_days_to_interview(
+                session
+            )
 
             # Calculate applications per week
             result["apps_per_week"] = self._calculate_apps_per_week(session)
@@ -65,17 +91,23 @@ class AnalyticsService:
             result["weekly_applications"] = self._get_weekly_applications(session)
 
             # Get top companies applied to
-            top_companies = session.query(
-                Company.name,
-                func.count(Application.id).label("app_count")
-            ).join(Application).group_by(Company.name).order_by(desc("app_count")).limit(5).all()
+            top_companies = (
+                session.query(
+                    Company.name, func.count(Application.id).label("app_count")
+                )
+                .join(Application)
+                .group_by(Company.name)
+                .order_by(desc("app_count"))
+                .limit(5)
+                .all()
+            )
 
             result["top_companies"] = [
                 {
                     "name": name,
                     "applications": count,
                     "responses": self._get_company_response_count(session, name),
-                    "interviews": self._get_company_interview_count(session, name)
+                    "interviews": self._get_company_interview_count(session, name),
                 }
                 for name, count in top_companies
             ]
@@ -102,16 +134,28 @@ class AnalyticsService:
             "apps_per_week": 0,
             "weekly_applications": [],
             "top_companies": [],
-            "recent_activity": []
+            "recent_activity": [],
         }
 
     def _calculate_avg_days_to_interview(self, session) -> int:
         """Calculate average days from application to interview."""
         try:
             # Get applications that reached interview stage
-            interview_apps = session.query(Application).filter(
-                Application.status.in_(["INTERVIEW", "TECHNICAL_INTERVIEW", "OFFER", "ACCEPTED", "REJECTED"])
-            ).all()
+            interview_apps = (
+                session.query(Application)
+                .filter(
+                    Application.status.in_(
+                        [
+                            "INTERVIEW",
+                            "TECHNICAL_INTERVIEW",
+                            "OFFER",
+                            "ACCEPTED",
+                            "REJECTED",
+                        ]
+                    )
+                )
+                .all()
+            )
 
             # For now, just estimate based on applied date and typical timelines
             # In a real implementation, we'd track actual interview dates
@@ -119,7 +163,9 @@ class AnalyticsService:
                 return 0
 
             # Placeholder calculation - in real system would use interaction dates
-            total_days = sum((datetime.now() - app.applied_date).days for app in interview_apps)
+            total_days = sum(
+                (datetime.now() - app.applied_date).days for app in interview_apps
+            )
             return int(total_days / len(interview_apps))
         except Exception as e:
             logger.error(f"Error calculating avg days to interview: {e}")
@@ -154,21 +200,27 @@ class AnalyticsService:
             end_date = datetime.now()
             start_date = end_date - timedelta(weeks=8)
 
-            applications = session.query(Application).filter(
-                Application.applied_date >= start_date
-            ).all()
+            applications = (
+                session.query(Application)
+                .filter(Application.applied_date >= start_date)
+                .all()
+            )
 
             # Group by week
             weekly_counts = Counter()
 
             for app in applications:
                 # Get the week starting Monday
-                week_start = app.applied_date - timedelta(days=app.applied_date.weekday())
+                week_start = app.applied_date - timedelta(
+                    days=app.applied_date.weekday()
+                )
                 week_key = week_start.strftime("%m/%d")
                 weekly_counts[week_key] += 1
 
             # Sort by week
-            return sorted(weekly_counts.items(), key=lambda x: datetime.strptime(x[0], "%m/%d"))
+            return sorted(
+                weekly_counts.items(), key=lambda x: datetime.strptime(x[0], "%m/%d")
+            )
         except Exception as e:
             logger.error(f"Error getting weekly applications: {e}")
             return []
@@ -176,13 +228,25 @@ class AnalyticsService:
     def _get_company_response_count(self, session, company_name: str) -> int:
         """Get number of responses from a company."""
         try:
-            return session.query(func.count(Application.id)).join(
-                Company
-            ).filter(
-                Company.name == company_name,
-                Application.status.in_(
-                    ["PHONE_SCREEN", "INTERVIEW", "TECHNICAL_INTERVIEW", "OFFER", "ACCEPTED", "REJECTED"])
-            ).scalar() or 0
+            return (
+                session.query(func.count(Application.id))
+                .join(Company)
+                .filter(
+                    Company.name == company_name,
+                    Application.status.in_(
+                        [
+                            "PHONE_SCREEN",
+                            "INTERVIEW",
+                            "TECHNICAL_INTERVIEW",
+                            "OFFER",
+                            "ACCEPTED",
+                            "REJECTED",
+                        ]
+                    ),
+                )
+                .scalar()
+                or 0
+            )
         except Exception as e:
             logger.error(f"Error getting company response count: {e}")
             return 0
@@ -190,12 +254,24 @@ class AnalyticsService:
     def _get_company_interview_count(self, session, company_name: str) -> int:
         """Get number of interviews with a company."""
         try:
-            return session.query(func.count(Application.id)).join(
-                Company
-            ).filter(
-                Company.name == company_name,
-                Application.status.in_(["INTERVIEW", "TECHNICAL_INTERVIEW", "OFFER", "ACCEPTED", "REJECTED"])
-            ).scalar() or 0
+            return (
+                session.query(func.count(Application.id))
+                .join(Company)
+                .filter(
+                    Company.name == company_name,
+                    Application.status.in_(
+                        [
+                            "INTERVIEW",
+                            "TECHNICAL_INTERVIEW",
+                            "OFFER",
+                            "ACCEPTED",
+                            "REJECTED",
+                        ]
+                    ),
+                )
+                .scalar()
+                or 0
+            )
         except Exception as e:
             logger.error(f"Error getting company interview count: {e}")
             return 0
@@ -204,57 +280,86 @@ class AnalyticsService:
         """Get recent activity related to applications."""
         try:
             # Get recent applications
-            recent_apps = session.query(Application).options(
-                joinedload(Application.company)
-            ).order_by(Application.applied_date.desc()).limit(5).all()
+            recent_apps = (
+                session.query(Application)
+                .options(joinedload(Application.company))
+                .order_by(Application.applied_date.desc())
+                .limit(5)
+                .all()
+            )
 
             # Get recent interactions
-            recent_interactions = session.query(Interaction).options(
-                joinedload(Interaction.application).joinedload(Application.company)
-            ).order_by(Interaction.date.desc()).limit(5).all()
+            recent_interactions = (
+                session.query(Interaction)
+                .options(
+                    joinedload(Interaction.application).joinedload(Application.company)
+                )
+                .order_by(Interaction.date.desc())
+                .limit(5)
+                .all()
+            )
 
             # Get upcoming reminders
-            upcoming_reminders = session.query(Reminder).filter(
-                Reminder.completed == False,
-                Reminder.date >= datetime.now()
-            ).options(
-                joinedload(Reminder.application).joinedload(Application.company)
-            ).order_by(Reminder.date).limit(5).all()
+            upcoming_reminders = (
+                session.query(Reminder)
+                .filter(Reminder.completed is False, Reminder.date >= datetime.now())
+                .options(
+                    joinedload(Reminder.application).joinedload(Application.company)
+                )
+                .order_by(Reminder.date)
+                .limit(5)
+                .all()
+            )
 
             # Combine and sort activities
             activities = []
 
             # Add applications
             for app in recent_apps:
-                activities.append({
-                    "date": app.applied_date.strftime("%Y-%m-%d"),
-                    "type": f"Applied ({app.status})",
-                    "company": app.company.name if app.company else "Unknown",
-                    "details": f"{app.job_title} - {app.position}"
-                })
+                activities.append(
+                    {
+                        "date": app.applied_date.strftime("%Y-%m-%d"),
+                        "type": f"Applied ({app.status})",
+                        "company": app.company.name if app.company else "Unknown",
+                        "details": f"{app.job_title} - {app.position}",
+                    }
+                )
 
             # Add interactions
             for interaction in recent_interactions:
                 if interaction.application:
-                    company_name = interaction.application.company.name if interaction.application.company else "Unknown"
-                    activities.append({
-                        "date": interaction.date.strftime("%Y-%m-%d"),
-                        "type": interaction.type,
-                        "company": company_name,
-                        "details": interaction.notes[:50] + "..." if interaction.notes and len(
-                            interaction.notes) > 50 else interaction.notes or ""
-                    })
+                    company_name = (
+                        interaction.application.company.name
+                        if interaction.application.company
+                        else "Unknown"
+                    )
+                    activities.append(
+                        {
+                            "date": interaction.date.strftime("%Y-%m-%d"),
+                            "type": interaction.type,
+                            "company": company_name,
+                            "details": interaction.notes[:50] + "..."
+                            if interaction.notes and len(interaction.notes) > 50
+                            else interaction.notes or "",
+                        }
+                    )
 
             # Add reminders
             for reminder in upcoming_reminders:
                 if reminder.application:
-                    company_name = reminder.application.company.name if reminder.application.company else "Unknown"
-                    activities.append({
-                        "date": reminder.date.strftime("%Y-%m-%d"),
-                        "type": "Reminder",
-                        "company": company_name,
-                        "details": reminder.title
-                    })
+                    company_name = (
+                        reminder.application.company.name
+                        if reminder.application.company
+                        else "Unknown"
+                    )
+                    activities.append(
+                        {
+                            "date": reminder.date.strftime("%Y-%m-%d"),
+                            "type": "Reminder",
+                            "company": company_name,
+                            "details": reminder.title,
+                        }
+                    )
 
             # Sort by date (most recent first)
             activities.sort(key=lambda x: x["date"], reverse=True)

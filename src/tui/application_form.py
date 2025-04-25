@@ -1,6 +1,6 @@
 from textual.app import ComposeResult
 from textual.screen import Screen
-from textual.containers import Container, Vertical, Horizontal, ScrollableContainer
+from textual.containers import Container, Vertical, Horizontal
 from textual.widgets import Input, Button, Label, TextArea, Select, Static
 from datetime import datetime
 
@@ -8,116 +8,70 @@ from src.services.application_service import ApplicationService
 from src.services.company_service import CompanyService
 
 
-class TagInput(Static):
-    """Custom widget for handling tags."""
-    
-    def __init__(self, id=None, tags=None):
-        super().__init__(id=id)
-        self.tags = tags or []
-    
-    def compose(self) -> ComposeResult:
-        """Compose the tag input widget."""
-        yield Input(placeholder="Type a tag and press Enter", id=f"{self.id}-input")
-        yield Horizontal(id=f"{self.id}-tags")
-        yield Button("Add Tag", id=f"{self.id}-add")
-    
-    def on_mount(self):
-        """Initialize tags when mounted."""
-        self._refresh_tags()
-    
-    def on_input_submitted(self, event: Input.Submitted):
-        """Handle Enter key to add a tag."""
-        if event.input.id == f"{self.id}-input":
-            self._add_tag(event.value)
-            event.input.value = ""
-    
-    def on_button_pressed(self, event: Button.Pressed):
-        """Handle Add Tag button press."""
-        if event.button.id == f"{self.id}-add":
-            input = self.query_one(f"#{self.id}-input", Input)
-            if input.value.strip():
-                self._add_tag(input.value)
-                input.value = ""
-    
-    def _add_tag(self, tag):
-        """Add a tag to the list."""
-        tag = tag.strip()
-        if tag and tag not in self.tags:
-            self.tags.append(tag)
-            self._refresh_tags()
-    
-    def _refresh_tags(self):
-        """Refresh the tags display."""
-        tags_container = self.query_one(f"#{self.id}-tags", Horizontal)
-        tags_container.remove_children()
-        
-        for tag in self.tags:
-            # Create a mini button for each tag
-            tag_btn = Button(f"{tag} ×", classes="tag-button", id=f"tag-{len(tags_container.children)}")
-            tags_container.mount(tag_btn)
-    
-    def get_tags(self):
-        """Get the current list of tags."""
-        return self.tags
-    
-    def set_tags(self, tags):
-        """Set tags from a list."""
-        self.tags = list(tags) if tags else []
-        if self.is_mounted:
-            self._refresh_tags()
-
-
 class ApplicationForm(Screen):
-    """Form for creating or editing a job application."""
+    """Form for creating or editing a job application with multiple pages."""
 
-    def __init__(self, app_id: str = None, readonly: bool = False):
-        """Initialize the form.
-
-        Args:
-            app_id: If provided, the form will edit the existing application
-            readonly: If True, the form will be displayed in read-only mode
-        """
+    def __init__(self, app_id=None, readonly=False):
         super().__init__()
         self.app_id = app_id
         self.readonly = readonly
         self.companies = []
+        self.current_page = 1
+        self.total_pages = 3
+        self.application_data = {}
 
     def compose(self) -> ComposeResult:
         """Compose the form layout."""
         with Container(id="app-form"):
             yield Label(
-                "View Application" if self.readonly else
-                "Edit Application" if self.app_id else
-                "New Application",
-                id="form-title"
+                "View Application"
+                if self.readonly
+                else "Edit Application"
+                if self.app_id
+                else "New Application",
+                id="form-title",
             )
 
-            # Use ScrollableContainer to ensure all fields are accessible
-            with ScrollableContainer(id="form-container"):
-                with Vertical(id="form-fields"):
-                    # Essential fields section
-                    yield Label("Essential Information", classes="section-header")
-                    
+            # Page indicator
+            yield Static(
+                f"Page {self.current_page} of {self.total_pages}", id="page-indicator"
+            )
+
+            # Page 1: Essential Information
+            with Container(id="page-1", classes="form-page"):
+                with Vertical(id="essential-fields"):
                     yield Label("Job Title *", classes="field-label")
                     yield Input(id="job-title", disabled=self.readonly)
 
                     yield Label("Company *", classes="field-label")
-                    with Vertical(id="company-field"):
+                    with Horizontal(id="company-field"):
                         yield Select([], id="company-select", disabled=self.readonly)
                         if not self.readonly:
-                            yield Button("+ New Company", id="new-company", variant="primary")
+                            yield Button(
+                                "+ New Company", id="new-company", variant="primary"
+                            )
 
                     yield Label("Position *", classes="field-label")
                     yield Input(id="position", disabled=self.readonly)
 
                     yield Label("Status *", classes="field-label")
                     yield Select(
-                        [(status, status) for status in [
-                            "SAVED", "APPLIED", "PHONE_SCREEN", "INTERVIEW",
-                            "TECHNICAL_INTERVIEW", "OFFER", "ACCEPTED", "REJECTED", "WITHDRAWN"
-                        ]],
+                        [
+                            (status, status)
+                            for status in [
+                                "SAVED",
+                                "APPLIED",
+                                "PHONE_SCREEN",
+                                "INTERVIEW",
+                                "TECHNICAL_INTERVIEW",
+                                "OFFER",
+                                "ACCEPTED",
+                                "REJECTED",
+                                "WITHDRAWN",
+                            ]
+                        ],
                         id="status",
-                        disabled=self.readonly
+                        disabled=self.readonly,
                     )
 
                     yield Label("Applied Date *", classes="field-label")
@@ -125,46 +79,118 @@ class ApplicationForm(Screen):
                         id="applied-date",
                         placeholder="YYYY-MM-DD",
                         disabled=self.readonly,
-                        value=datetime.now().strftime("%Y-%m-%d") if not self.app_id and not self.readonly else ""
+                        value=datetime.now().strftime("%Y-%m-%d")
+                        if not self.app_id and not self.readonly
+                        else "",
                     )
-                    
-                    # Additional details section
-                    yield Label("Additional Details", classes="section-header")
 
+            # Page 2: Additional Details
+            with Container(id="page-2", classes="form-page hidden"):
+                with Vertical(id="details-fields"):
                     yield Label("Location", classes="field-label")
-                    yield Input(id="location", placeholder="City, State or Remote", disabled=self.readonly)
+                    yield Input(
+                        id="location",
+                        placeholder="City, State or Remote",
+                        disabled=self.readonly,
+                    )
 
                     yield Label("Salary", classes="field-label")
-                    yield Input(id="salary", placeholder="e.g. $100,000/year", disabled=self.readonly)
+                    yield Input(
+                        id="salary",
+                        placeholder="e.g. $100,000/year",
+                        disabled=self.readonly,
+                    )
 
                     yield Label("Link", classes="field-label")
-                    yield Input(id="link", placeholder="https://...", disabled=self.readonly)
+                    yield Input(
+                        id="link", placeholder="https://...", disabled=self.readonly
+                    )
 
-                    # Description and notes section
-                    yield Label("Content", classes="section-header")
-                    
-                    yield Label("Description", classes="field-label")
+            # Page 3: Content
+            with Container(id="page-3", classes="form-page hidden"):
+                with Vertical(id="content-fields"):
+                    yield Label("Job Description", classes="field-label")
                     yield TextArea(id="description", disabled=self.readonly)
 
                     yield Label("Notes", classes="field-label")
                     yield TextArea(id="notes", disabled=self.readonly)
 
-                    yield Label("Tags", classes="field-label")
-                    yield TagInput(id="tag-input")
-            
             yield Label("* Required fields", id="required-fields-note")
+
+            # Page navigation buttons
+            with Horizontal(id="page-navigation"):
+                yield Button("← Previous", id="prev-page", disabled=True)
+                yield Button("Next →", id="next-page")
 
             with Horizontal(id="form-actions"):
                 if not self.readonly:
                     yield Button("Save", variant="primary", id="save-app")
                 yield Button("Close", id="close-form")
 
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        """Handle button presses."""
+        button_id = event.button.id
+
+        if button_id == "new-company":
+            from src.tui.company_form import CompanyForm
+
+            self.app.push_screen(CompanyForm(on_saved=self.load_companies))
+
+        elif button_id == "next-page":
+            self.navigate_to_page(self.current_page + 1)
+
+        elif button_id == "prev-page":
+            self.navigate_to_page(self.current_page - 1)
+
+        elif button_id == "save-app":
+            self.save_application()
+
+        elif button_id == "close-form":
+            self.app.pop_screen()
+
+    def navigate_to_page(self, page_number):
+        """Navigate to the specified page of the form."""
+        if page_number < 1 or page_number > self.total_pages:
+            return
+
+        # Hide all pages
+        for i in range(1, self.total_pages + 1):
+            page = self.query_one(f"#page-{i}", Container)
+            if i == page_number:
+                page.remove_class("hidden")
+            else:
+                page.add_class("hidden")
+
+        # Update current page
+        self.current_page = page_number
+
+        # Update page indicator
+        self.query_one("#page-indicator", Static).update(
+            f"Page {self.current_page} of {self.total_pages}"
+        )
+
+        # Update button states
+        prev_button = self.query_one("#prev-page", Button)
+        next_button = self.query_one("#next-page", Button)
+
+        prev_button.disabled = page_number == 1
+        next_button.disabled = page_number == self.total_pages
+
+        # Store current field values if not in readonly mode
+        if not self.readonly:
+            self.store_current_field_values()
+
+    def store_current_field_values(self):
+        """Store values from the current page."""
+        # Implement this to store values between page navigations
+        pass
+
     def on_mount(self) -> None:
         """Load data when the form is mounted."""
         self.load_companies()
         if self.app_id:
             self.load_application()
-    
+
     # def on_resize(self) -> None:
     #     """Handle resize events by adjusting the form container."""
     #     form_container = self.query_one("#form-container", ScrollableContainer)
@@ -182,14 +208,14 @@ class ApplicationForm(Screen):
             self.companies = service.get_companies()
 
             company_select = self.query_one("#company-select", Select)
-            company_select.set_options([
-                (company["name"], str(company["id"])) for company in self.companies
-            ])
-            
+            company_select.set_options(
+                [(company["name"], str(company["id"])) for company in self.companies]
+            )
+
             # Set default selection for new applications
             if not self.app_id and self.companies:
                 company_select.value = str(self.companies[0]["id"])
-            
+
         except Exception as e:
             self.app.sub_title = f"Error loading companies: {str(e)}"
 
@@ -198,7 +224,7 @@ class ApplicationForm(Screen):
         try:
             service = ApplicationService()
             app_data = service.get_application(int(self.app_id))
-            
+
             if not app_data:
                 self.app.sub_title = f"Application {self.app_id} not found"
                 return
@@ -216,7 +242,9 @@ class ApplicationForm(Screen):
             self.query_one("#status", Select).value = app_data["status"]
 
             # Format the date
-            applied_date = datetime.fromisoformat(app_data["applied_date"]).strftime("%Y-%m-%d")
+            applied_date = datetime.fromisoformat(app_data["applied_date"]).strftime(
+                "%Y-%m-%d"
+            )
             self.query_one("#applied-date", Input).value = applied_date
 
             if app_data.get("link"):
@@ -230,29 +258,12 @@ class ApplicationForm(Screen):
 
             # Set company if available
             if app_data.get("company"):
-                self.query_one("#company-select", Select).value = str(app_data["company"]["id"])
-                
-            # Handle tags
-            if app_data.get("tags"):
-                tag_input = self.query_one("#tag-input", TagInput)
-                tag_input.set_tags(app_data["tags"])
+                self.query_one("#company-select", Select).value = str(
+                    app_data["company"]["id"]
+                )
 
         except Exception as e:
             self.app.sub_title = f"Error loading application: {str(e)}"
-
-    def on_button_pressed(self, event: Button.Pressed) -> None:
-        """Handle button presses."""
-        button_id = event.button.id
-
-        if button_id == "new-company":
-            from src.tui.company_form import CompanyForm
-            self.app.push_screen(CompanyForm(on_saved=self.load_companies))
-
-        elif button_id == "save-app":
-            self.save_application()
-
-        elif button_id == "close-form":
-            self.app.pop_screen()
 
     def save_application(self) -> None:
         """Save the application data."""
@@ -268,7 +279,6 @@ class ApplicationForm(Screen):
             link = self.query_one("#link", Input).value
             description = self.query_one("#description", TextArea).text
             notes = self.query_one("#notes", TextArea).text
-            tags = self.query_one("#tag-input", TagInput).get_tags()
 
             # Validate required fields
             if not job_title:
@@ -303,18 +313,17 @@ class ApplicationForm(Screen):
                 "link": link or None,
                 "description": description or None,
                 "notes": notes or None,
-                "tags": tags or None
             }
 
             service = ApplicationService()
 
             if self.app_id:
                 # Update existing application
-                result = service.update_application(int(self.app_id), app_data)
+                service.update_application(int(self.app_id), app_data)
                 self.app.sub_title = "Application updated successfully"
             else:
                 # Create new application
-                result = service.create_application(app_data)
+                service.create_application(app_data)
                 self.app.sub_title = "Application created successfully"
 
             # Return to the previous screen
@@ -322,7 +331,8 @@ class ApplicationForm(Screen):
 
             # Refresh the applications list if it's visible
             from src.tui.applications import ApplicationsList
-            app_list = self.app.query_one(ApplicationsList, default=None)
+
+            app_list = self.app.query_one(ApplicationsList)
             if app_list:
                 app_list.load_applications()
 

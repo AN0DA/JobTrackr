@@ -8,11 +8,16 @@ from textual.screen import ModalScreen
 from textual.containers import Container, Vertical, Horizontal
 from textual.widgets import Button, Label, Input, Checkbox, OptionList
 
+from src.db.settings import Settings
 from src.services.application_service import ApplicationService
 
 
 class ExportDialog(ModalScreen):
     """Dialog for exporting job application data."""
+
+    def __init__(self):
+        super().__init__()
+        self.settings = Settings()
 
     def compose(self) -> ComposeResult:
         with Container(id="export-dialog"):
@@ -27,7 +32,9 @@ class ExportDialog(ModalScreen):
 
                 yield Label("Export Options", classes="field-label")
                 yield Checkbox("Include detailed notes", id="include-notes", value=True)
-                yield Checkbox("Include interactions", id="include-interactions", value=True)
+                yield Checkbox(
+                    "Include interactions", id="include-interactions", value=True
+                )
                 yield Checkbox("Include reminders", id="include-reminders", value=True)
 
             with Horizontal(id="dialog-buttons"):
@@ -50,14 +57,13 @@ class ExportDialog(ModalScreen):
         """Export application data to the selected format."""
         try:
             # Get export options
-            export_format = getattr(self, 'export_format', "CSV")
-            export_dir = self.query_one("#export-dir", Input).value
+            export_format = getattr(self, "export_format", "CSV")
+            export_dir = self.settings.get_export_directory()
             include_notes = self.query_one("#include-notes", Checkbox).value
-            include_interactions = self.query_one("#include-interactions", Checkbox).value
+            include_interactions = self.query_one(
+                "#include-interactions", Checkbox
+            ).value
             include_reminders = self.query_one("#include-reminders", Checkbox).value
-
-            # Create export directory if it doesn't exist
-            os.makedirs(export_dir, exist_ok=True)
 
             # Generate filename with timestamp
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -67,7 +73,7 @@ class ExportDialog(ModalScreen):
             applications = service.get_applications_for_export(
                 include_notes=include_notes,
                 include_interactions=include_interactions,
-                include_reminders=include_reminders
+                include_reminders=include_reminders,
             )
 
             if export_format == "CSV":
@@ -94,7 +100,7 @@ class ExportDialog(ModalScreen):
         for app in applications:
             fieldnames.update(app.keys())
 
-        with open(filename, 'w', newline='', encoding='utf-8') as csvfile:
+        with open(filename, "w", newline="", encoding="utf-8") as csvfile:
             writer = csv.DictWriter(csvfile, fieldnames=sorted(fieldnames))
             writer.writeheader()
             writer.writerows(applications)
@@ -106,5 +112,5 @@ class ExportDialog(ModalScreen):
         if not applications:
             raise ValueError("No data to export")
 
-        with open(filename, 'w', encoding='utf-8') as jsonfile:
+        with open(filename, "w", encoding="utf-8") as jsonfile:
             json.dump(applications, jsonfile, indent=2)

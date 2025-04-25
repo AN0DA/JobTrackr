@@ -1,10 +1,9 @@
 """Time series chart widget using plotext."""
 
-import io
 import plotext as plt
 from textual.widget import Widget
 from textual.reactive import reactive
-from typing import Dict, List, Tuple, Any, Optional
+from typing import List, Tuple
 from rich.text import Text
 
 
@@ -24,11 +23,11 @@ class TimeSeriesChart(Widget):
     color = reactive("green")
 
     def __init__(
-            self,
-            data: List[Tuple[str, float]] = None,
-            title: str = "",
-            color: str = "green",
-            **kwargs
+        self,
+        data: List[Tuple[str, float]] = None,
+        title: str = "",
+        color: str = "green",
+        **kwargs,
     ):
         """Initialize the time series chart.
 
@@ -64,17 +63,19 @@ class TimeSeriesChart(Widget):
         plt.theme("dark")
 
         # Get the terminal size approximately
-        width = max(60, min(120, self.size.width))
-        height = max(10, min(20, self.size.height))
+        # Ensure width and height are at least 1
+        width = max(1, self.size.width)
+        height = max(1, self.size.height - 2)  # Adjust for potential title/axis space
 
-        plt.figure(width, height)
+        plt.plotsize(width, height)
 
         # Extract data
         dates = [item[0] for item in self.data]
         values = [item[1] for item in self.data]
+        indices = range(len(dates))  # Use numerical indices for plotting
 
         # Plot the time series
-        plt.plot(dates, values, color=self.color, marker="braille")
+        plt.plot(indices, values, color=self.color, marker="braille")
 
         # Set the title
         if self.title:
@@ -82,12 +83,11 @@ class TimeSeriesChart(Widget):
 
         # Set grid and axes labels
         plt.grid(True)
-        plt.xticks(range(len(dates)), dates, rotation=90)
+        # Set ticks at the numerical indices with date labels
+        plt.xticks(indices, dates)
 
-        # Capture the plot output as a string
-        buffer = io.StringIO()
-        plt.show(buffer=buffer)
-        return buffer.getvalue()
+        # Build the plot string
+        return plt.build()
 
     def watch_data(self, new_value: List[Tuple[str, float]]) -> None:
         """React to data changes."""

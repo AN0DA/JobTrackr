@@ -3,22 +3,15 @@
 from textual.app import App, ComposeResult
 from textual.widgets import Header, Footer, TabbedContent, TabPane
 from textual.binding import Binding
-from textual.css.query import NoMatches
 import os
 
+from src.db.settings import Settings
 from src.tui.dashboard import Dashboard
 from src.tui.applications import ApplicationsList
 from src.db.database import init_db
 
-from textual.app import App, ComposeResult
-from textual.widgets import Header, Footer, TabbedContent, TabPane
-from textual.binding import Binding
 
-from src.tui.dashboard import Dashboard
-from src.tui.applications import ApplicationsList
 from src.tui.analytics import Analytics
-from src.tui.today import TodayView
-from src.db.database import init_db
 
 
 class JobTrackerApp(App):
@@ -26,15 +19,17 @@ class JobTrackerApp(App):
 
     CSS_PATH = "app.css"
     BINDINGS = [
+        # Clear and simple keyboard shortcuts
         Binding("d", "switch_tab('dashboard')", "Dashboard"),
         Binding("a", "switch_tab('applications')", "Applications"),
-        Binding("t", "switch_tab('today')", "Today"),
         Binding("s", "switch_tab('analytics')", "Stats"),
-        Binding("n", "new_application", "New Application"),
+        # Action shortcuts
+        Binding("n", "new_application", "New"),
         Binding("f", "search", "Find"),
-        Binding("e", "export", "Export"),
-        Binding("q", "quit", "Quit"),
         Binding("r", "refresh", "Refresh"),
+        # System shortcuts
+        Binding("ctrl+s", "show_settings", "Settings"),
+        Binding("q", "quit", "Quit"),
         Binding("f1", "help", "Help"),
     ]
 
@@ -45,8 +40,6 @@ class JobTrackerApp(App):
         with TabbedContent(initial="dashboard"):
             with TabPane("Dashboard", id="dashboard"):
                 yield Dashboard()
-            with TabPane("Today", id="today"):
-                yield TodayView()
             with TabPane("Applications", id="applications"):
                 yield ApplicationsList()
             with TabPane("Analytics", id="analytics"):
@@ -56,9 +49,19 @@ class JobTrackerApp(App):
 
     def on_mount(self) -> None:
         """Initialize the database when app starts."""
-        self.sub_title = "Initializing database..."
-        init_db()
-        self.sub_title = "Ready"
+        settings = Settings()
+
+        # Check if this is first run or if database exists
+        if not settings.database_exists():
+            # Show first run screen
+            from src.tui.first_run import FirstRunScreen
+
+            self.push_screen(FirstRunScreen())
+        else:
+            # Initialize with existing database
+            self.sub_title = "Initializing database..."
+            init_db()
+            self.sub_title = "Ready"
 
     def action_switch_tab(self, tab_id: str) -> None:
         """Switch to the specified tab."""
@@ -73,8 +76,6 @@ class JobTrackerApp(App):
             self.query_one(Dashboard).refresh_data()
         elif active_tab_id == "applications":
             self.query_one(ApplicationsList).load_applications()
-        elif active_tab_id == "today":
-            self.query_one(TodayView).load_today_data()
         elif active_tab_id == "analytics":
             self.query_one(Analytics).load_analytics()
 
@@ -83,22 +84,26 @@ class JobTrackerApp(App):
     def action_new_application(self) -> None:
         """Open the application creation form."""
         from src.tui.application_form import ApplicationForm
+
         self.push_screen(ApplicationForm())
 
     def action_search(self) -> None:
         """Open the search dialog."""
         from src.tui.search import SearchDialog
+
         self.push_screen(SearchDialog())
 
-    def action_export(self) -> None:
-        """Open the export dialog."""
-        from src.tui.export import ExportDialog
-        self.push_screen(ExportDialog())
+    def action_show_settings(self) -> None:
+        """Open settings screen."""
+        from src.tui.settings_screen import SettingsScreen
+
+        self.push_screen(SettingsScreen())
+
 
 def main():
     """Run the application."""
     # Ensure data directory exists
-    os.makedirs('data', exist_ok=True)
+    os.makedirs("data", exist_ok=True)
 
     # Run the app
     app = JobTrackerApp()

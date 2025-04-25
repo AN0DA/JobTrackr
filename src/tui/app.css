@@ -1,355 +1,313 @@
-/* Base styling */
-Dashboard {
-    width: 100%;
+/* Base styles */
+Screen {
+    background: $surface-darken-1;
+    color: $text;
 }
 
-/* Stats grid */
+/* Layout containers */
+.content-box {
+    background: $surface;
+    border: tall $primary-background;
+    margin-bottom: 1;
+    padding: 1;
+}
+
+/* Dashboard styles */
+#dashboard-container {
+    padding: 1;
+}
+
+#dashboard-title {
+    text-align: center;
+    background: $primary;
+    color: $text;
+    text-style: bold;
+    padding: 1;
+    margin-bottom: 1;
+}
+
 #stats-grid {
-    layout: grid;
     grid-size: 4;
+    grid-gutter: 1 2;
     grid-columns: 1fr 1fr 1fr 1fr;
+    height: auto;
+    margin: 1 0;
+}
+
+.stats-card {
     height: 7;
-    margin: 1 1;
+    background: $boost;
+    border: tall $primary-background;
+    padding: 1;
+    margin-bottom: 1;
 }
 
 .stats-title {
-    text-style: bold;
-    height: 1;
-    content-align: center top;
+    color: $text-muted;
+    text-align: center;
+    padding-bottom: 1;
 }
 
 .stats-value {
-    text-style: bold;
-    height: 1;
-    color: #5f9;
     text-align: center;
     content-align: center middle;
+    color: $secondary;
+    text-style: bold;
     width: 100%;
     height: 3;
-    /*text-size: 3;*/
 }
 
-StatsCard {
-    height: 100%;
-    border: solid $primary;
-    padding: 1;
-    margin: 0 1;
-}
-
-/* Lists grid */
-#lists-grid {
-    layout: grid;
-    grid-size: 2;
-    grid-columns: 1fr 1fr;
-    margin: 1 1;
+#dashboard-content {
     height: auto;
 }
 
-.list-title {
-    text-style: bold;
-    background: $boost;
-    padding: 1;
-    border-bottom: solid $primary;
-    text-align: center;
+#left-column, #right-column {
+    width: 1fr;
+    height: auto;
+    margin: 0 1;
 }
 
-/* Application form */
+.section-heading {
+    background: $primary-background;
+    color: $text;
+    text-style: bold;
+    padding: 0 1;
+    margin-bottom: 1;
+}
+
+/* Application list styles */
+#apps-container {
+    padding: 1;
+    height: 100%;
+}
+
+#apps-title {
+    text-align: center;
+    background: $primary;
+    color: $text;
+    text-style: bold;
+    padding: 1;
+    margin-bottom: 1;
+}
+
+#apps-header {
+    margin-bottom: 1;
+}
+
+#apps-filters {
+    margin: 1 0;
+}
+
+.filter-group {
+    margin-right: 2;
+    width: 1fr;
+}
+
+.filter-label {
+    color: $text-muted;
+    margin-bottom: 1;
+}
+
+#apps-actions {
+    align-horizontal: right;
+    margin-top: 1;
+}
+
+#applications-table {
+    height: 1fr;
+    border: tall $primary-background;
+    background: $surface;
+}
+
+#apps-status-bar {
+    height: auto;
+    align-vertical: middle;
+}
+
+#apps-count {
+    width: 1fr;
+    color: $text-muted;
+}
+
+#pagination {
+    width: auto;
+    align-horizontal: right;
+}
+
+#page-number {
+    padding: 0 1;
+}
+
+/* Form styles */
 #app-form {
-    padding: 1 2;
+    padding: 1;
     height: 100%;
 }
 
 #form-title {
-    text-style: bold;
     text-align: center;
-    padding-bottom: 1;
-    background: $accent;
+    background: $primary;
     color: $text;
-}
-
-#form-container {
-    height: 1fr;
-    margin: 1 0;
-    border: solid $primary-darken-2;
-    padding: 0 1;
-}
-
-#form-fields {
-    padding: 1 0;
-    width: 100%;
-}
-
-.section-header {
     text-style: bold;
-    background: $boost;
     padding: 1;
+    margin-bottom: 1;
+}
+
+#page-indicator {
+    text-align: center;
+    color: $text-muted;
+    margin-bottom: 1;
+}
+
+.form-page {
+    border: tall $primary-background;
+    background: $surface;
+    padding: 1;
+    height: 5fr;
+    overflow: auto;
+}
+
+.field-label {
+    color: $text-muted;
     margin-top: 1;
     margin-bottom: 1;
 }
 
-.field-label {
+#page-navigation {
     margin-top: 1;
-}
-
-#company-field {
-    margin: 0 0 1 0;
+    align-horizontal: center;
 }
 
 #form-actions {
-    layout: horizontal;
-    dock: bottom;
-    height: 3;
-    content-align: center middle;
+    margin-top: 1;
+    align-horizontal: right;
 }
 
 #required-fields-note {
-    margin: 1 0;
     color: $warning;
-    text-style: italic;
+    margin: 1 0;
+    text-align: center;
 }
 
-TagInput {
+/* Modal dialogs */
+.modal-container {
+    align: center middle;
+    height: 100%;
+    width: 100%;
+}
+
+.modal-content {
+    width: 60%;
     height: auto;
+    max-height: 80%;
+    background: $surface;
+    border: tall $primary;
+    padding: 1;
+}
+
+.modal-title {
+    text-align: center;
+    background: $primary;
+    color: $text;
+    text-style: bold;
+    padding: 1;
     margin-bottom: 1;
 }
 
-.tag-button {
-    background: $primary-darken-1;
-    color: $text;
-    margin-right: 1;
-    height: 1;
-    min-width: 0;
-    padding: 0 1;
-}
-
-/* Applications list */
-#filters {
-    padding: 1 0;
-    height: auto;
-}
-
-Button {
-    margin: 0 1;
-}
-
-#actions {
-    layout: horizontal;
-    dock: bottom;
-    height: 3;
-    content-align: center middle;
-}
-
-/* Company form */
-#company-form {
-    padding: 1 2;
-    height: 100%;
-}
-
-/* Deletion dialog */
-#dialog {
-    background: $surface;
-    color: $text;
-    border: thick $primary;
-    padding: 1 2;
-    width: 60;
-    height: 8;
-    content-align: center middle;
-}
-
-#buttons {
-    layout: horizontal;
-    content-align: center middle;
+.modal-actions {
     margin-top: 1;
+    align-horizontal: right;
 }
 
-/* Context menu */
-#context-menu {
-    background: $surface;
-    border: wide $primary;
-    min-width: 40;
-    padding: 0;
-    margin: 1;
-    height: auto;
+/* Fix for hidden elements */
+.hidden {
+    display: none;
 }
 
-#menu-title {
-    background: $boost;
-    color: $text;
-    text-align: center;
-    text-style: bold;
+/* Today view styles */
+#today-container {
     padding: 1;
-    width: 100%;
 }
 
-#menu-actions {
-    padding: 1 2;
-    border: none;
-}
-
-.menu-divider {
-    color: $primary-darken-2;
-    text-align: center;
-    margin: 0 0;
-}
-
-/* Quick add dialog */
-#quick-add-dialog {
-    background: $surface;
-    border: wide $primary;
-    padding: 1 2;
-    min-width: 60;
-    min-height: 20;
-}
-
-#quick-form {
-    margin: 1 0;
-}
-
-/* Status transition dialog */
-#transition-dialog {
-    background: $surface;
-    border: wide $primary;
-    padding: 1 2;
-    min-width: 60;
-    min-height: 20;
-}
-
-#transition-form {
-    margin: 1 0;
-}
-
-#dialog-title {
-    text-style: bold;
-    text-align: center;
-    padding-bottom: 1;
-}
-
-.field-label {
-    margin-top: 1;
-}
-
-#dialog-buttons {
-    margin-top: 2;
-    height: 3;
-    width: 100%;
-    content-align: center middle;
-}
-
-#current-status {
-    color: $accent;
-    text-style: bold;
-}
-
-#reminder-container {
-    margin: 1 0;
-}
-
-/* Reminder form dialog */
-#reminder-form-dialog {
-    background: $surface;
-    border: wide $primary;
-    padding: 1 2;
-    min-width: 60;
-    min-height: 20;
-}
-
-/* Today view */
 #today-title {
     text-align: center;
-    text-style: bold;
-    background: $accent;
+    background: $primary;
     color: $text;
+    text-style: bold;
     padding: 1;
-    margin: 0 0 1 0;
+    margin-bottom: 1;
 }
 
 #today-date {
     text-align: center;
+    color: $accent;
+    text-style: bold;
     margin-bottom: 1;
 }
 
-#upcoming-section, #recent-section, #status-summary-grid, #deadlines-section {
-    margin: 1 0;
+.task-list {
+    padding: 0 1;
+    margin-bottom: 1;
 }
 
-.section-title {
-    text-style: bold;
-    background: $boost;
-    padding: 1;
-    border-bottom: solid $primary;
-}
-
-/* Analytics view */
-#analytics-title {
-    text-align: center;
-    text-style: bold;
-    background: $accent;
-    color: $text;
-    padding: 1;
-    margin: 0 0 1 0;
-}
-
-#analytics-stats {
-    layout: grid;
-    grid-size: 4;
-    grid-columns: 1fr 1fr 1fr 1fr;
-    height: 7;
-    margin: 1 1;
-}
-
-#charts-container {
-    height: auto;
-    min-height: 20;
-    margin: 1 1;
-}
-
-#status-chart-container, #timeline-chart-container {
-    width: 50%;
-    height: auto;
-    min-height: 20;
-    border: solid $primary-darken-2;
-    margin: 0 1;
+.task-item {
+    margin-bottom: 1;
     padding: 0 1;
 }
 
-.chart-title {
+#today-structure {
+    grid-size: 3;
+    grid-columns: 1fr 1fr 1fr;
+    grid-gutter: 1;
+}
+
+.time-slot {
+    background: $surface-lighten-1;
+    padding: 1;
+    border: tall $primary-background;
+}
+
+.time-label {
     text-align: center;
-    padding: 0 0 1 0;
-    text-style: bold;
+    background: $primary-background;
+    color: $text;
+    padding: 0 1;
+    margin-bottom: 1;
 }
 
-PlotChart, TimeSeriesChart {
-    width: 100%;
-    height: 20;
-}
-
-/* Search dialog */
-#search-dialog {
-    background: $surface;
-    border: wide $primary;
-    padding: 1 2;
-    min-width: 60;
-    min-height: 20;
-}
-
-#search-form {
+/* Quick actions */
+#quick-actions {
     margin: 1 0;
+    align-horizontal: center;
 }
 
-#search-results {
-    min-height: 10;
+/* Activity feed */
+#activity-feed {
     max-height: 20;
+    overflow: auto;
 }
 
-/* Export dialog */
-#export-dialog {
-    background: $surface;
-    border: wide $primary;
-    padding: 1 2;
-    min-width: 60;
-    min-height: 20;
+.activity-item {
+    margin-bottom: 1;
+    padding: 0 1;
+    border-bottom: solid $primary-background;
 }
 
-#export-form {
-    margin: 1 0;
+.activity-date {
+    color: $text-muted;
+    text-style: italic;
+}
+
+.activity-content {
+    margin-bottom: 1;
+}
+
+/* Fix for inputs in forms */
+Input, TextArea, Select {
+    margin-bottom: 2;
+}
+
+TextArea {
+    min-height: 5;
+    max-height: 10;
 }

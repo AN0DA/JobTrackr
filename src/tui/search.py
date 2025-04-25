@@ -2,7 +2,7 @@
 
 from textual.app import ComposeResult
 from textual.screen import ModalScreen
-from textual.containers import Container, Vertical, Horizontal
+from textual.containers import Container, Horizontal
 from textual.widgets import Button, Label, Input, DataTable
 
 from src.services.application_service import ApplicationService
@@ -55,6 +55,7 @@ class SearchDialog(ModalScreen):
 
         # Open application form
         from src.tui.application_form import ApplicationForm
+
         self.app.push_screen(ApplicationForm(app_id=app_id))
 
     def perform_search(self) -> None:
@@ -80,7 +81,7 @@ class SearchDialog(ModalScreen):
                     app["job_title"],
                     app.get("company", {}).get("name", ""),
                     app["position"],
-                    app["status"]
+                    app["status"],
                 )
 
             count = len(results)

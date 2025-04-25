@@ -1,10 +1,9 @@
 """Terminal-based chart widget using plotext."""
 
-import io
 import plotext as plt
 from textual.widget import Widget
 from textual.reactive import reactive
-from typing import Dict, List, Tuple, Any, Optional
+from typing import Dict
 from rich.text import Text
 
 
@@ -25,12 +24,12 @@ class PlotChart(Widget):
     color = reactive("green")
 
     def __init__(
-            self,
-            data: Dict[str, float] = None,
-            title: str = "",
-            chart_type: str = "bar",
-            color: str = "green",
-            **kwargs
+        self,
+        data: Dict[str, float] = None,
+        title: str = "",
+        chart_type: str = "bar",
+        color: str = "green",
+        **kwargs,
     ):
         """Initialize the plot chart.
 
@@ -68,10 +67,11 @@ class PlotChart(Widget):
         plt.theme("dark")
 
         # Get the terminal size approximately
-        width = max(60, min(120, self.size.width))
-        height = max(10, min(20, self.size.height))
+        # Ensure width and height are at least 1
+        width = max(1, self.size.width)
+        height = max(1, self.size.height - 2)  # Adjust for potential title/axis space
 
-        plt.figure(width, height)
+        plt.plotsize(width, height)
 
         # Extract data
         x_values = list(self.data.keys())
@@ -81,21 +81,24 @@ class PlotChart(Widget):
         if self.chart_type == "bar":
             plt.bar(x_values, y_values, color=self.color)
         elif self.chart_type == "line":
-            plt.plot(x_values, y_values, color=self.color, marker="braille")
+            # Use numerical indices for x if labels are strings for line/scatter
+            indices = range(len(x_values))
+            plt.plot(indices, y_values, color=self.color, marker="braille")
+            plt.xticks(indices, x_values)  # Set labels for the numerical indices
         elif self.chart_type == "scatter":
-            plt.scatter(x_values, y_values, color=self.color, marker="dot")
+            indices = range(len(x_values))
+            plt.scatter(indices, y_values, color=self.color, marker="dot")
+            plt.xticks(indices, x_values)
 
         # Set the title
         if self.title:
             plt.title(self.title)
 
-        # Set grid and axes labels
+        # Set grid
         plt.grid(True)
 
-        # Capture the plot output as a string
-        buffer = io.StringIO()
-        plt.show(buffer=buffer)
-        return buffer.getvalue()
+        # Build the plot string
+        return plt.build()
 
     def watch_data(self, new_value: Dict[str, float]) -> None:
         """React to data changes."""

@@ -4,8 +4,6 @@ import logging
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 
-from sqlalchemy.orm import Session
-from sqlalchemy import func
 
 from src.db.models import Reminder
 from src.db.database import get_session
@@ -31,8 +29,9 @@ class ReminderService:
         finally:
             session.close()
 
-    def get_reminders(self, application_id: Optional[int] = None, completed: Optional[bool] = None) -> List[
-        Dict[str, Any]]:
+    def get_reminders(
+        self, application_id: Optional[int] = None, completed: Optional[bool] = None
+    ) -> List[Dict[str, Any]]:
         """Get reminders with optional filtering."""
         session = get_session()
         try:
@@ -63,9 +62,11 @@ class ReminderService:
             reminder = Reminder(
                 title=data["title"],
                 description=data.get("description"),
-                date=datetime.fromisoformat(data["date"]) if isinstance(data["date"], str) else data["date"],
+                date=datetime.fromisoformat(data["date"])
+                if isinstance(data["date"], str)
+                else data["date"],
                 completed=data.get("completed", False),
-                application_id=data.get("application_id")
+                application_id=data.get("application_id"),
             )
 
             # Add to session and commit
@@ -96,7 +97,11 @@ class ReminderService:
             if "description" in data:
                 reminder.description = data["description"]
             if "date" in data:
-                reminder.date = datetime.fromisoformat(data["date"]) if isinstance(data["date"], str) else data["date"]
+                reminder.date = (
+                    datetime.fromisoformat(data["date"])
+                    if isinstance(data["date"], str)
+                    else data["date"]
+                )
             if "completed" in data:
                 reminder.completed = data["completed"]
             if "application_id" in data:
@@ -140,5 +145,5 @@ class ReminderService:
             "description": reminder.description,
             "date": reminder.date.isoformat(),
             "completed": reminder.completed,
-            "application_id": reminder.application_id
+            "application_id": reminder.application_id,
         }
