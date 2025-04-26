@@ -198,9 +198,9 @@ wheels = [
 ]
 
 [[package]]
-name = "job-tracker"
+name = "jobtrackr"
 version = "0.1.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "plotext" },
     { name = "sqlalchemy" },

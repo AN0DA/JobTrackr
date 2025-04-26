@@ -1,7 +1,11 @@
 [project]
-name = "job-tracker"
+name = "JobTrackr"
 version = "0.1.0"
-description = "Add your description here"
+description = "Job tracking TUI tool"
+readme = "README.md"
+authors = [{name = "Mikołaj Kaczmarek", email = "12432719+AN0DA@users.noreply.github.com"}]
+license = {text = "MIT"}
+
 requires-python = ">=3.13"
 dependencies = [
     "plotext>=5.3.2",
@@ -16,3 +20,104 @@ dev = [
     "ruff>=0.11.7",
     "textual-dev>=1.7.0",
 ]
+
+[tool.ruff]
+line-length = 120
+output-format = "full"
+
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".ipynb_checkpoints",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pyenv",
+    ".pytest_cache",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    ".vscode",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "site-packages",
+    "venv",
+]
+target-version = "py313"
+
+[tool.ruff.lint]
+select = [
+    "A",
+    "B",
+    "C4",
+    "E",
+    "F",
+    "I001",
+    "SIM",
+    "T201",
+    "UP",
+]
+ignore = ["E501", "B008"]
+unfixable = ["B"]
+
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
+skip-magic-trailing-comma = false
+
+
+[tool.pytest]
+python_files = "tests.py test_*.py *_tests.py"
+norecursedirs = ".git .env venv"
+
+
+[tool.mypy]
+python_version = "3.13"
+show_error_codes = true
+strict = true
+disallow_untyped_calls = false
+disallow_any_generics = false
+warn_return_any = false
+ignore_missing_imports = true
+disable_error_code = "abstract"
+
+
+
+[tool.bandit]
+exclude_dirs = ['test/*']
+
+
+[tool.coverage.paths]
+source = ["src/"]
+
+[tool.coverage.run]
+source = ["src/"]
+omit = [
+    "**/__init__.py",
+]
+relative_files = true
+
+[tool.coverage.report]
+show_missing = true
+
+[project.scripts]
+printerm = "src.tui.app:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build]
+packages = ["src"]

@@ -1,13 +1,13 @@
-import os
 import json
 import logging
+import os
 from typing import Any
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_CONFIG = {
-    "database_path": "~/jobtracker_data/jobtracker.db",
-    "export_directory": "~/jobtracker_data/exports",
+    "database_path": "~/jobtrackr_data/jobtrackr.db",
+    "export_directory": "~/jobtrackr_data/exports",
     "check_updates": True,
     "save_window_size": True,
 }
@@ -19,7 +19,7 @@ class Settings:
     def __init__(self):
         # Define settings file location in user's home directory
         self.home_dir = os.path.expanduser("~")
-        self.config_dir = os.path.join(self.home_dir, ".jobtracker")
+        self.config_dir = os.path.join(self.home_dir, ".jobtrackr")
         self.config_file = os.path.join(self.config_dir, "config.json")
         self._config = {}
 
@@ -33,7 +33,7 @@ class Settings:
         """Load settings from config file or create default if not exists."""
         try:
             if os.path.exists(self.config_file):
-                with open(self.config_file, "r") as f:
+                with open(self.config_file) as f:
                     self._config = json.load(f)
 
                 # Check for missing keys and apply defaults

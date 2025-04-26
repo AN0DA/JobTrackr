@@ -1,19 +1,20 @@
 """Job Tracker TUI - Main application."""
 
-from textual.app import App, ComposeResult
-from textual.widgets import Header, Footer, TabbedContent, TabPane
-from textual.binding import Binding
 import os
 
+from textual.app import App, ComposeResult
+from textual.binding import Binding
+from textual.widgets import Footer, Header, TabbedContent, TabPane
+
+from src.db.database import init_db
 from src.db.settings import Settings
+from src.tui.tabs.applications.applications import ApplicationsList
 from src.tui.tabs.companies.companies import CompaniesList
 from src.tui.tabs.contacts.contacts import ContactsList
 from src.tui.tabs.dashboard.dashboard import Dashboard
-from src.tui.tabs.applications.applications import ApplicationsList
-from src.db.database import init_db
 
 
-class JobTrackerApp(App):
+class JobTrackr(App):
     """Main Job Tracker application."""
 
     CSS_PATH = "app.css"
@@ -87,15 +88,15 @@ class JobTrackerApp(App):
         self.push_screen(SettingsScreen())
 
 
-def main():
+def app():
     """Run the application."""
     # Ensure data directory exists
     os.makedirs("data", exist_ok=True)
 
     # Run the app
-    app = JobTrackerApp()
+    app = JobTrackr()
     app.run()
 
 
 if __name__ == "__main__":
-    main()
+    app()
