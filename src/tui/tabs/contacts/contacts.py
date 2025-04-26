@@ -1,7 +1,7 @@
 """Contacts management screen for the Job Tracker TUI."""
 
 from textual.app import ComposeResult
-from textual.containers import Container, Horizontal
+from textual.containers import Container, Horizontal, Vertical
 from textual.widgets import Static, Button, DataTable, Select, Input, Label
 from textual.screen import ModalScreen
 
@@ -31,26 +31,37 @@ class ContactsList(Static):
 
     def compose(self) -> ComposeResult:
         """Compose the contacts screen layout."""
-        with Container():
-            with Horizontal(id="filters"):
-                yield Static("Filter by company:", classes="label")
-                # Create the select without a default value initially
-                yield Select(id="company-filter", options=self.companies)
+        with Container(classes="list-view-container"):
+            # Header section
+            with Container(classes="list-header"):
+                yield Static("Contacts", classes="list-title")
 
-                with Horizontal(id="search-area"):
-                    yield Input(placeholder="Search contacts...", id="contact-search")
-                    yield Button("🔍 Search", id="search-button")
+                # Filter bar
+                with Horizontal(classes="filter-bar"):
+                    with Vertical(classes="filter-section"):
+                        yield Static("Company:", classes="filter-label")
+                        yield Select(id="company-filter", options=[], classes="filter-dropdown")
 
-                yield Button("New Contact", variant="primary", id="new-contact")
+                    # Search section
+                    with Horizontal(classes="search-section"):
+                        yield Input(placeholder="Search contacts...", id="contact-search",
+                                    classes="search-box")
+                        yield Button("🔍", id="search-button")
 
-            yield DataTable(id="contacts-table")
+                    # Quick action buttons
+                    with Horizontal(classes="action-section"):
+                        yield Button("New Contact", variant="primary", id="new-contact")
 
-            with Horizontal(id="actions"):
-                yield Button("View", id="view-contact", disabled=True)
-                yield Button("Edit", id="edit-contact", disabled=True)
-                yield Button(
-                    "Delete", id="delete-contact", variant="error", disabled=True
-                )
+            # Table section
+            with Container(classes="table-container"):
+                yield DataTable(id="contacts-table")
+
+            # Footer section
+            with Horizontal(classes="list-footer"):
+                with Horizontal(classes="action-buttons"):
+                    yield Button("View", id="view-contact", disabled=True)
+                    yield Button("Edit", id="edit-contact", disabled=True)
+                    yield Button("Delete", id="delete-contact", variant="error", disabled=True)
 
     def on_mount(self) -> None:
         """Set up the screen when mounted."""

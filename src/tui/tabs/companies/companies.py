@@ -1,7 +1,7 @@
 """Companies management screen for the Job Tracker TUI."""
 
 from textual.app import ComposeResult
-from textual.containers import Container, Horizontal
+from textual.containers import Container, Horizontal, Vertical
 from textual.widgets import Static, Button, DataTable, Select, Input, Label
 from textual.screen import ModalScreen
 
@@ -29,29 +29,42 @@ class CompaniesList(Static):
 
     def compose(self) -> ComposeResult:
         """Compose the companies screen layout."""
-        with Container():
-            with Horizontal(id="filters"):
-                yield Static("Filter by type:", classes="label")
-                yield Select(
-                    [(ct.value, ct.value) for ct in CompanyType] + [("All", "All")],
-                    value="All",
-                    id="type-filter",
-                )
+        with Container(classes="list-view-container"):
+            # Header section
+            with Container(classes="list-header"):
+                yield Static("Companies", classes="list-title")
 
-                with Horizontal(id="search-area"):
-                    yield Input(placeholder="Search companies...", id="company-search")
-                    yield Button("🔍 Search", id="search-button")
+                # Filter bar
+                with Horizontal(classes="filter-bar"):
+                    with Vertical(classes="filter-section"):
+                        yield Static("Type:", classes="filter-label")
+                        yield Select(
+                            [(ct.value, ct.value) for ct in CompanyType] + [("All", "All")],
+                            value="All",
+                            id="type-filter",
+                            classes="filter-dropdown"
+                        )
 
-                yield Button("New Company", variant="primary", id="new-company")
+                    # Search section
+                    with Horizontal(classes="search-section"):
+                        yield Input(placeholder="Search companies...", id="company-search",
+                                    classes="search-box")
+                        yield Button("🔍", id="search-button")
 
-            yield DataTable(id="companies-table")
+                    # Quick action buttons
+                    with Horizontal(classes="action-section"):
+                        yield Button("New Company", variant="primary", id="new-company")
 
-            with Horizontal(id="actions"):
-                yield Button("View", id="view-company", disabled=True)
-                yield Button("Edit", id="edit-company", disabled=True)
-                yield Button(
-                    "Delete", id="delete-company", variant="error", disabled=True
-                )
+            # Table section
+            with Container(classes="table-container"):
+                yield DataTable(id="companies-table")
+
+            # Footer section
+            with Horizontal(classes="list-footer"):
+                with Horizontal(classes="action-buttons"):
+                    yield Button("View", id="view-company", disabled=True)
+                    yield Button("Edit", id="edit-company", disabled=True)
+                    yield Button("Delete", id="delete-company", variant="error", disabled=True)
 
     def on_mount(self) -> None:
         """Set up the screen when mounted."""
@@ -66,6 +79,7 @@ class CompaniesList(Static):
         )
         table.cursor_type = "row"
         table.can_focus = True
+        table.zebra_stripes = True
 
         # Enable sorting
         table.sort_column_click = True

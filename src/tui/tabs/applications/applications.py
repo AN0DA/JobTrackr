@@ -1,8 +1,9 @@
 """Applications management screen for the Job Tracker TUI."""
+from datetime import datetime
 
 from textual.app import ComposeResult
-from textual.containers import Container, Horizontal
-from textual.widgets import Static, Button, DataTable, Select
+from textual.containers import Container, Horizontal, Vertical
+from textual.widgets import Static, Button, DataTable, Select, Input
 from textual.screen import ModalScreen
 from textual.widgets import Label
 
@@ -29,36 +30,44 @@ class ApplicationsList(Static):
 
     def compose(self) -> ComposeResult:
         """Compose the applications screen layout."""
-        with Container():
-            with Horizontal(id="filters"):
-                yield Static("Filter by status:", classes="label")
-                yield Select(
-                    [
-                        (status, status)
-                        for status in [
-                            "All",
-                            "SAVED",
-                            "APPLIED",
-                            "PHONE_SCREEN",
-                            "INTERVIEW",
-                            "TECHNICAL_INTERVIEW",
-                            "OFFER",
-                            "ACCEPTED",
-                            "REJECTED",
-                            "WITHDRAWN",
-                        ]
-                    ],
-                    value="All",
-                    id="status-filter",
-                )
-                yield Button("New Application", variant="primary", id="new-app")
+        with Container(classes="list-view-container"):
+            # Header section
+            with Container(classes="list-header"):
+                yield Static("Applications", classes="list-title")
 
-            yield DataTable(id="applications-table")
+                # Filter bar
+                with Horizontal(classes="filter-bar"):
+                    with Vertical(classes="filter-section"):
+                        yield Static("Status:", classes="filter-label")
+                        yield Select(
+                            [(status, status) for status in [
+                                "All", "SAVED", "APPLIED", "PHONE_SCREEN", "INTERVIEW",
+                                "TECHNICAL_INTERVIEW", "OFFER", "ACCEPTED", "REJECTED", "WITHDRAWN",
+                            ]],
+                            value="All",
+                            id="status-filter",
+                            classes="filter-dropdown"
+                        )
 
-            with Horizontal(id="actions"):
-                yield Button("View", id="view-app", disabled=True)
-                yield Button("Edit", id="edit-app", disabled=True)
-                yield Button("Delete", id="delete-app", variant="error", disabled=True)
+                    # Search section (could be added in future)
+                    with Horizontal(classes="search-section"):
+                        yield Input(placeholder="Search applications...", id="app-search")
+                        yield Button("🔍", id="search-button")
+
+                    # Quick action buttons
+                    with Horizontal(classes="action-section"):
+                        yield Button("New Application", variant="primary", id="new-app")
+
+            # Table section
+            with Container(classes="table-container"):
+                yield DataTable(id="applications-table")
+
+            # Footer section
+            with Horizontal(classes="list-footer"):
+                with Horizontal(classes="action-buttons"):
+                    yield Button("View", id="view-app", disabled=True)
+                    yield Button("Edit", id="edit-app", disabled=True)
+                    yield Button("Delete", id="delete-app", variant="error", disabled=True)
 
     def on_mount(self) -> None:
         """Set up the screen when mounted."""
@@ -73,6 +82,7 @@ class ApplicationsList(Static):
             "Applied Date",
         )
         table.cursor_type = "row"
+        table.zebra_stripes = True
         table.can_focus = True
 
         # Enable sorting
@@ -81,39 +91,92 @@ class ApplicationsList(Static):
         self.load_applications()
 
     def load_applications(self, status: str = None) -> None:
-        """Load applications from the database."""
+        """Load applications from the database with improved styling."""
+        # Update status to show loading
         self.update_status("Loading applications...")
 
         try:
             service = ApplicationService()
-            if status == "All" or status is None:
-                applications = service.get_applications(limit=50)
-            else:
-                applications = service.get_applications(status=status, limit=50)
 
+            # Get applications with proper filtering
+            if status == "All" or status is None:
+                applications = service.get_applications(
+                    sort_by=self.sort_column.lower().replace(" ", "_"),
+                    sort_desc=not self.sort_ascending,
+                    limit=50
+                )
+            else:
+                applications = service.get_applications(
+                    status=status,
+                    sort_by=self.sort_column.lower().replace(" ", "_"),
+                    sort_desc=not self.sort_ascending,
+                    limit=50
+                )
+
+            # Get reference to the data table
             table = self.query_one("#applications-table", DataTable)
             table.clear()
 
             # Convert to list for sorting
             apps_list = list(applications)
 
-            # Apply current sort settings
-            self._sort_applications(apps_list)
+            # Check if we have any applications
+            if not apps_list:
+                # Handle empty state
+                table.add_column_span = len(table.columns)
+                table.add_row("No applications found. Click 'New Application' to create one.")
+                self.update_status("No applications found")
 
+                # Make sure action buttons are disabled
+                view_btn = self.query_one("#view-app", Button)
+                edit_btn = self.query_one("#edit-app", Button)
+                delete_btn = self.query_one("#delete-app", Button)
+                view_btn.disabled = True
+                edit_btn.disabled = True
+                delete_btn.disabled = True
+
+                return
+
+            # Add rows with styled status values
             for app in apps_list:
+
+                # Format applied date for better readability
+                try:
+                    applied_date = datetime.fromisoformat(app["applied_date"])
+                    formatted_date = applied_date.strftime("%Y-%m-%d")
+                except (ValueError, TypeError):
+                    formatted_date = app["applied_date"]
+
+                # Add the row with all values
                 table.add_row(
                     str(app["id"]),
                     app["job_title"],
                     app.get("company", {}).get("name", ""),
-                    app["position"],
-                    app.get("location", ""),
                     app["status"],
-                    app["applied_date"],
+                    app["position"],
+                    formatted_date,
                 )
 
-            self.update_status(f"Loaded {len(applications)} applications")
+            # Update status message with count
+            count = len(apps_list)
+            status_message = f"Loaded {count} application{'s' if count != 1 else ''}"
+            self.update_status(status_message)
+
         except Exception as e:
-            self.update_status(f"Error loading applications: {str(e)}")
+            error_message = f"Error loading applications: {str(e)}"
+            self.update_status(error_message)
+            # Log the error for debugging
+            import logging
+            logging.error(error_message, exc_info=True)
+
+    def update_status(self, message: str) -> None:
+        """Update status message in both the app subtitle and the status text widget."""
+        self.app.sub_title = message
+
+        # Also update the status text widget if it exists
+        status_text = self.query_one("#status-text", Static)
+        if status_text:
+            status_text.update(message)
 
     def on_select_changed(self, event: Select.Changed) -> None:
         """Handle status filter changes."""
