@@ -70,7 +70,7 @@ class FirstRunScreen(Screen):
 
     def select_database_path(self) -> None:
         """Open file dialog to select database path."""
-        from src.tui.file_dialog import FileDialog
+        from src.tui.widgets.file_dialog import FileDialog
 
         def on_file_selected(path: str) -> None:
             if path:

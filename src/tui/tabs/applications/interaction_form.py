@@ -152,7 +152,7 @@ class InteractionForm(ModalScreen):
             self.app.pop_screen()
 
             # Refresh application detail if visible
-            from src.tui.application_detail import ApplicationDetail
+            from src.tui.tabs.applications.application_detail import ApplicationDetail
 
             detail_screen = self.app.screen
             if isinstance(detail_screen, ApplicationDetail):

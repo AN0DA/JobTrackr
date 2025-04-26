@@ -35,7 +35,6 @@ class ExportDialog(ModalScreen):
                 yield Checkbox(
                     "Include interactions", id="include-interactions", value=True
                 )
-                yield Checkbox("Include reminders", id="include-reminders", value=True)
 
             with Horizontal(id="dialog-buttons"):
                 yield Button("Cancel", id="cancel-export")
@@ -63,7 +62,6 @@ class ExportDialog(ModalScreen):
             include_interactions = self.query_one(
                 "#include-interactions", Checkbox
             ).value
-            include_reminders = self.query_one("#include-reminders", Checkbox).value
 
             # Generate filename with timestamp
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -71,9 +69,7 @@ class ExportDialog(ModalScreen):
             # Get data to export
             service = ApplicationService()
             applications = service.get_applications_for_export(
-                include_notes=include_notes,
-                include_interactions=include_interactions,
-                include_reminders=include_reminders,
+                include_notes=include_notes, include_interactions=include_interactions
             )
 
             if export_format == "CSV":

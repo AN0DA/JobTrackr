@@ -9,7 +9,6 @@ from src.db.models import ChangeType
 from src.db.models import (
     Application,
     Company,
-    Reminder,
     ApplicationStatus,
 )
 from src.db.database import get_session
@@ -364,23 +363,10 @@ class ApplicationService:
                 for app in recent_apps
             ]
 
-            # Get upcoming reminders
-            upcoming_reminders = (
-                session.query(Reminder)
-                .filter(Reminder.completed is False)
-                .order_by(Reminder.date)
-                .limit(5)
-                .all()
-            )
-            reminders = [
-                self._reminder_to_dict(reminder) for reminder in upcoming_reminders
-            ]
-
             return {
                 "total_applications": total_count,
                 "applications_by_status": status_counts,
                 "recent_applications": recent_applications,
-                "upcoming_reminders": reminders,
             }
         except Exception as e:
             logger.error(f"Error fetching dashboard stats: {e}")
@@ -422,48 +408,3 @@ class ApplicationService:
             raise
         finally:
             session.close()
-
-    def _application_to_dict(
-        self, app: Application, include_details: bool = True
-    ) -> Dict[str, Any]:
-        """Convert an Application object to a dictionary."""
-        result = {
-            "id": app.id,
-            "job_title": app.job_title,
-            "position": app.position,
-            "status": app.status,
-            "applied_date": app.applied_date.isoformat(),
-            "created_at": app.created_at.isoformat(),
-        }
-
-        # Add company information if available
-        if app.company:
-            result["company"] = {"id": app.company.id, "name": app.company.name}
-
-        # Include additional details if requested
-        if include_details:
-            result.update(
-                {
-                    "location": app.location,
-                    "salary": app.salary,
-                    "link": app.link,
-                    "description": app.description,
-                    "notes": app.notes,
-                    "updated_at": app.updated_at.isoformat()
-                    if app.updated_at
-                    else None,
-                }
-            )
-
-        return result
-
-    def _reminder_to_dict(self, reminder: Reminder) -> Dict[str, Any]:
-        """Convert a Reminder object to a dictionary."""
-        return {
-            "id": reminder.id,
-            "title": reminder.title,
-            "description": reminder.description,
-            "date": reminder.date.isoformat(),
-            "completed": reminder.completed,
-            "application_id": reminder.application_id,
-        }

@@ -6,12 +6,9 @@ from textual.binding import Binding
 import os
 
 from src.db.settings import Settings
-from src.tui.dashboard import Dashboard
-from src.tui.applications import ApplicationsList
+from src.tui.tabs.dashboard.dashboard import Dashboard
+from src.tui.tabs.applications.applications import ApplicationsList
 from src.db.database import init_db
-
-
-from src.tui.analytics import Analytics
 
 
 class JobTrackerApp(App):
@@ -22,7 +19,6 @@ class JobTrackerApp(App):
         # Clear and simple keyboard shortcuts
         Binding("d", "switch_tab('dashboard')", "Dashboard"),
         Binding("a", "switch_tab('applications')", "Applications"),
-        Binding("s", "switch_tab('analytics')", "Stats"),
         # Action shortcuts
         Binding("n", "new_application", "New"),
         Binding("f", "search", "Find"),
@@ -42,8 +38,6 @@ class JobTrackerApp(App):
                 yield Dashboard()
             with TabPane("Applications", id="applications"):
                 yield ApplicationsList()
-            with TabPane("Analytics", id="analytics"):
-                yield Analytics()
 
         yield Footer()
 
@@ -54,7 +48,7 @@ class JobTrackerApp(App):
         # Check if this is first run or if database exists
         if not settings.database_exists():
             # Show first run screen
-            from src.tui.first_run import FirstRunScreen
+            from src.tui.tabs.settings.first_run import FirstRunScreen
 
             self.push_screen(FirstRunScreen())
         else:
@@ -76,14 +70,12 @@ class JobTrackerApp(App):
             self.query_one(Dashboard).refresh_data()
         elif active_tab_id == "applications":
             self.query_one(ApplicationsList).load_applications()
-        elif active_tab_id == "analytics":
-            self.query_one(Analytics).load_analytics()
 
         self.sub_title = f"Refreshed {active_tab_id} data"
 
     def action_new_application(self) -> None:
         """Open the application creation form."""
-        from src.tui.application_form import ApplicationForm
+        from src.tui.tabs.applications.application_form import ApplicationForm
 
         self.push_screen(ApplicationForm())
 
@@ -95,7 +87,7 @@ class JobTrackerApp(App):
 
     def action_show_settings(self) -> None:
         """Open settings screen."""
-        from src.tui.settings_screen import SettingsScreen
+        from src.tui.tabs.settings.settings import SettingsScreen
 
         self.push_screen(SettingsScreen())
 

@@ -8,7 +8,7 @@ import os
 
 from src.db.settings import Settings
 from src.db.database import change_database
-from src.tui.file_dialog import FileDialog
+from src.tui.widgets.file_dialog import FileDialog
 
 
 class SettingsScreen(Screen):
@@ -211,7 +211,7 @@ class SettingsScreen(Screen):
 
     def export_applications(self) -> None:
         """Open the export dialog."""
-        from src.tui.export import ExportDialog
+        from src.tui.tabs.settings.export import ExportDialog
 
         # Update export directory in settings first
         export_dir = self.query_one("#export-dir", Input).value

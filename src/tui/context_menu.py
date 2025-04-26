@@ -73,7 +73,6 @@ class ApplicationContextMenu(ModalScreen):
                 yield Button("View Details", id="view-details")
                 yield Button("View Detailed Timeline", id="view-details-timeline")
                 yield Button("Edit Application", id="edit-application")
-                yield Button("Add Reminder", id="add-reminder")
                 yield Label("─" * 30, classes="menu-divider")
                 yield Button(
                     "Delete Application", variant="error", id="delete-application"
@@ -129,7 +128,7 @@ class ApplicationContextMenu(ModalScreen):
                     self.app.sub_title = f"Status updated to {new_status}"
 
                     # Refresh applications list if visible
-                    from src.tui.applications import ApplicationsList
+                    from src.tui.tabs.applications.applications import ApplicationsList
 
                     app_list = self.app.query_one(ApplicationsList)
                     if app_list:
@@ -142,36 +141,33 @@ class ApplicationContextMenu(ModalScreen):
         self.app.pop_screen()
 
         if button_id == "change-status":
-            from src.tui.status_transition import StatusTransitionDialog
+            from src.tui.tabs.applications.status_transition import (
+                StatusTransitionDialog,
+            )
 
             self.app.push_screen(
                 StatusTransitionDialog(self.application_id, self.status)
             )
 
         elif button_id == "view-details":
-            from src.tui.application_form import ApplicationForm
+            from src.tui.tabs.applications.application_form import ApplicationForm
 
             self.app.push_screen(
                 ApplicationForm(app_id=self.application_id, readonly=True)
             )
 
         elif button_id == "edit-application":
-            from src.tui.application_form import ApplicationForm
+            from src.tui.tabs.applications.application_form import ApplicationForm
 
             self.app.push_screen(ApplicationForm(app_id=self.application_id))
 
-        elif button_id == "add-reminder":
-            from src.tui.reminder_form import ReminderForm
-
-            self.app.push_screen(ReminderForm(application_id=self.application_id))
-
         elif button_id == "delete-application":
-            from src.tui.applications import DeleteConfirmationModal
+            from src.tui.tabs.applications.applications import DeleteConfirmationModal
 
             self.app.push_screen(DeleteConfirmationModal(self.application_id))
 
         elif button_id == "view-details-timeline":
-            from src.tui.application_detail import ApplicationDetail
+            from src.tui.tabs.applications.application_detail import ApplicationDetail
 
             self.app.pop_screen()  # Close menu
             self.app.push_screen(ApplicationDetail(int(self.application_id)))

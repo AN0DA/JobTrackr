@@ -54,7 +54,7 @@ class SearchDialog(ModalScreen):
         self.app.pop_screen()
 
         # Open application form
-        from src.tui.application_form import ApplicationForm
+        from src.tui.tabs.applications.application_form import ApplicationForm
 
         self.app.push_screen(ApplicationForm(app_id=app_id))
 

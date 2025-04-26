@@ -7,7 +7,7 @@ from textual.screen import ModalScreen
 from textual.widgets import Label
 
 from src.services.application_service import ApplicationService
-from src.tui.application_form import ApplicationForm
+from src.tui.tabs.applications.application_form import ApplicationForm
 
 
 class ApplicationsList(Static):
@@ -162,7 +162,7 @@ class ApplicationsList(Static):
         app_id = table.get_row(event.row_key)[0]
 
         # Open application detail view
-        from src.tui.application_detail import ApplicationDetail
+        from src.tui.tabs.applications.application_detail import ApplicationDetail
 
         self.app.push_screen(ApplicationDetail(int(app_id)))
 
@@ -188,7 +188,7 @@ class ApplicationsList(Static):
     # Maintain all the original action methods
     def action_add_application(self) -> None:
         """Open the application creation form."""
-        from src.tui.application_form import ApplicationForm
+        from src.tui.tabs.applications.application_form import ApplicationForm
 
         self.app.push_screen(ApplicationForm())
 
@@ -204,7 +204,7 @@ class ApplicationsList(Static):
         table = self.query_one("#applications-table", DataTable)
         if table.cursor_row is not None:
             app_id = table.get_row_at(table.cursor_row)[0]
-            from src.tui.application_form import ApplicationForm
+            from src.tui.tabs.applications.application_form import ApplicationForm
 
             self.app.push_screen(ApplicationForm(app_id=app_id))
 
@@ -213,7 +213,7 @@ class ApplicationsList(Static):
         table = self.query_one("#applications-table", DataTable)
         if table.cursor_row is not None:
             app_id = table.get_row_at(table.cursor_row)[0]
-            from src.tui.application_form import ApplicationForm
+            from src.tui.tabs.applications.application_form import ApplicationForm
 
             self.app.push_screen(ApplicationForm(app_id=app_id, readonly=True))
 
@@ -223,7 +223,9 @@ class ApplicationsList(Static):
         if table.cursor_row is not None:
             app_id = table.get_row_at(table.cursor_row)[0]
             status = table.get_row_at(table.cursor_row)[5]
-            from src.tui.status_transition import StatusTransitionDialog
+            from src.tui.tabs.applications.status_transition import (
+                StatusTransitionDialog,
+            )
 
             self.app.push_screen(StatusTransitionDialog(app_id, status))
 

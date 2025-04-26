@@ -3,7 +3,6 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
-    Boolean,
     DateTime,
     ForeignKey,
     Table,
@@ -151,9 +150,6 @@ class Application(Base):
     interactions = relationship(
         "Interaction", back_populates="application", cascade="all, delete-orphan"
     )
-    reminders = relationship(
-        "Reminder", back_populates="application", cascade="all, delete-orphan"
-    )
     change_records = relationship(
         "ChangeRecord", back_populates="application", cascade="all, delete-orphan"
     )
@@ -209,30 +205,10 @@ class Interaction(Base):
         return f"<Interaction(id={self.id}, type='{self.type}')>"
 
 
-class Reminder(Base):
-    __tablename__ = "reminders"
-
-    id = Column(Integer, primary_key=True)
-    title = Column(String, nullable=False)
-    description = Column(Text)
-    date = Column(DateTime, nullable=False, index=True)
-    completed = Column(Boolean, default=False, index=True)
-
-    # Foreign keys
-    application_id = Column(Integer, ForeignKey("applications.id"))
-
-    # Relationships
-    application = relationship("Application", back_populates="reminders")
-
-    def __repr__(self):
-        return f"<Reminder(id={self.id}, title='{self.title}')>"
-
-
 class ChangeType(enum.Enum):
     STATUS_CHANGE = "STATUS_CHANGE"
     INTERACTION_ADDED = "INTERACTION_ADDED"
     CONTACT_ADDED = "CONTACT_ADDED"
-    REMINDER_ADDED = "REMINDER_ADDED"
     APPLICATION_UPDATED = "APPLICATION_UPDATED"
     NOTE_ADDED = "NOTE_ADDED"
     DOCUMENT_ADDED = "DOCUMENT_ADDED"

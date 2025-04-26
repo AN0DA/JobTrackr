@@ -13,8 +13,7 @@ from datetime import datetime
 from src.services.application_service import ApplicationService
 from src.services.change_record_service import ChangeRecordService
 from src.services.interaction_service import InteractionService
-from src.services.reminder_service import ReminderService
-from src.tui.interaction_form import InteractionForm
+from src.tui.tabs.applications.interaction_form import InteractionForm
 
 
 class ApplicationDetail(Screen):
@@ -64,7 +63,6 @@ class ApplicationDetail(Screen):
                 yield Button("Edit", id="edit-application")
                 yield Button("Change Status", id="change-status", variant="primary")
                 yield Button("Add Interaction", id="add-interaction")
-                yield Button("Add Reminder", id="add-reminder")
 
     def _compose_overview(self) -> ComposeResult:
         """Compose the overview tab layout."""
@@ -75,8 +73,6 @@ class ApplicationDetail(Screen):
             # Use a container for notes to allow scrolling if needed
             with Container(id="notes-container"):
                 yield Static("", id="notes-content")
-            yield Static("Upcoming Reminders:", classes="label")
-            yield DataTable(id="reminders-table")
 
     def _compose_timeline(self) -> ComposeResult:
         """Compose the timeline tab layout."""
@@ -101,11 +97,6 @@ class ApplicationDetail(Screen):
         interactions_table = self.query_one("#interactions-table", DataTable)
         interactions_table.add_columns("Date", "Type", "Details", "Actions")
         interactions_table.cursor_type = "row"
-
-        # Set up reminders table
-        reminders_table = self.query_one("#reminders-table", DataTable)
-        reminders_table.add_columns("Due Date", "Title", "Completed", "Actions")
-        reminders_table.cursor_type = "row"
 
         # Set up contacts table
         contacts_table = self.query_one("#contacts-table", DataTable)
@@ -168,7 +159,6 @@ class ApplicationDetail(Screen):
 
             # Load other tab data
             self.load_interactions()
-            self.load_reminders()
             self.load_contacts()
 
             self.app.sub_title = (
@@ -188,10 +178,6 @@ class ApplicationDetail(Screen):
             # Get interactions for the timeline
             interaction_service = InteractionService()
             interactions = interaction_service.get_interactions(self.app_id)
-
-            # Get reminders for the timeline
-            reminder_service = ReminderService()
-            reminders = reminder_service.get_reminders(application_id=self.app_id)
 
             # Combine all events into a timeline
             timeline_events = []
@@ -213,16 +199,6 @@ class ApplicationDetail(Screen):
                         "date": datetime.fromisoformat(interaction["date"]),
                         "type": "INTERACTION",
                         "details": f"{interaction['type']}: {interaction['notes'][:50] + '...' if interaction['notes'] and len(interaction['notes']) > 50 else interaction['notes'] or ''}",
-                    }
-                )
-
-            # Add reminders
-            for reminder in reminders:
-                timeline_events.append(
-                    {
-                        "date": datetime.fromisoformat(reminder["date"]),
-                        "type": "REMINDER",
-                        "details": f"{reminder['title']} - {reminder['completed'] and 'Completed' or 'Pending'}",
                     }
                 )
 
@@ -263,26 +239,6 @@ class ApplicationDetail(Screen):
         except Exception as e:
             self.app.sub_title = f"Error loading interactions: {str(e)}"
 
-    def load_reminders(self) -> None:
-        """Load and display reminders."""
-        try:
-            reminder_service = ReminderService()
-            reminders = reminder_service.get_reminders(application_id=self.app_id)
-
-            reminders_table = self.query_one("#reminders-table", DataTable)
-            reminders_table.clear()
-
-            for reminder in reminders:
-                reminders_table.add_row(
-                    datetime.fromisoformat(reminder["date"]).strftime("%Y-%m-%d"),
-                    reminder["title"],
-                    "✓" if reminder["completed"] else "✗",
-                    "Complete | Edit | Delete",  # Actions
-                )
-
-        except Exception as e:
-            self.app.sub_title = f"Error loading reminders: {str(e)}"
-
     def load_contacts(self) -> None:
         """Load and display contacts."""
         # In a real implementation, we would fetch contacts associated with this application
@@ -303,12 +259,14 @@ class ApplicationDetail(Screen):
             self.app.pop_screen()
 
         elif button_id == "edit-application":
-            from src.tui.application_form import ApplicationForm
+            from src.tui.tabs.applications.application_form import ApplicationForm
 
             self.app.push_screen(ApplicationForm(app_id=self.app_id))
 
         elif button_id == "change-status":
-            from src.tui.status_transition import StatusTransitionDialog
+            from src.tui.tabs.applications.status_transition import (
+                StatusTransitionDialog,
+            )
 
             self.app.push_screen(
                 StatusTransitionDialog(self.app_id, self.application_data["status"])
@@ -316,11 +274,6 @@ class ApplicationDetail(Screen):
 
         elif button_id == "add-interaction":
             self.app.push_screen(InteractionForm(application_id=self.app_id))
-
-        elif button_id == "add-reminder":
-            from src.tui.reminder_form import ReminderForm
-
-            self.app.push_screen(ReminderForm(application_id=self.app_id))
 
     def _format_change(self, change: Dict[str, Any]) -> str:
         """Format change record details for display."""

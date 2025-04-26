@@ -132,7 +132,7 @@ class ApplicationForm(Screen):
         button_id = event.button.id
 
         if button_id == "new-company":
-            from src.tui.company_form import CompanyForm
+            from src.tui.tabs.companies.company_form import CompanyForm
 
             self.app.push_screen(CompanyForm(on_saved=self.load_companies))
 
@@ -330,7 +330,7 @@ class ApplicationForm(Screen):
             self.app.pop_screen()
 
             # Refresh the applications list if it's visible
-            from src.tui.applications import ApplicationsList
+            from src.tui.tabs.applications.applications import ApplicationsList
 
             app_list = self.app.query_one(ApplicationsList)
             if app_list:

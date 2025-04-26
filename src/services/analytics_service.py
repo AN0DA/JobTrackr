@@ -8,7 +8,7 @@ from collections import Counter
 from sqlalchemy import func, desc
 from sqlalchemy.orm import joinedload
 
-from src.db.models import Application, Company, Interaction, Reminder
+from src.db.models import Application, Company, Interaction
 from src.db.database import get_session
 
 logger = logging.getLogger(__name__)
@@ -299,18 +299,6 @@ class AnalyticsService:
                 .all()
             )
 
-            # Get upcoming reminders
-            upcoming_reminders = (
-                session.query(Reminder)
-                .filter(Reminder.completed is False, Reminder.date >= datetime.now())
-                .options(
-                    joinedload(Reminder.application).joinedload(Application.company)
-                )
-                .order_by(Reminder.date)
-                .limit(5)
-                .all()
-            )
-
             # Combine and sort activities
             activities = []
 
@@ -341,23 +329,6 @@ class AnalyticsService:
                             "details": interaction.notes[:50] + "..."
                             if interaction.notes and len(interaction.notes) > 50
                             else interaction.notes or "",
-                        }
-                    )
-
-            # Add reminders
-            for reminder in upcoming_reminders:
-                if reminder.application:
-                    company_name = (
-                        reminder.application.company.name
-                        if reminder.application.company
-                        else "Unknown"
-                    )
-                    activities.append(
-                        {
-                            "date": reminder.date.strftime("%Y-%m-%d"),
-                            "type": "Reminder",
-                            "company": company_name,
-                            "details": reminder.title,
                         }
                     )
 
