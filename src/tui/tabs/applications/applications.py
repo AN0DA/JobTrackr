@@ -188,13 +188,8 @@ class ApplicationsList(Static):
             logging.error(error_message, exc_info=True)
 
     def update_status(self, message: str) -> None:
-        """Update status message in both the app subtitle and the status text widget."""
+        """Update status message in the footer."""
         self.app.sub_title = message
-
-        # Also update the status text widget if it exists
-        status_text = self.query_one("#status-text", Static)
-        if status_text:
-            status_text.update(message)
 
     def on_select_changed(self, event: Select.Changed) -> None:
         """Handle status filter changes."""
