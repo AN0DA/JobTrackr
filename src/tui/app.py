@@ -6,6 +6,8 @@ from textual.binding import Binding
 import os
 
 from src.db.settings import Settings
+from src.tui.tabs.companies.companies import CompaniesList
+from src.tui.tabs.contacts.contacts import ContactsList
 from src.tui.tabs.dashboard.dashboard import Dashboard
 from src.tui.tabs.applications.applications import ApplicationsList
 from src.db.database import init_db
@@ -19,6 +21,8 @@ class JobTrackerApp(App):
         # Clear and simple keyboard shortcuts
         Binding("d", "switch_tab('dashboard')", "Dashboard"),
         Binding("a", "switch_tab('applications')", "Applications"),
+        Binding("c", "switch_tab('companies')", "Companies"),
+        Binding("t", "switch_tab('contacts')", "Contacts"),
         # Action shortcuts
         Binding("n", "new_application", "New"),
         Binding("f", "search", "Find"),
@@ -38,6 +42,10 @@ class JobTrackerApp(App):
                 yield Dashboard()
             with TabPane("Applications", id="applications"):
                 yield ApplicationsList()
+            with TabPane("Companies", id="companies"):
+                yield CompaniesList()
+            with TabPane("Contacts", id="contacts"):
+                yield ContactsList()
 
         yield Footer()
 

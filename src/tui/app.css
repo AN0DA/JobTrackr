@@ -311,3 +311,59 @@ TextArea {
     min-height: 5;
     max-height: 10;
 }
+
+/* Company List Styles */
+#companies-table {
+    width: 100%;
+    height: 1fr;
+}
+
+#search-area {
+    width: 1fr;
+}
+
+/* Company Detail Styles */
+#company-header {
+    background: $panel;
+    padding: 1;
+    margin-bottom: 1;
+}
+
+
+
+.company-type {
+    color: $text-muted;
+}
+
+
+.field-label {
+    color: $text-muted;
+}
+
+.warning-text {
+    color: $error;
+}
+
+.notes-box {
+    border: solid $primary;
+    padding: 1;
+    max-height: 20;
+    overflow: auto;
+}
+
+.viz-container {
+    border: dashed $primary;
+    height: 15;
+    margin-top: 1;
+}
+
+.placeholder {
+    color: $text-muted;
+}
+
+/* Relationship Styles */
+#relationship-form-container {
+    background: $boost;
+    padding: 1;
+    min-width: 60;
+}
