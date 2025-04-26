@@ -40,12 +40,17 @@ class ContactsList(Static):
                 with Horizontal(classes="filter-bar"):
                     with Vertical(classes="filter-section"):
                         yield Static("Company:", classes="filter-label")
-                        yield Select(id="company-filter", options=[], classes="filter-dropdown")
+                        yield Select(
+                            id="company-filter", options=[], classes="filter-dropdown"
+                        )
 
                     # Search section
                     with Horizontal(classes="search-section"):
-                        yield Input(placeholder="Search contacts...", id="contact-search",
-                                    classes="search-box")
+                        yield Input(
+                            placeholder="Search contacts...",
+                            id="contact-search",
+                            classes="search-box",
+                        )
                         yield Button("🔍", id="search-button")
 
                     # Quick action buttons
@@ -61,7 +66,9 @@ class ContactsList(Static):
                 with Horizontal(classes="action-buttons"):
                     yield Button("View", id="view-contact", disabled=True)
                     yield Button("Edit", id="edit-contact", disabled=True)
-                    yield Button("Delete", id="delete-contact", variant="error", disabled=True)
+                    yield Button(
+                        "Delete", id="delete-contact", variant="error", disabled=True
+                    )
 
     def on_mount(self) -> None:
         """Set up the screen when mounted."""

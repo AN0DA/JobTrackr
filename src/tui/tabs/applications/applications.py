@@ -1,4 +1,5 @@
 """Applications management screen for the Job Tracker TUI."""
+
 from datetime import datetime
 
 from textual.app import ComposeResult
@@ -40,18 +41,31 @@ class ApplicationsList(Static):
                     with Vertical(classes="filter-section"):
                         yield Static("Status:", classes="filter-label")
                         yield Select(
-                            [(status, status) for status in [
-                                "All", "SAVED", "APPLIED", "PHONE_SCREEN", "INTERVIEW",
-                                "TECHNICAL_INTERVIEW", "OFFER", "ACCEPTED", "REJECTED", "WITHDRAWN",
-                            ]],
+                            [
+                                (status, status)
+                                for status in [
+                                    "All",
+                                    "SAVED",
+                                    "APPLIED",
+                                    "PHONE_SCREEN",
+                                    "INTERVIEW",
+                                    "TECHNICAL_INTERVIEW",
+                                    "OFFER",
+                                    "ACCEPTED",
+                                    "REJECTED",
+                                    "WITHDRAWN",
+                                ]
+                            ],
                             value="All",
                             id="status-filter",
-                            classes="filter-dropdown"
+                            classes="filter-dropdown",
                         )
 
                     # Search section (could be added in future)
                     with Horizontal(classes="search-section"):
-                        yield Input(placeholder="Search applications...", id="app-search")
+                        yield Input(
+                            placeholder="Search applications...", id="app-search"
+                        )
                         yield Button("🔍", id="search-button")
 
                     # Quick action buttons
@@ -67,7 +81,9 @@ class ApplicationsList(Static):
                 with Horizontal(classes="action-buttons"):
                     yield Button("View", id="view-app", disabled=True)
                     yield Button("Edit", id="edit-app", disabled=True)
-                    yield Button("Delete", id="delete-app", variant="error", disabled=True)
+                    yield Button(
+                        "Delete", id="delete-app", variant="error", disabled=True
+                    )
 
     def on_mount(self) -> None:
         """Set up the screen when mounted."""
@@ -103,14 +119,14 @@ class ApplicationsList(Static):
                 applications = service.get_applications(
                     sort_by=self.sort_column.lower().replace(" ", "_"),
                     sort_desc=not self.sort_ascending,
-                    limit=50
+                    limit=50,
                 )
             else:
                 applications = service.get_applications(
                     status=status,
                     sort_by=self.sort_column.lower().replace(" ", "_"),
                     sort_desc=not self.sort_ascending,
-                    limit=50
+                    limit=50,
                 )
 
             # Get reference to the data table
@@ -124,7 +140,9 @@ class ApplicationsList(Static):
             if not apps_list:
                 # Handle empty state
                 table.add_column_span = len(table.columns)
-                table.add_row("No applications found. Click 'New Application' to create one.")
+                table.add_row(
+                    "No applications found. Click 'New Application' to create one."
+                )
                 self.update_status("No applications found")
 
                 # Make sure action buttons are disabled
@@ -139,7 +157,6 @@ class ApplicationsList(Static):
 
             # Add rows with styled status values
             for app in apps_list:
-
                 # Format applied date for better readability
                 try:
                     applied_date = datetime.fromisoformat(app["applied_date"])
@@ -167,6 +184,7 @@ class ApplicationsList(Static):
             self.update_status(error_message)
             # Log the error for debugging
             import logging
+
             logging.error(error_message, exc_info=True)
 
     def update_status(self, message: str) -> None:
@@ -203,10 +221,6 @@ class ApplicationsList(Static):
         elif button_id == "delete-app" and table.cursor_row is not None:
             app_id = table.get_row_at(table.cursor_row)[0]
             self.app.push_screen(DeleteConfirmationModal(app_id))
-
-    def update_status(self, message: str) -> None:
-        """Update status message in the footer."""
-        self.app.sub_title = message
 
     def on_data_table_row_highlighted(self, event: DataTable.RowHighlighted) -> None:
         """Enable buttons when a row is highlighted."""

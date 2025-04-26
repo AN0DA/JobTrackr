@@ -26,11 +26,9 @@ class JobTrackerApp(App):
         # Action shortcuts
         Binding("n", "new_application", "New"),
         Binding("f", "search", "Find"),
-        Binding("r", "refresh", "Refresh"),
         # System shortcuts
         Binding("ctrl+s", "show_settings", "Settings"),
-        Binding("q", "quit", "Quit"),
-        Binding("f1", "help", "Help"),
+        Binding("ctrl+q", "quit", "Quit"),
     ]
 
     def compose(self) -> ComposeResult:
@@ -69,17 +67,6 @@ class JobTrackerApp(App):
         """Switch to the specified tab."""
         tabs = self.query_one(TabbedContent)
         tabs.active = tab_id
-
-    def action_refresh(self) -> None:
-        """Refresh the current screen's data."""
-        active_tab_id = self.query_one(TabbedContent).active
-
-        if active_tab_id == "dashboard":
-            self.query_one(Dashboard).refresh_data()
-        elif active_tab_id == "applications":
-            self.query_one(ApplicationsList).load_applications()
-
-        self.sub_title = f"Refreshed {active_tab_id} data"
 
     def action_new_application(self) -> None:
         """Open the application creation form."""

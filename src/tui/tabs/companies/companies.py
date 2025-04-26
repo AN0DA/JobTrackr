@@ -39,16 +39,20 @@ class CompaniesList(Static):
                     with Vertical(classes="filter-section"):
                         yield Static("Type:", classes="filter-label")
                         yield Select(
-                            [(ct.value, ct.value) for ct in CompanyType] + [("All", "All")],
+                            [(ct.value, ct.value) for ct in CompanyType]
+                            + [("All", "All")],
                             value="All",
                             id="type-filter",
-                            classes="filter-dropdown"
+                            classes="filter-dropdown",
                         )
 
                     # Search section
                     with Horizontal(classes="search-section"):
-                        yield Input(placeholder="Search companies...", id="company-search",
-                                    classes="search-box")
+                        yield Input(
+                            placeholder="Search companies...",
+                            id="company-search",
+                            classes="search-box",
+                        )
                         yield Button("🔍", id="search-button")
 
                     # Quick action buttons
@@ -64,7 +68,9 @@ class CompaniesList(Static):
                 with Horizontal(classes="action-buttons"):
                     yield Button("View", id="view-company", disabled=True)
                     yield Button("Edit", id="edit-company", disabled=True)
-                    yield Button("Delete", id="delete-company", variant="error", disabled=True)
+                    yield Button(
+                        "Delete", id="delete-company", variant="error", disabled=True
+                    )
 
     def on_mount(self) -> None:
         """Set up the screen when mounted."""

@@ -53,10 +53,7 @@ class Dashboard(Static):
 
     def on_mount(self) -> None:
         """Load dashboard data when mounted."""
-        self.refresh_data()
 
-    def refresh_data(self) -> None:
-        """Refresh dashboard data from database."""
         self.update_status("Fetching dashboard data...")
 
         try:
