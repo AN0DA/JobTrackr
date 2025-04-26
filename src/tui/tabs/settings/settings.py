@@ -44,19 +44,6 @@ class SettingsScreen(Screen):
                     yield Label("")
                     yield Button("Apply Database Changes", id="apply-db-changes")
 
-                # Export Settings
-                yield Static("Export Settings", classes="settings-section-title")
-
-                with Grid(id="export-settings-grid"):
-                    yield Label("Export Directory:")
-
-                    with Horizontal():
-                        yield Input(id="export-dir", classes="path-input")
-                        yield Button("Browse...", id="browse-export")
-
-                    yield Label("")
-                    yield Button("Export Applications", id="export-now")
-
                 # General Settings
                 yield Static("General Settings", classes="settings-section-title")
 
@@ -88,10 +75,6 @@ class SettingsScreen(Screen):
             self.query_one("#db-status", Static).update("Database file does not exist")
             self.query_one("#db-status").styles.color = "red"
 
-        # Load export directory
-        export_dir = self.settings.get("export_directory")
-        self.query_one("#export-dir", Input).value = export_dir
-
         self.query_one("#updates-switch", Switch).value = self.settings.get("check_updates", True)
         self.query_one("#window-size-switch", Switch).value = self.settings.get("save_window_size", True)
 
@@ -102,14 +85,8 @@ class SettingsScreen(Screen):
         if button_id == "browse-db":
             self.select_database_path()
 
-        elif button_id == "browse-export":
-            self.select_export_directory()
-
         elif button_id == "apply-db-changes":
             self.apply_database_changes()
-
-        elif button_id == "export-now":
-            self.export_applications()
 
         elif button_id == "save-settings":
             self.save_all_settings()
@@ -136,28 +113,6 @@ class SettingsScreen(Screen):
                 file_filter=lambda path: path.suffix == ".db" or path.is_dir(),
                 mode="save",
                 callback=on_file_selected,
-            )
-        )
-
-    def select_export_directory(self) -> None:
-        """Open file dialog to select export directory."""
-
-        def on_directory_selected(path: str) -> None:
-            if path:
-                self.query_one("#export-dir", Input).value = path
-
-        # Get initial directory from current path
-        current_path = self.query_one("#export-dir", Input).value
-        initial_dir = os.path.expanduser(current_path)
-
-        # Use FileDialog to select directory
-        self.app.push_screen(
-            FileDialog(
-                title="Select Export Directory",
-                path=initial_dir,
-                file_filter=lambda path: path.is_dir(),
-                mode="directory",
-                callback=on_directory_selected,
             )
         )
 
@@ -195,34 +150,17 @@ class SettingsScreen(Screen):
             self.query_one("#db-status", Static).update(f"Error: {str(e)}")
             self.query_one("#db-status").styles.color = "red"
 
-    def export_applications(self) -> None:
-        """Open the export dialog."""
-        from src.tui.tabs.settings.export import ExportDialog
-
-        # Update export directory in settings first
-        export_dir = self.query_one("#export-dir", Input).value
-        if export_dir.startswith("~"):
-            export_dir = os.path.expanduser(export_dir)
-
-        # Set export directory in settings
-        self.settings.set("export_directory", export_dir)
-
-        # Open export dialog
-        self.app.push_screen(ExportDialog())
-
     def save_all_settings(self) -> None:
         """Save all settings."""
         try:
             # Get values from form
             db_path = self.query_one("#db-path", Input).value
-            export_dir = self.query_one("#export-dir", Input).value
 
             check_updates = self.query_one("#updates-switch", Switch).value
             save_window_size = self.query_one("#window-size-switch", Switch).value
 
             # Save all settings
             self.settings.set("database_path", db_path)
-            self.settings.set("export_directory", export_dir)
             self.settings.set("check_updates", check_updates)
             self.settings.set("save_window_size", save_window_size)
 
