@@ -210,3 +210,15 @@ class FileDialog(ModalScreen):
     def action_cancel(self) -> None:
         """Handle escape key."""
         self.app.pop_screen()
+
+    def on_input_submitted(self, event: Input.Submitted) -> None:
+        """Handle path input submission."""
+        if event.input.id == "path-input":
+            path = event.input.value
+            if os.path.isdir(path):
+                if self.mode == "directory":
+                    tree = self.query_one("#directory-tree", DirectoryTree)
+                    tree.path = path
+                    self.current_path = path
+                else:
+                    self.load_files(path)

@@ -159,21 +159,25 @@ class CompanyDetailScreen(Screen):
     def load_applications(self) -> None:
         """Load job applications for this company."""
         try:
-            # Note: This would require an actual method in ApplicationService
-            # For now, we'll simulate with placeholder data
+            # Now properly fetch applications from the service
             app_service = ApplicationService()
-            # This method doesn't exist in the provided code, but would be useful
-            # applications = app_service.get_applications_by_company(self.company_id)
-
-            # Placeholder example - in a real implementation we'd call the service
-            applications = []
+            applications = app_service.get_applications_by_company(self.company_id)
 
             table = self.query_one("#applications-table", DataTable)
             table.clear()
 
             if not applications:
                 table.add_row("No applications found", "", "", "", "")
+                return
 
+            for app in applications:
+                table.add_row(
+                    str(app["id"]),
+                    app["job_title"],
+                    app["position"],
+                    app["status"],
+                    app["applied_date"],
+                )
         except Exception as e:
             self.app.sub_title = f"Error loading applications: {str(e)}"
 

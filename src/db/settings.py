@@ -9,7 +9,6 @@ DEFAULT_CONFIG = {
     "database_path": "~/jobtracker_data/jobtracker.db",
     "export_directory": "~/jobtracker_data/exports",
     "check_updates": True,
-    "theme": "dark",
     "save_window_size": True,
 }
 

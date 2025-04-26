@@ -29,10 +29,10 @@ class Dashboard(Static):
                 yield Static("Overview", classes="section-heading")
 
                 with Grid(id="stats-grid"):
-                    yield StatsCard("Active Applications", "0", id="active-apps")
-                    yield StatsCard("This Week", "0", id="weekly-apps")
-                    yield StatsCard("Interview Rate", "0%", id="interview-rate")
-                    yield StatsCard("Response Rate", "0%", id="response-rate")
+                    yield StatsCard("Total Applications", "0", id="total-apps")
+                    yield StatsCard("Applied", "0", id="applied-apps")
+                    yield StatsCard("Interviews", "0", id="interview-apps")
+                    yield StatsCard("Offers", "0", id="offer-apps")
 
             # Main content in two columns
             with Horizontal(id="dashboard-content"):

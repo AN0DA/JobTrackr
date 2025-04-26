@@ -3,8 +3,9 @@ from typing import List, Optional, Dict, Any
 
 from sqlalchemy import or_
 
-from src.db.models import Contact, Company
+from src.db.models import Contact, Company, ChangeType, Application
 from src.db.database import get_session
+from src.services.change_record_service import ChangeRecordService
 
 logger = logging.getLogger(__name__)
 
@@ -143,6 +144,43 @@ class ContactService:
             return [self._contact_to_dict(contact) for contact in contacts]
         except Exception as e:
             logger.error(f"Error searching contacts: {e}")
+            raise
+        finally:
+            session.close()
+
+    def add_contact_to_application(self, application_id: int, contact_id: int) -> bool:
+        """Associate a contact with an application."""
+        session = get_session()
+        try:
+            application = (
+                session.query(Application)
+                .filter(Application.id == application_id)
+                .first()
+            )
+            contact = session.query(Contact).filter(Contact.id == contact_id).first()
+
+            if not application or not contact:
+                return False
+
+            if contact not in application.contacts:
+                application.contacts.append(contact)
+                session.commit()
+
+                # Record the change
+                change_record_service = ChangeRecordService()
+                change_record_service.create_change_record(
+                    {
+                        "application_id": application_id,
+                        "change_type": ChangeType.CONTACT_ADDED.value,
+                        "new_value": contact.name,
+                        "notes": f"Added contact: {contact.name}",
+                    }
+                )
+
+            return True
+        except Exception as e:
+            session.rollback()
+            logger.error(f"Error adding contact to application: {e}")
             raise
         finally:
             session.close()

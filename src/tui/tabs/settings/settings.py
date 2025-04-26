@@ -1,7 +1,7 @@
 from textual.app import ComposeResult
 from textual.screen import Screen
 from textual.containers import Container, Horizontal, Grid
-from textual.widgets import Static, Button, Input, Label, Switch, RadioSet, RadioButton
+from textual.widgets import Static, Button, Input, Label, Switch
 from textual.widgets import Footer, Header
 from textual.binding import Binding
 import os
@@ -61,11 +61,6 @@ class SettingsScreen(Screen):
                 yield Static("General Settings", classes="settings-section-title")
 
                 with Grid(id="general-settings-grid"):
-                    yield Label("Theme:")
-                    with RadioSet(id="theme-setting"):
-                        yield RadioButton("Light")
-                        yield RadioButton("Dark")
-
                     yield Label("Check for updates:")
                     yield Switch(id="updates-switch")
 
@@ -96,11 +91,6 @@ class SettingsScreen(Screen):
         # Load export directory
         export_dir = self.settings.get("export_directory")
         self.query_one("#export-dir", Input).value = export_dir
-
-        # Load other settings
-        # theme = self.settings.get("theme", "dark") # FIXME!
-        # theme_idx = 1 if theme == "dark" else 0  # 0 for light, 1 for dark
-        # self.query_one("#theme-setting", RadioSet).pressed_index = theme_idx
 
         self.query_one("#updates-switch", Switch).value = self.settings.get(
             "check_updates", True
@@ -231,16 +221,12 @@ class SettingsScreen(Screen):
             db_path = self.query_one("#db-path", Input).value
             export_dir = self.query_one("#export-dir", Input).value
 
-            theme_idx = self.query_one("#theme-setting", RadioSet).pressed_index
-            theme = "dark" if theme_idx == 1 else "light"
-
             check_updates = self.query_one("#updates-switch", Switch).value
             save_window_size = self.query_one("#window-size-switch", Switch).value
 
             # Save all settings
             self.settings.set("database_path", db_path)
             self.settings.set("export_directory", export_dir)
-            self.settings.set("theme", theme)
             self.settings.set("check_updates", check_updates)
             self.settings.set("save_window_size", save_window_size)
 

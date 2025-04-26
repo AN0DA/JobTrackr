@@ -204,6 +204,24 @@ class ApplicationService:
         finally:
             session.close()
 
+    def get_applications_by_company(self, company_id: int) -> List[Dict[str, Any]]:
+        """Get applications for a specific company."""
+        session = get_session()
+        try:
+            query = session.query(Application).filter(
+                Application.company_id == company_id
+            )
+            applications = query.order_by(Application.applied_date.desc()).all()
+            return [
+                self._application_to_dict(app, include_details=False)
+                for app in applications
+            ]
+        except Exception as e:
+            logger.error(f"Error fetching applications for company {company_id}: {e}")
+            raise
+        finally:
+            session.close()
+
     def get_applications_for_export(
         self, include_notes=True, include_interactions=True, include_reminders=True
     ) -> List[Dict[str, Any]]:

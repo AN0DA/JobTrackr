@@ -126,9 +126,24 @@ class ContactDetailScreen(Screen):
         table = self.query_one("#applications-table", DataTable)
         table.clear()
 
-        # This would require an actual method in the service to get apps by contact
-        # For now, display placeholder
-        table.add_row("No applications found", "", "", "", "")
+        if not self.contact_data or not hasattr(self.contact_data, "applications"):
+            table.add_row("No applications found", "", "", "", "")
+            return
+
+        applications = self.contact_data.get("applications", [])
+
+        if not applications:
+            table.add_row("No applications found", "", "", "", "")
+            return
+
+        for app in applications:
+            table.add_row(
+                str(app["id"]),
+                app["job_title"],
+                app["position"],
+                app["status"],
+                app.get("applied_date", ""),
+            )
 
     def load_interactions(self) -> None:
         """Load interactions associated with this contact."""
