@@ -1,15 +1,14 @@
+import logging
 import os
+
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, scoped_session
-import logging
+from sqlalchemy.orm import scoped_session, sessionmaker
 
 from src.db.settings import Settings
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
 logger = logging.getLogger(__name__)
 
@@ -36,9 +35,7 @@ def init_db(db_path=None):
         os.makedirs(db_dir, exist_ok=True)
 
         # Create database engine
-        engine = create_engine(
-            f"sqlite:///{db_path}", connect_args={"check_same_thread": False}
-        )
+        engine = create_engine(f"sqlite:///{db_path}", connect_args={"check_same_thread": False})
 
         # Create session factory
         session_factory = sessionmaker(bind=engine)

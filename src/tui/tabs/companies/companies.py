@@ -2,13 +2,13 @@
 
 from textual.app import ComposeResult
 from textual.containers import Container, Horizontal, Vertical
-from textual.widgets import Static, Button, DataTable, Select, Input, Label
 from textual.screen import ModalScreen
+from textual.widgets import Button, DataTable, Input, Label, Select, Static
 
+from src.db.models import CompanyType
 from src.services.company_service import CompanyService
 from src.tui.tabs.companies.company_detail import CompanyDetailScreen
 from src.tui.tabs.companies.company_form import CompanyForm
-from src.db.models import CompanyType
 
 
 class CompaniesList(Static):
@@ -39,8 +39,7 @@ class CompaniesList(Static):
                     with Vertical(classes="filter-section"):
                         yield Static("Type:", classes="filter-label")
                         yield Select(
-                            [(ct.value, ct.value) for ct in CompanyType]
-                            + [("All", "All")],
+                            [(ct.value, ct.value) for ct in CompanyType] + [("All", "All")],
                             value="All",
                             id="type-filter",
                             classes="filter-dropdown",
@@ -68,9 +67,7 @@ class CompaniesList(Static):
                 with Horizontal(classes="action-buttons"):
                     yield Button("View", id="view-company", disabled=True)
                     yield Button("Edit", id="edit-company", disabled=True)
-                    yield Button(
-                        "Delete", id="delete-company", variant="error", disabled=True
-                    )
+                    yield Button("Delete", id="delete-company", variant="error", disabled=True)
 
     def on_mount(self) -> None:
         """Set up the screen when mounted."""
@@ -152,9 +149,7 @@ class CompaniesList(Static):
 
         elif button_id == "edit-company" and table.cursor_row is not None:
             app_id = table.get_row_at(table.cursor_row)[0]
-            self.app.push_screen(
-                CompanyForm(company_id=app_id, on_saved=self.load_companies)
-            )
+            self.app.push_screen(CompanyForm(company_id=app_id, on_saved=self.load_companies))
 
         elif button_id == "delete-company" and table.cursor_row is not None:
             app_id = table.get_row_at(table.cursor_row)[0]
@@ -199,9 +194,7 @@ class CompaniesList(Static):
                     company.get("size", ""),
                 )
 
-            self.update_status(
-                f"Found {len(filtered_companies)} companies matching '{search_term}'"
-            )
+            self.update_status(f"Found {len(filtered_companies)} companies matching '{search_term}'")
 
         except Exception as e:
             self.update_status(f"Search error: {str(e)}")
@@ -253,18 +246,14 @@ class CompaniesList(Static):
         table = self.query_one("#companies-table", DataTable)
         if table.cursor_row is not None:
             company_id = table.get_row_at(table.cursor_row)[0]
-            self.app.push_screen(
-                DeleteConfirmationModal(company_id, self.load_companies)
-            )
+            self.app.push_screen(DeleteConfirmationModal(company_id, self.load_companies))
 
     def action_edit_company(self) -> None:
         """Edit the selected company."""
         table = self.query_one("#companies-table", DataTable)
         if table.cursor_row is not None:
             company_id = table.get_row_at(table.cursor_row)[0]
-            self.app.push_screen(
-                CompanyForm(company_id=company_id, on_saved=self.load_companies)
-            )
+            self.app.push_screen(CompanyForm(company_id=company_id, on_saved=self.load_companies))
 
     def action_view_company(self) -> None:
         """View the selected company."""

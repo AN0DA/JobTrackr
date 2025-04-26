@@ -1,12 +1,12 @@
 """Detail screen for viewing a company and its relationships."""
 
 from textual.app import ComposeResult
+from textual.containers import Container, Grid, Horizontal, Vertical
 from textual.screen import Screen
-from textual.containers import Container, Horizontal, Vertical, Grid
-from textual.widgets import Static, Button, DataTable, Label, TabbedContent, TabPane
+from textual.widgets import Button, DataTable, Label, Static, TabbedContent, TabPane
 
-from src.services.company_service import CompanyService
 from src.services.application_service import ApplicationService
+from src.services.company_service import CompanyService
 from src.tui.tabs.companies.relationship_form import CompanyRelationshipForm
 
 
@@ -27,9 +27,7 @@ class CompanyDetailScreen(Screen):
 
                 with Vertical(id="header-actions"):
                     yield Button("Edit Company", id="edit-company")
-                    yield Button(
-                        "Add Relationship", id="add-relationship", variant="primary"
-                    )
+                    yield Button("Add Relationship", id="add-relationship", variant="primary")
 
             with TabbedContent(id="company-tabs"):
                 with TabPane("Overview", id="tab-overview"):
@@ -52,18 +50,14 @@ class CompanyDetailScreen(Screen):
                     yield DataTable(id="relationships-table")
 
                     with Container(id="relationship-viz", classes="viz-container"):
-                        yield Static(
-                            "Relationship Visualization:", classes="section-label"
-                        )
+                        yield Static("Relationship Visualization:", classes="section-label")
                         yield Static(
                             "[Visualization would go here in a graphical UI]",
                             classes="placeholder",
                         )
 
                 with TabPane("Applications", id="tab-applications"):
-                    yield Label(
-                        "Job Applications with this Company", classes="section-label"
-                    )
+                    yield Label("Job Applications with this Company", classes="section-label")
                     yield DataTable(id="applications-table")
 
             with Horizontal(id="detail-actions"):
@@ -73,15 +67,11 @@ class CompanyDetailScreen(Screen):
         """Load company data when the screen is mounted."""
         # Set up tables
         relationships_table = self.query_one("#relationships-table", DataTable)
-        relationships_table.add_columns(
-            "Company", "Type", "Relationship", "Direction", "Actions"
-        )
+        relationships_table.add_columns("Company", "Type", "Relationship", "Direction", "Actions")
         relationships_table.cursor_type = "row"
 
         applications_table = self.query_one("#applications-table", DataTable)
-        applications_table.add_columns(
-            "ID", "Job Title", "Position", "Status", "Applied Date"
-        )
+        applications_table.add_columns("ID", "Job Title", "Position", "Status", "Applied Date")
         applications_table.cursor_type = "row"
 
         # Load company data
@@ -105,15 +95,9 @@ class CompanyDetailScreen(Screen):
             self.query_one("#company-type", Static).update(f"Type: {company_type}")
 
             # Update overview fields
-            self.query_one("#company-industry", Static).update(
-                self.company_data.get("industry", "N/A")
-            )
-            self.query_one("#company-website", Static).update(
-                self.company_data.get("website", "N/A")
-            )
-            self.query_one("#company-size", Static).update(
-                self.company_data.get("size", "N/A")
-            )
+            self.query_one("#company-industry", Static).update(self.company_data.get("industry", "N/A"))
+            self.query_one("#company-website", Static).update(self.company_data.get("website", "N/A"))
+            self.query_one("#company-size", Static).update(self.company_data.get("size", "N/A"))
 
             # Update notes
             notes = self.company_data.get("notes", "No notes available.")
@@ -191,20 +175,14 @@ class CompanyDetailScreen(Screen):
         elif button_id == "edit-company":
             from src.tui.tabs.companies.company_form import CompanyForm
 
-            def refresh_after_edit():
+            def refresh_after_edit() -> None:
                 self.load_company_data()
 
-            self.app.push_screen(
-                CompanyForm(
-                    company_id=str(self.company_id), on_saved=refresh_after_edit
-                )
-            )
+            self.app.push_screen(CompanyForm(company_id=str(self.company_id), on_saved=refresh_after_edit))
 
         elif button_id == "add-relationship":
             self.app.push_screen(
-                CompanyRelationshipForm(
-                    source_company_id=self.company_id, on_saved=self.load_relationships
-                )
+                CompanyRelationshipForm(source_company_id=self.company_id, on_saved=self.load_relationships)
             )
 
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:

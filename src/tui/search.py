@@ -1,9 +1,9 @@
 """Search dialog for finding applications."""
 
 from textual.app import ComposeResult
-from textual.screen import ModalScreen
 from textual.containers import Container, Horizontal
-from textual.widgets import Button, Label, Input, DataTable
+from textual.screen import ModalScreen
+from textual.widgets import Button, DataTable, Input, Label
 
 from src.services.application_service import ApplicationService
 

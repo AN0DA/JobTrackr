@@ -1,12 +1,12 @@
 """Dashboard screen for the Job Tracker TUI."""
 
-from textual.widgets import Static, Button
-from textual.containers import Grid, Container, Vertical, Horizontal
 from textual.app import ComposeResult
+from textual.containers import Container, Grid, Horizontal, Vertical
+from textual.widgets import Button, Static
 
-from src.tui.widgets.stats_card import StatsCard
-from src.tui.widgets.application_list import ApplicationList
 from src.services.application_service import ApplicationService
+from src.tui.widgets.application_list import ApplicationList
+from src.tui.widgets.stats_card import StatsCard
 
 
 class Dashboard(Static):
@@ -29,10 +29,10 @@ class Dashboard(Static):
                 yield Static("Overview", classes="section-heading")
 
                 with Grid(id="stats-grid"):
-                    yield StatsCard("Total Applications", "0", id="total-apps")
-                    yield StatsCard("Applied", "0", id="applied-apps")
-                    yield StatsCard("Interviews", "0", id="interview-apps")
-                    yield StatsCard("Offers", "0", id="offer-apps")
+                    yield StatsCard("Total Applications", "0", _id="total-apps")
+                    yield StatsCard("Applied", "0", _id="applied-apps")
+                    yield StatsCard("Interviews", "0", _id="interview-apps")
+                    yield StatsCard("Offers", "0", _id="offer-apps")
 
             # Main content in two columns
             with Horizontal(id="dashboard-content"):
@@ -40,7 +40,7 @@ class Dashboard(Static):
                 with Vertical(id="left-column"):
                     with Container(classes="content-box"):
                         yield Static("Recent Applications", classes="section-heading")
-                        yield ApplicationList(title="", id="recent-apps-list")
+                        yield ApplicationList(title="", _id="recent-apps-list")
                         yield Button("View All Applications", id="view-all-apps")
 
                 # Right column - Reminders and progress

@@ -3,10 +3,11 @@
 import csv
 import os
 from datetime import datetime
+
 from textual.app import ComposeResult
+from textual.containers import Container, Horizontal, Vertical
 from textual.screen import ModalScreen
-from textual.containers import Container, Vertical, Horizontal
-from textual.widgets import Button, Label, Input, Checkbox, OptionList
+from textual.widgets import Button, Checkbox, Input, Label, OptionList
 
 from src.db.settings import Settings
 from src.services.application_service import ApplicationService
@@ -15,7 +16,7 @@ from src.services.application_service import ApplicationService
 class ExportDialog(ModalScreen):
     """Dialog for exporting job application data."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.settings = Settings()
 
@@ -32,9 +33,7 @@ class ExportDialog(ModalScreen):
 
                 yield Label("Export Options", classes="field-label")
                 yield Checkbox("Include detailed notes", id="include-notes", value=True)
-                yield Checkbox(
-                    "Include interactions", id="include-interactions", value=True
-                )
+                yield Checkbox("Include interactions", id="include-interactions", value=True)
 
             with Horizontal(id="dialog-buttons"):
                 yield Button("Cancel", id="cancel-export")
@@ -59,9 +58,7 @@ class ExportDialog(ModalScreen):
             export_format = getattr(self, "export_format", "CSV")
             export_dir = self.settings.get_export_directory()
             include_notes = self.query_one("#include-notes", Checkbox).value
-            include_interactions = self.query_one(
-                "#include-interactions", Checkbox
-            ).value
+            include_interactions = self.query_one("#include-interactions", Checkbox).value
 
             # Generate filename with timestamp
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")

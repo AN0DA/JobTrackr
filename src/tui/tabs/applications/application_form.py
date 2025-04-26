@@ -1,8 +1,9 @@
-from textual.app import ComposeResult
-from textual.screen import Screen
-from textual.containers import Container, Vertical, Horizontal
-from textual.widgets import Input, Button, Label, TextArea, Select, Static
 from datetime import datetime
+
+from textual.app import ComposeResult
+from textual.containers import Container, Horizontal, Vertical
+from textual.screen import Screen
+from textual.widgets import Button, Input, Label, Select, Static, TextArea
 
 from src.services.application_service import ApplicationService
 from src.services.company_service import CompanyService
@@ -24,18 +25,12 @@ class ApplicationForm(Screen):
         """Compose the form layout."""
         with Container(id="app-form"):
             yield Label(
-                "View Application"
-                if self.readonly
-                else "Edit Application"
-                if self.app_id
-                else "New Application",
+                "View Application" if self.readonly else "Edit Application" if self.app_id else "New Application",
                 id="form-title",
             )
 
             # Page indicator
-            yield Static(
-                f"Page {self.current_page} of {self.total_pages}", id="page-indicator"
-            )
+            yield Static(f"Page {self.current_page} of {self.total_pages}", id="page-indicator")
 
             # Page 1: Essential Information
             with Container(id="page-1", classes="form-page"):
@@ -47,9 +42,7 @@ class ApplicationForm(Screen):
                     with Horizontal(id="company-field"):
                         yield Select([], id="company-select", disabled=self.readonly)
                         if not self.readonly:
-                            yield Button(
-                                "+ New Company", id="new-company", variant="primary"
-                            )
+                            yield Button("+ New Company", id="new-company", variant="primary")
 
                     yield Label("Position *", classes="field-label")
                     yield Input(id="position", disabled=self.readonly)
@@ -79,9 +72,7 @@ class ApplicationForm(Screen):
                         id="applied-date",
                         placeholder="YYYY-MM-DD",
                         disabled=self.readonly,
-                        value=datetime.now().strftime("%Y-%m-%d")
-                        if not self.app_id and not self.readonly
-                        else "",
+                        value=datetime.now().strftime("%Y-%m-%d") if not self.app_id and not self.readonly else "",
                     )
 
             # Page 2: Additional Details
@@ -102,9 +93,7 @@ class ApplicationForm(Screen):
                     )
 
                     yield Label("Link", classes="field-label")
-                    yield Input(
-                        id="link", placeholder="https://...", disabled=self.readonly
-                    )
+                    yield Input(id="link", placeholder="https://...", disabled=self.readonly)
 
             # Page 3: Content
             with Container(id="page-3", classes="form-page hidden"):
@@ -165,9 +154,7 @@ class ApplicationForm(Screen):
         self.current_page = page_number
 
         # Update page indicator
-        self.query_one("#page-indicator", Static).update(
-            f"Page {self.current_page} of {self.total_pages}"
-        )
+        self.query_one("#page-indicator", Static).update(f"Page {self.current_page} of {self.total_pages}")
 
         # Update button states
         prev_button = self.query_one("#prev-page", Button)
@@ -179,11 +166,6 @@ class ApplicationForm(Screen):
         # Store current field values if not in readonly mode
         if not self.readonly:
             self.store_current_field_values()
-
-    def store_current_field_values(self):
-        """Store values from the current page."""
-        # Implement this to store values between page navigations
-        pass
 
     def on_mount(self) -> None:
         """Load data when the form is mounted."""
@@ -208,9 +190,7 @@ class ApplicationForm(Screen):
             self.companies = service.get_companies()
 
             company_select = self.query_one("#company-select", Select)
-            company_select.set_options(
-                [(company["name"], str(company["id"])) for company in self.companies]
-            )
+            company_select.set_options([(company["name"], str(company["id"])) for company in self.companies])
 
             # Set default selection for new applications
             if not self.app_id and self.companies:
@@ -242,9 +222,7 @@ class ApplicationForm(Screen):
             self.query_one("#status", Select).value = app_data["status"]
 
             # Format the date
-            applied_date = datetime.fromisoformat(app_data["applied_date"]).strftime(
-                "%Y-%m-%d"
-            )
+            applied_date = datetime.fromisoformat(app_data["applied_date"]).strftime("%Y-%m-%d")
             self.query_one("#applied-date", Input).value = applied_date
 
             if app_data.get("link"):
@@ -258,9 +236,7 @@ class ApplicationForm(Screen):
 
             # Set company if available
             if app_data.get("company"):
-                self.query_one("#company-select", Select).value = str(
-                    app_data["company"]["id"]
-                )
+                self.query_one("#company-select", Select).value = str(app_data["company"]["id"])
 
         except Exception as e:
             self.app.sub_title = f"Error loading application: {str(e)}"

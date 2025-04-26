@@ -1,21 +1,22 @@
 """Custom widget for displaying a list of applications."""
 
-from textual.widgets import Static, DataTable
+from typing import Any
+
 from textual.app import ComposeResult
-from typing import List, Dict, Any
+from textual.widgets import DataTable, Static
 
 
 class ApplicationList(Static):
     """A widget displaying a list of applications."""
 
-    def __init__(self, title: str, id: str = None):
+    def __init__(self, title: str, _id: str = None):
         """Initialize the application list.
 
         Args:
             title: The title to display
-            id: Optional widget ID
+            _id: Optional widget ID
         """
-        super().__init__(id=id)
+        super().__init__(id=_id)
         self.title = title
 
     def compose(self) -> ComposeResult:
@@ -29,7 +30,7 @@ class ApplicationList(Static):
         table.add_columns("Job Title", "Company", "Status", "Applied Date")
         table.cursor_type = "row"
 
-    def update_applications(self, applications: List[Dict[str, Any]]) -> None:
+    def update_applications(self, applications: list[dict[str, Any]]) -> None:
         """Update the applications displayed in the list."""
         table = self.query_one(DataTable)
         table.clear()
@@ -40,6 +41,4 @@ class ApplicationList(Static):
 
         for app in applications:
             company_name = app.get("company", {}).get("name", "")
-            table.add_row(
-                app["job_title"], company_name, app["status"], app["applied_date"]
-            )
+            table.add_row(app["job_title"], company_name, app["status"], app["applied_date"])

@@ -88,7 +88,7 @@ class JobTrackr(App):
         self.push_screen(SettingsScreen())
 
 
-def app():
+def app() -> None:
     """Run the application."""
     # Ensure data directory exists
     os.makedirs("data", exist_ok=True)

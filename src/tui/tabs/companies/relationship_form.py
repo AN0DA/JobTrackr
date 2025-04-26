@@ -1,10 +1,11 @@
 """Form for creating company relationships."""
 
+from collections.abc import Callable
+
 from textual.app import ComposeResult
+from textual.containers import Container, Horizontal, Vertical
 from textual.screen import ModalScreen
-from textual.containers import Container, Vertical, Horizontal
-from textual.widgets import Button, Label, Select, Input, TextArea
-from typing import Callable, Optional
+from textual.widgets import Button, Input, Label, Select, TextArea
 
 from src.services.company_service import CompanyService
 
@@ -16,7 +17,7 @@ class CompanyRelationshipForm(ModalScreen):
         self,
         source_company_id: int,
         relationship_id: int = None,
-        on_saved: Optional[Callable] = None,
+        on_saved: Callable | None = None,
     ):
         """Initialize the form.
 
@@ -46,9 +47,7 @@ class CompanyRelationshipForm(ModalScreen):
         with Container(id="relationship-form-container", classes="modal-container"):
             with Container(id="relationship-form", classes="modal-content"):
                 yield Label(
-                    "Add Company Relationship"
-                    if not self.relationship_id
-                    else "Edit Relationship",
+                    "Add Company Relationship" if not self.relationship_id else "Edit Relationship",
                     id="form-title",
                     classes="modal-title",
                 )
@@ -98,9 +97,7 @@ class CompanyRelationshipForm(ModalScreen):
             self.companies = service.get_companies()
 
             # Remove the source company from options
-            target_companies = [
-                c for c in self.companies if c["id"] != self.source_company_id
-            ]
+            target_companies = [c for c in self.companies if c["id"] != self.source_company_id]
 
             # Update target company dropdown
             target_select = self.query_one("#target-company", Select)

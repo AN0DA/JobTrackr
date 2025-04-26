@@ -4,9 +4,8 @@ from datetime import datetime
 
 from textual.app import ComposeResult
 from textual.containers import Container, Horizontal, Vertical
-from textual.widgets import Static, Button, DataTable, Select, Input
 from textual.screen import ModalScreen
-from textual.widgets import Label
+from textual.widgets import Button, DataTable, Input, Label, Select, Static
 
 from src.services.application_service import ApplicationService
 from src.tui.tabs.applications.application_form import ApplicationForm
@@ -24,7 +23,7 @@ class ApplicationsList(Static):
         ("r", "refresh_applications", "Refresh"),
     ]
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.sort_column = "Applied Date"
         self.sort_ascending = False  # Default to newest first
@@ -63,9 +62,7 @@ class ApplicationsList(Static):
 
                     # Search section (could be added in future)
                     with Horizontal(classes="search-section"):
-                        yield Input(
-                            placeholder="Search applications...", id="app-search"
-                        )
+                        yield Input(placeholder="Search applications...", id="app-search")
                         yield Button("🔍", id="search-button")
 
                     # Quick action buttons
@@ -81,9 +78,7 @@ class ApplicationsList(Static):
                 with Horizontal(classes="action-buttons"):
                     yield Button("View", id="view-app", disabled=True)
                     yield Button("Edit", id="edit-app", disabled=True)
-                    yield Button(
-                        "Delete", id="delete-app", variant="error", disabled=True
-                    )
+                    yield Button("Delete", id="delete-app", variant="error", disabled=True)
 
     def on_mount(self) -> None:
         """Set up the screen when mounted."""
@@ -140,9 +135,7 @@ class ApplicationsList(Static):
             if not apps_list:
                 # Handle empty state
                 table.add_column_span = len(table.columns)
-                table.add_row(
-                    "No applications found. Click 'New Application' to create one."
-                )
+                table.add_row("No applications found. Click 'New Application' to create one.")
                 self.update_status("No applications found")
 
                 # Make sure action buttons are disabled

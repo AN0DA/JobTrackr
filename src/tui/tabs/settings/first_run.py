@@ -1,17 +1,18 @@
-from textual.app import ComposeResult
-from textual.screen import Screen
-from textual.containers import Container, Vertical, Horizontal
-from textual.widgets import Static, Button, Input, Label
 import os
 
-from src.db.settings import Settings
+from textual.app import ComposeResult
+from textual.containers import Container, Horizontal, Vertical
+from textual.screen import Screen
+from textual.widgets import Button, Input, Label, Static
+
 from src.db.database import init_db
+from src.db.settings import Settings
 
 
 class FirstRunScreen(Screen):
     """First run experience for new users."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.settings = Settings()
 
@@ -28,8 +29,7 @@ class FirstRunScreen(Screen):
 
                 yield Static("Database Location", classes="settings-section-title")
                 yield Static(
-                    "Choose where to store your job application data. "
-                    "The default location is in your home directory.",
+                    "Choose where to store your job application data. The default location is in your home directory.",
                     classes="settings-help-text",
                 )
 
@@ -44,9 +44,7 @@ class FirstRunScreen(Screen):
                 )
 
             with Horizontal(id="welcome-buttons"):
-                yield Button(
-                    "Use Default Location", variant="primary", id="use-default"
-                )
+                yield Button("Use Default Location", variant="primary", id="use-default")
                 yield Button("Continue with Selected Path", id="use-custom")
 
     def on_mount(self) -> None:
@@ -93,12 +91,7 @@ class FirstRunScreen(Screen):
     def save_settings(self, use_default: bool) -> None:
         """Save settings and initialize database."""
         try:
-            if use_default:
-                # Use default path
-                db_path = self.settings.get("database_path")
-            else:
-                # Use custom path
-                db_path = self.query_one("#db-path", Input).value
+            db_path = self.settings.get("database_path") if use_default else self.query_one("#db-path", Input).value
 
             # Expand user path if needed
             if db_path.startswith("~"):

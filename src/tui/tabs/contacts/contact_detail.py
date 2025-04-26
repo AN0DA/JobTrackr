@@ -1,7 +1,7 @@
 from textual.app import ComposeResult
+from textual.containers import Container, Grid, Horizontal, Vertical
 from textual.screen import Screen
-from textual.containers import Container, Horizontal, Vertical, Grid
-from textual.widgets import Static, Button, DataTable, Label, Header
+from textual.widgets import Button, DataTable, Header, Label, Static
 
 from src.services.contact_service import ContactService
 
@@ -51,17 +51,13 @@ class ContactDetailScreen(Screen):
 
             with Horizontal(id="detail-actions"):
                 yield Button("Back", id="back-button", variant="default")
-                yield Button(
-                    "Add to Application", id="add-to-application", variant="primary"
-                )
+                yield Button("Add to Application", id="add-to-application", variant="primary")
 
     def on_mount(self) -> None:
         """Load contact data when the screen is mounted."""
         # Set up tables
         applications_table = self.query_one("#applications-table", DataTable)
-        applications_table.add_columns(
-            "ID", "Job Title", "Position", "Status", "Applied Date"
-        )
+        applications_table.add_columns("ID", "Job Title", "Position", "Status", "Applied Date")
         applications_table.cursor_type = "row"
 
         interactions_table = self.query_one("#interactions-table", DataTable)
@@ -86,25 +82,17 @@ class ContactDetailScreen(Screen):
             self.query_one("#contact-name", Static).update(self.contact_data["name"])
 
             if self.contact_data.get("title"):
-                self.query_one("#contact-title", Static).update(
-                    self.contact_data["title"]
-                )
+                self.query_one("#contact-title", Static).update(self.contact_data["title"])
             else:
                 self.query_one("#contact-title", Static).update("No title")
 
             # Update fields
-            company_name = self.contact_data.get("company", {}).get(
-                "name", "Not associated with a company"
-            )
+            company_name = self.contact_data.get("company", {}).get("name", "Not associated with a company")
             self.query_one("#contact-company", Static).update(company_name)
 
-            self.query_one("#contact-email", Static).update(
-                self.contact_data.get("email", "No email provided")
-            )
+            self.query_one("#contact-email", Static).update(self.contact_data.get("email", "No email provided"))
 
-            self.query_one("#contact-phone", Static).update(
-                self.contact_data.get("phone", "No phone provided")
-            )
+            self.query_one("#contact-phone", Static).update(self.contact_data.get("phone", "No phone provided"))
 
             # Update notes
             notes = self.contact_data.get("notes", "No notes available.")
@@ -164,14 +152,10 @@ class ContactDetailScreen(Screen):
         elif button_id == "edit-contact":
             from src.tui.tabs.contacts.contact_form import ContactForm
 
-            def refresh_after_edit():
+            def refresh_after_edit() -> None:
                 self.load_contact_data()
 
-            self.app.push_screen(
-                ContactForm(
-                    contact_id=str(self.contact_id), on_saved=refresh_after_edit
-                )
-            )
+            self.app.push_screen(ContactForm(contact_id=str(self.contact_id), on_saved=refresh_after_edit))
 
         elif button_id == "add-to-application":
             # This would open a dialog to add the contact to an application

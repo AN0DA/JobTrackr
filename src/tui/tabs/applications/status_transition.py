@@ -1,13 +1,14 @@
 """Dialog for transitioning application status."""
 
+from datetime import datetime
+
 from textual.app import ComposeResult
+from textual.containers import Container, Horizontal, Vertical
 from textual.screen import ModalScreen
-from textual.containers import Container, Vertical, Horizontal
 from textual.widgets import Button, Label, Select, TextArea
 
-from datetime import datetime
-from src.services.application_service import ApplicationService
 from src.db.models import ApplicationStatus
+from src.services.application_service import ApplicationService
 
 
 class StatusTransitionDialog(ModalScreen):

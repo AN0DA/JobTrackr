@@ -1,10 +1,10 @@
 import logging
-from typing import List, Optional, Dict, Any
+from typing import Any
 
 from sqlalchemy import or_
 
-from src.db.models import Contact, Company, ChangeType, Application
 from src.db.database import get_session
+from src.db.models import Application, ChangeType, Company, Contact
 from src.services.change_record_service import ChangeRecordService
 
 logger = logging.getLogger(__name__)
@@ -13,24 +13,22 @@ logger = logging.getLogger(__name__)
 class ContactService:
     """Service for contact-related operations."""
 
-    def get_contact(self, id: int) -> Optional[Dict[str, Any]]:
+    def get_contact(self, _id: int) -> dict[str, Any] | None:
         """Get a specific contact by ID."""
         session = get_session()
         try:
-            contact = session.query(Contact).filter(Contact.id == id).first()
+            contact = session.query(Contact).filter(Contact.id == _id).first()
             if not contact:
                 return None
 
             return self._contact_to_dict(contact)
         except Exception as e:
-            logger.error(f"Error fetching contact {id}: {e}")
+            logger.error(f"Error fetching contact {_id}: {e}")
             raise
         finally:
             session.close()
 
-    def get_contacts(
-        self, company_id: Optional[int] = None, offset: int = 0, limit: int = 50
-    ) -> List[Dict[str, Any]]:
+    def get_contacts(self, company_id: int | None = None, offset: int = 0, limit: int = 50) -> list[dict[str, Any]]:
         """Get contacts with optional filtering by company."""
         session = get_session()
         try:
@@ -48,7 +46,7 @@ class ContactService:
         finally:
             session.close()
 
-    def create_contact(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def create_contact(self, data: dict[str, Any]) -> dict[str, Any]:
         """Create a new contact."""
         session = get_session()
         try:
@@ -73,13 +71,13 @@ class ContactService:
         finally:
             session.close()
 
-    def update_contact(self, id: int, data: Dict[str, Any]) -> Dict[str, Any]:
+    def update_contact(self, _id: int, data: dict[str, Any]) -> dict[str, Any]:
         """Update an existing contact."""
         session = get_session()
         try:
-            contact = session.query(Contact).filter(Contact.id == id).first()
+            contact = session.query(Contact).filter(Contact.id == _id).first()
             if not contact:
-                raise ValueError(f"Contact with ID {id} not found")
+                raise ValueError(f"Contact with ID {_id} not found")
 
             # Update fields
             if "name" in data:
@@ -101,16 +99,16 @@ class ContactService:
             return self._contact_to_dict(contact)
         except Exception as e:
             session.rollback()
-            logger.error(f"Error updating contact {id}: {e}")
+            logger.error(f"Error updating contact {_id}: {e}")
             raise
         finally:
             session.close()
 
-    def delete_contact(self, id: int) -> bool:
+    def delete_contact(self, _id: int) -> bool:
         """Delete a contact."""
         session = get_session()
         try:
-            contact = session.query(Contact).filter(Contact.id == id).first()
+            contact = session.query(Contact).filter(Contact.id == _id).first()
             if not contact:
                 return False
 
@@ -119,12 +117,12 @@ class ContactService:
             return True
         except Exception as e:
             session.rollback()
-            logger.error(f"Error deleting contact {id}: {e}")
+            logger.error(f"Error deleting contact {_id}: {e}")
             raise
         finally:
             session.close()
 
-    def search_contacts(self, search_term: str) -> List[Dict[str, Any]]:
+    def search_contacts(self, search_term: str) -> list[dict[str, Any]]:
         """Search for contacts by name, email, or title."""
         session = get_session()
         try:
@@ -152,11 +150,7 @@ class ContactService:
         """Associate a contact with an application."""
         session = get_session()
         try:
-            application = (
-                session.query(Application)
-                .filter(Application.id == application_id)
-                .first()
-            )
+            application = session.query(Application).filter(Application.id == application_id).first()
             contact = session.query(Contact).filter(Contact.id == contact_id).first()
 
             if not application or not contact:
@@ -185,7 +179,7 @@ class ContactService:
         finally:
             session.close()
 
-    def _contact_to_dict(self, contact: Contact) -> Dict[str, Any]:
+    def _contact_to_dict(self, contact: Contact) -> dict[str, Any]:
         """Convert a Contact object to a dictionary."""
         result = {
             "id": contact.id,
@@ -204,13 +198,9 @@ class ContactService:
             }
 
         # Add associated applications count
-        result["application_count"] = (
-            len(contact.applications) if contact.applications else 0
-        )
+        result["application_count"] = len(contact.applications) if contact.applications else 0
 
         # Add interactions count
-        result["interaction_count"] = (
-            len(contact.interactions) if contact.interactions else 0
-        )
+        result["interaction_count"] = len(contact.interactions) if contact.interactions else 0
 
         return result

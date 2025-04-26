@@ -1,17 +1,18 @@
 import logging
 from datetime import datetime
-from typing import List, Optional, Dict, Any
+from typing import Any
 
+from sqlalchemy import desc, func, or_
 from sqlalchemy.orm import joinedload
-from sqlalchemy import func, or_, desc
-from src.services.change_record_service import ChangeRecordService
-from src.db.models import ChangeType
+
+from src.db.database import get_session
 from src.db.models import (
     Application,
-    Company,
     ApplicationStatus,
+    ChangeType,
+    Company,
 )
-from src.db.database import get_session
+from src.services.change_record_service import ChangeRecordService
 
 logger = logging.getLogger(__name__)
 
@@ -19,29 +20,29 @@ logger = logging.getLogger(__name__)
 class ApplicationService:
     """Service for application-related operations."""
 
-    def get_application(self, id: int) -> Optional[Dict[str, Any]]:
+    def get_application(self, _id: int) -> dict[str, Any] | None:
         """Get a specific application by ID."""
         session = get_session()
         try:
-            app = session.query(Application).filter(Application.id == id).first()
+            app = session.query(Application).filter(Application.id == _id).first()
             if not app:
                 return None
 
             return self._application_to_dict(app)
         except Exception as e:
-            logger.error(f"Error fetching application {id}: {e}")
+            logger.error(f"Error fetching application {_id}: {e}")
             raise
         finally:
             session.close()
 
     def get_applications(
         self,
-        status: Optional[str] = None,
+        status: str | None = None,
         offset: int = 0,
         limit: int = 10,
         sort_by: str = "applied_date",
         sort_desc: bool = True,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Get applications with optional filtering and sorting."""
         session = get_session()
         try:
@@ -52,36 +53,21 @@ class ApplicationService:
 
             # Apply sorting
             if sort_by == "job_title":
-                query = query.order_by(
-                    desc(Application.job_title) if sort_desc else Application.job_title
-                )
+                query = query.order_by(desc(Application.job_title) if sort_desc else Application.job_title)
             elif sort_by == "position":
-                query = query.order_by(
-                    desc(Application.position) if sort_desc else Application.position
-                )
+                query = query.order_by(desc(Application.position) if sort_desc else Application.position)
             elif sort_by == "company":
-                query = query.join(Company).order_by(
-                    desc(Company.name) if sort_desc else Company.name
-                )
+                query = query.join(Company).order_by(desc(Company.name) if sort_desc else Company.name)
             elif sort_by == "status":
-                query = query.order_by(
-                    desc(Application.status) if sort_desc else Application.status
-                )
+                query = query.order_by(desc(Application.status) if sort_desc else Application.status)
             else:  # Default to applied_date
-                query = query.order_by(
-                    desc(Application.applied_date)
-                    if sort_desc
-                    else Application.applied_date
-                )
+                query = query.order_by(desc(Application.applied_date) if sort_desc else Application.applied_date)
 
             # Apply pagination
             applications = query.offset(offset).limit(limit).all()
 
             # Convert to dictionaries
-            return [
-                self._application_to_dict(app, include_details=False)
-                for app in applications
-            ]
+            return [self._application_to_dict(app, include_details=False) for app in applications]
 
         except Exception as e:
             logger.error(f"Error fetching applications: {e}")
@@ -89,7 +75,7 @@ class ApplicationService:
         finally:
             session.close()
 
-    def create_application(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def create_application(self, data: dict[str, Any]) -> dict[str, Any]:
         """Create a new application."""
         session = get_session()
         try:
@@ -122,14 +108,14 @@ class ApplicationService:
         finally:
             session.close()
 
-    def update_application(self, id: int, data: Dict[str, Any]) -> Dict[str, Any]:
+    def update_application(self, _id: int, data: dict[str, Any]) -> dict[str, Any]:
         """Update an existing application and record the changes."""
         session = get_session()
         try:
             # Get application
-            app = session.query(Application).filter(Application.id == id).first()
+            app = session.query(Application).filter(Application.id == _id).first()
             if not app:
-                raise ValueError(f"Application with ID {id} not found")
+                raise ValueError(f"Application with ID {_id} not found")
 
             # Track changes for important fields
             change_records = []
@@ -138,7 +124,7 @@ class ApplicationService:
             if "status" in data and data["status"] != app.status:
                 change_records.append(
                     {
-                        "application_id": id,
+                        "application_id": _id,
                         "change_type": ChangeType.STATUS_CHANGE.value,
                         "old_value": app.status,
                         "new_value": data["status"],
@@ -167,12 +153,12 @@ class ApplicationService:
             return self._application_to_dict(app)
         except Exception as e:
             session.rollback()
-            logger.error(f"Error updating application {id}: {e}")
+            logger.error(f"Error updating application {_id}: {e}")
             raise
         finally:
             session.close()
 
-    def search_applications(self, search_term: str) -> List[Dict[str, Any]]:
+    def search_applications(self, search_term: str) -> list[dict[str, Any]]:
         """Search for applications by keyword."""
         session = get_session()
         try:
@@ -192,30 +178,20 @@ class ApplicationService:
             ]
 
             conditions = [field.ilike(search_pattern) for field in search_fields]
-            query = query.filter(or_(*conditions)).order_by(
-                Application.applied_date.desc()
-            )
+            query = query.filter(or_(*conditions)).order_by(Application.applied_date.desc())
 
             applications = query.all()
-            return [
-                self._application_to_dict(app, include_details=False)
-                for app in applications
-            ]
+            return [self._application_to_dict(app, include_details=False) for app in applications]
         finally:
             session.close()
 
-    def get_applications_by_company(self, company_id: int) -> List[Dict[str, Any]]:
+    def get_applications_by_company(self, company_id: int) -> list[dict[str, Any]]:
         """Get applications for a specific company."""
         session = get_session()
         try:
-            query = session.query(Application).filter(
-                Application.company_id == company_id
-            )
+            query = session.query(Application).filter(Application.company_id == company_id)
             applications = query.order_by(Application.applied_date.desc()).all()
-            return [
-                self._application_to_dict(app, include_details=False)
-                for app in applications
-            ]
+            return [self._application_to_dict(app, include_details=False) for app in applications]
         except Exception as e:
             logger.error(f"Error fetching applications for company {company_id}: {e}")
             raise
@@ -224,7 +200,7 @@ class ApplicationService:
 
     def get_applications_for_export(
         self, include_notes=True, include_interactions=True, include_reminders=True
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Get all applications with optional details for export."""
         session = get_session()
         try:
@@ -261,9 +237,7 @@ class ApplicationService:
                 # Add interactions if requested
                 if include_interactions and app.interactions:
                     interactions = []
-                    for i, interaction in enumerate(
-                        sorted(app.interactions, key=lambda x: x.date)
-                    ):
+                    for _, interaction in enumerate(sorted(app.interactions, key=lambda x: x.date)):
                         interactions.append(
                             {
                                 "date": interaction.date.isoformat(),
@@ -272,22 +246,6 @@ class ApplicationService:
                             }
                         )
                     app_data["interactions"] = interactions
-
-                # Add reminders if requested
-                if include_reminders and app.reminders:
-                    reminders = []
-                    for i, reminder in enumerate(
-                        sorted(app.reminders, key=lambda x: x.date)
-                    ):
-                        reminders.append(
-                            {
-                                "title": reminder.title,
-                                "date": reminder.date.isoformat(),
-                                "completed": "Yes" if reminder.completed else "No",
-                                "description": reminder.description or "",
-                            }
-                        )
-                    app_data["reminders"] = reminders
 
                 result.append(app_data)
 
@@ -299,9 +257,7 @@ class ApplicationService:
         finally:
             session.close()
 
-    def _application_to_dict(
-        self, app: Application, include_details: bool = True
-    ) -> Dict[str, Any]:
+    def _application_to_dict(self, app: Application, include_details: bool = True) -> dict[str, Any]:
         """Convert an Application object to a dictionary."""
         result = {
             "id": app.id,
@@ -325,19 +281,17 @@ class ApplicationService:
                     "link": app.link,
                     "description": app.description,
                     "notes": app.notes,  # Now properly handled
-                    "updated_at": app.updated_at.isoformat()
-                    if app.updated_at
-                    else None,
+                    "updated_at": app.updated_at.isoformat() if app.updated_at else None,
                 }
             )
 
         return result
 
-    def delete_application(self, id: int) -> bool:
+    def delete_application(self, _id: int) -> bool:
         """Delete an application."""
         session = get_session()
         try:
-            app = session.query(Application).filter(Application.id == id).first()
+            app = session.query(Application).filter(Application.id == _id).first()
             if not app:
                 return False
 
@@ -346,12 +300,12 @@ class ApplicationService:
             return True
         except Exception as e:
             session.rollback()
-            logger.error(f"Error deleting application {id}: {e}")
+            logger.error(f"Error deleting application {_id}: {e}")
             raise
         finally:
             session.close()
 
-    def get_dashboard_stats(self) -> Dict[str, Any]:
+    def get_dashboard_stats(self) -> dict[str, Any]:
         """Get dashboard statistics."""
         session = get_session()
         try:
@@ -362,24 +316,13 @@ class ApplicationService:
             status_counts = []
             for status in ApplicationStatus:
                 count = (
-                    session.query(func.count(Application.id))
-                    .filter(Application.status == status.value)
-                    .scalar()
-                    or 0
+                    session.query(func.count(Application.id)).filter(Application.status == status.value).scalar() or 0
                 )
                 status_counts.append({"status": status.value, "count": count})
 
             # Get recent applications
-            recent_apps = (
-                session.query(Application)
-                .order_by(Application.applied_date.desc())
-                .limit(5)
-                .all()
-            )
-            recent_applications = [
-                self._application_to_dict(app, include_details=False)
-                for app in recent_apps
-            ]
+            recent_apps = session.query(Application).order_by(Application.applied_date.desc()).limit(5).all()
+            recent_applications = [self._application_to_dict(app, include_details=False) for app in recent_apps]
 
             return {
                 "total_applications": total_count,
@@ -392,7 +335,7 @@ class ApplicationService:
         finally:
             session.close()
 
-    def add_interaction(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def add_interaction(self, data: dict[str, Any]) -> dict[str, Any]:
         """Add an interaction to an application."""
         session = get_session()
         try:
@@ -402,9 +345,7 @@ class ApplicationService:
             interaction = Interaction(
                 application_id=data["application_id"],
                 type=data["type"],
-                date=datetime.fromisoformat(data["date"])
-                if isinstance(data["date"], str)
-                else data["date"],
+                date=datetime.fromisoformat(data["date"]) if isinstance(data["date"], str) else data["date"],
                 notes=data.get("notes"),
             )
 

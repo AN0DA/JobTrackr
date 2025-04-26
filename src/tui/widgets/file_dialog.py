@@ -1,11 +1,12 @@
-from textual.app import ComposeResult
-from textual.screen import ModalScreen
-from textual.containers import Container, Horizontal
-from textual.widgets import Button, Label, Input, DirectoryTree, DataTable
-from textual.binding import Binding
-from pathlib import Path
 import os
-from typing import Callable
+from collections.abc import Callable
+from pathlib import Path
+
+from textual.app import ComposeResult
+from textual.binding import Binding
+from textual.containers import Container, Horizontal
+from textual.screen import ModalScreen
+from textual.widgets import Button, DataTable, DirectoryTree, Input, Label
 
 
 class FileDialog(ModalScreen):
@@ -69,9 +70,7 @@ class FileDialog(ModalScreen):
                 elif self.mode == "save":
                     yield Button("Save", variant="primary", id="confirm-dialog")
                 elif self.mode == "directory":
-                    yield Button(
-                        "Select Directory", variant="primary", id="confirm-dialog"
-                    )
+                    yield Button("Select Directory", variant="primary", id="confirm-dialog")
 
     def on_mount(self) -> None:
         """Load files when mounted."""
@@ -152,9 +151,7 @@ class FileDialog(ModalScreen):
             # For save mode, just fill in the filename
             self.query_one("#name-input", Input).value = item_name
 
-    def on_directory_tree_directory_selected(
-        self, event: DirectoryTree.DirectorySelected
-    ) -> None:
+    def on_directory_tree_directory_selected(self, event: DirectoryTree.DirectorySelected) -> None:
         """Handle directory selection in directory tree."""
         if self.mode == "directory":
             self.current_path = str(event.path)

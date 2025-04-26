@@ -1,11 +1,12 @@
-from textual.app import ComposeResult
-from textual.screen import ModalScreen
-from textual.containers import Container, Vertical, Horizontal
-from textual.widgets import Button, Label, Input, TextArea, Select
 from datetime import datetime, timedelta
 
-from src.services.interaction_service import InteractionService
+from textual.app import ComposeResult
+from textual.containers import Container, Horizontal, Vertical
+from textual.screen import ModalScreen
+from textual.widgets import Button, Input, Label, Select, TextArea
+
 from src.db.models import InteractionType
+from src.services.interaction_service import InteractionService
 
 
 class InteractionForm(ModalScreen):
@@ -73,9 +74,7 @@ class InteractionForm(ModalScreen):
             self.query_one("#interaction-date", Input).value = date
 
             if interaction.get("notes"):
-                self.query_one("#interaction-notes", TextArea).text = interaction[
-                    "notes"
-                ]
+                self.query_one("#interaction-notes", TextArea).text = interaction["notes"]
 
             # Store the application ID if it exists
             self.application_id = interaction.get("application_id")

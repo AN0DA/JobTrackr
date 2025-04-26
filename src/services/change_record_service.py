@@ -1,10 +1,10 @@
 import logging
-from typing import List, Dict, Any
+from typing import Any
 
 from sqlalchemy import desc
 
-from src.db.models import ChangeRecord
 from src.db.database import get_session
+from src.db.models import ChangeRecord
 
 logger = logging.getLogger(__name__)
 
@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 class ChangeRecordService:
     """Service for managing change records."""
 
-    def create_change_record(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def create_change_record(self, data: dict[str, Any]) -> dict[str, Any]:
         """Create a new change record."""
         session = get_session()
         try:
@@ -38,7 +38,7 @@ class ChangeRecordService:
         finally:
             session.close()
 
-    def get_change_records(self, application_id: int) -> List[Dict[str, Any]]:
+    def get_change_records(self, application_id: int) -> list[dict[str, Any]]:
         """Get change records for an application."""
         session = get_session()
         try:
@@ -56,7 +56,7 @@ class ChangeRecordService:
         finally:
             session.close()
 
-    def _record_to_dict(self, record: ChangeRecord) -> Dict[str, Any]:
+    def _record_to_dict(self, record: ChangeRecord) -> dict[str, Any]:
         """Convert a ChangeRecord to a dictionary."""
         return {
             "id": record.id,

@@ -1,21 +1,21 @@
 """Custom widget for displaying statistics."""
 
-from textual.widgets import Static
 from textual.app import ComposeResult
+from textual.widgets import Static
 
 
 class StatsCard(Static):
     """A card displaying a statistic with a label and value."""
 
-    def __init__(self, title: str, value: str, id: str = None):
+    def __init__(self, title: str, value: str, _id: str = None):
         """Initialize the stats card.
 
         Args:
             title: The label to display
             value: The value to display
-            id: Optional widget ID
+            _id: Optional widget ID
         """
-        super().__init__(id=id)
+        super().__init__(id=_id)
         self.title = title
         self.value = value
 

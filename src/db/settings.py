@@ -16,7 +16,7 @@ DEFAULT_CONFIG = {
 class Settings:
     """Class to handle application settings."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         # Define settings file location in user's home directory
         self.home_dir = os.path.expanduser("~")
         self.config_dir = os.path.join(self.home_dir, ".jobtrackr")

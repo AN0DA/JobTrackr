@@ -1,8 +1,8 @@
 import logging
-from typing import List, Optional, Dict, Any
+from typing import Any
 
-from src.db.models import Company, CompanyRelationship, CompanyType
 from src.db.database import get_session
+from src.db.models import Company, CompanyRelationship, CompanyType
 
 logger = logging.getLogger(__name__)
 
@@ -10,37 +10,34 @@ logger = logging.getLogger(__name__)
 class CompanyService:
     """Service for company-related operations."""
 
-    def get_company(self, id: int) -> Optional[Dict[str, Any]]:
+    def get_company(self, _id: int) -> dict[str, Any] | None:
         """Get a specific company by ID."""
         session = get_session()
         try:
-            company = session.query(Company).filter(Company.id == id).first()
+            company = session.query(Company).filter(Company.id == _id).first()
             if not company:
                 return None
 
             return self._company_to_dict(company)
         except Exception as e:
-            logger.error(f"Error fetching company {id}: {e}")
+            logger.error(f"Error fetching company {_id}: {e}")
             raise
         finally:
             session.close()
 
-    def get_companies(self) -> List[Dict[str, Any]]:
+    def get_companies(self) -> list[dict[str, Any]]:
         """Get all companies."""
         session = get_session()
         try:
             companies = session.query(Company).all()
-            return [
-                self._company_to_dict(company, include_details=False)
-                for company in companies
-            ]
+            return [self._company_to_dict(company, include_details=False) for company in companies]
         except Exception as e:
             logger.error(f"Error fetching companies: {e}")
             raise
         finally:
             session.close()
 
-    def create_company(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def create_company(self, data: dict[str, Any]) -> dict[str, Any]:
         """Create a new company."""
         session = get_session()
         try:
@@ -66,14 +63,14 @@ class CompanyService:
         finally:
             session.close()
 
-    def update_company(self, id: int, data: Dict[str, Any]) -> Dict[str, Any]:
+    def update_company(self, _id: int, data: dict[str, Any]) -> dict[str, Any]:
         """Update an existing company."""
         session = get_session()
         try:
             # Get company
-            company = session.query(Company).filter(Company.id == id).first()
+            company = session.query(Company).filter(Company.id == _id).first()
             if not company:
-                raise ValueError(f"Company with ID {id} not found")
+                raise ValueError(f"Company with ID {_id} not found")
 
             # Update fields
             if "name" in data:
@@ -94,42 +91,40 @@ class CompanyService:
             return self._company_to_dict(company)
         except Exception as e:
             session.rollback()
-            logger.error(f"Error updating company {id}: {e}")
+            logger.error(f"Error updating company {_id}: {e}")
             raise
         finally:
             session.close()
 
-    def delete_company(self, id: int) -> bool:
+    def delete_company(self, _id: int) -> bool:
         """Delete a company."""
         session = get_session()
         try:
-            company = session.query(Company).filter(Company.id == id).first()
+            company = session.query(Company).filter(Company.id == _id).first()
             if not company:
                 return False
 
             # Check if company has applications
             if company.applications:
-                raise ValueError(
-                    f"Cannot delete company with ID {id} because it has associated applications"
-                )
+                raise ValueError(f"Cannot delete company with ID {_id} because it has associated applications")
 
             session.delete(company)
             session.commit()
             return True
         except Exception as e:
             session.rollback()
-            logger.error(f"Error deleting company {id}: {e}")
+            logger.error(f"Error deleting company {_id}: {e}")
             raise
         finally:
             session.close()
 
-    def get_company_types(self) -> List[str]:
+    def get_company_types(self) -> list[str]:
         """Get all available company types."""
         return [ct.value for ct in CompanyType]
 
     def create_relationship(
         self, source_id: int, target_id: int, relationship_type: str, notes: str = None
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Create a new relationship between companies."""
         session = get_session()
         try:
@@ -165,33 +160,25 @@ class CompanyService:
         finally:
             session.close()
 
-    def get_related_companies(self, company_id: int) -> List[Dict[str, Any]]:
+    def get_related_companies(self, company_id: int) -> list[dict[str, Any]]:
         """Get companies related to the given company."""
         session = get_session()
         try:
             # Get outgoing relationships
             outgoing = (
-                session.query(CompanyRelationship)
-                .filter(CompanyRelationship.source_company_id == company_id)
-                .all()
+                session.query(CompanyRelationship).filter(CompanyRelationship.source_company_id == company_id).all()
             )
 
             # Get incoming relationships
             incoming = (
-                session.query(CompanyRelationship)
-                .filter(CompanyRelationship.target_company_id == company_id)
-                .all()
+                session.query(CompanyRelationship).filter(CompanyRelationship.target_company_id == company_id).all()
             )
 
             results = []
 
             # Process outgoing relationships
             for rel in outgoing:
-                target = (
-                    session.query(Company)
-                    .filter(Company.id == rel.target_company_id)
-                    .first()
-                )
+                target = session.query(Company).filter(Company.id == rel.target_company_id).first()
                 if target:
                     results.append(
                         {
@@ -207,11 +194,7 @@ class CompanyService:
 
             # Process incoming relationships
             for rel in incoming:
-                source = (
-                    session.query(Company)
-                    .filter(Company.id == rel.source_company_id)
-                    .first()
-                )
+                source = session.query(Company).filter(Company.id == rel.source_company_id).first()
                 if source:
                     results.append(
                         {
@@ -232,9 +215,7 @@ class CompanyService:
         finally:
             session.close()
 
-    def _company_to_dict(
-        self, company: Company, include_details: bool = True
-    ) -> Dict[str, Any]:
+    def _company_to_dict(self, company: Company, include_details: bool = True) -> dict[str, Any]:
         """Convert a Company object to a dictionary."""
         result = {
             "id": company.id,

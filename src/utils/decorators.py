@@ -1,5 +1,6 @@
 import functools
 import logging
+
 from src.db.database import get_session
 
 logger = logging.getLogger(__name__)

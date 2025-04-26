@@ -2,13 +2,13 @@
 
 from textual.app import ComposeResult
 from textual.containers import Container, Horizontal, Vertical
-from textual.widgets import Static, Button, DataTable, Select, Input, Label
 from textual.screen import ModalScreen
+from textual.widgets import Button, DataTable, Input, Label, Select, Static
 
-from src.services.contact_service import ContactService
 from src.services.company_service import CompanyService
-from src.tui.tabs.contacts.contact_form import ContactForm
+from src.services.contact_service import ContactService
 from src.tui.tabs.contacts.contact_detail import ContactDetailScreen
+from src.tui.tabs.contacts.contact_form import ContactForm
 
 
 class ContactsList(Static):
@@ -22,7 +22,7 @@ class ContactsList(Static):
         ("r", "refresh_contacts", "Refresh"),
     ]
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.sort_column = "Name"
         self.sort_ascending = True
@@ -40,9 +40,7 @@ class ContactsList(Static):
                 with Horizontal(classes="filter-bar"):
                     with Vertical(classes="filter-section"):
                         yield Static("Company:", classes="filter-label")
-                        yield Select(
-                            id="company-filter", options=[], classes="filter-dropdown"
-                        )
+                        yield Select(id="company-filter", options=[], classes="filter-dropdown")
 
                     # Search section
                     with Horizontal(classes="search-section"):
@@ -66,9 +64,7 @@ class ContactsList(Static):
                 with Horizontal(classes="action-buttons"):
                     yield Button("View", id="view-contact", disabled=True)
                     yield Button("Edit", id="edit-contact", disabled=True)
-                    yield Button(
-                        "Delete", id="delete-contact", variant="error", disabled=True
-                    )
+                    yield Button("Delete", id="delete-contact", variant="error", disabled=True)
 
     def on_mount(self) -> None:
         """Set up the screen when mounted."""
@@ -178,15 +174,11 @@ class ContactsList(Static):
 
         elif button_id == "edit-contact" and table.cursor_row is not None:
             contact_id = table.get_row_at(table.cursor_row)[0]
-            self.app.push_screen(
-                ContactForm(contact_id=contact_id, on_saved=self.load_contacts)
-            )
+            self.app.push_screen(ContactForm(contact_id=contact_id, on_saved=self.load_contacts))
 
         elif button_id == "delete-contact" and table.cursor_row is not None:
             contact_id = table.get_row_at(table.cursor_row)[0]
-            self.app.push_screen(
-                DeleteConfirmationModal(contact_id, self.load_contacts)
-            )
+            self.app.push_screen(DeleteConfirmationModal(contact_id, self.load_contacts))
 
         elif button_id == "search-button":
             search_term = self.query_one("#contact-search", Input).value
@@ -207,9 +199,7 @@ class ContactsList(Static):
             # Apply company filter if active
             if self.company_filter and self.company_filter != "All":
                 filter_id = int(self.company_filter)
-                results = [
-                    c for c in results if c.get("company", {}).get("id") == filter_id
-                ]
+                results = [c for c in results if c.get("company", {}).get("id") == filter_id]
 
             table = self.query_one("#contacts-table", DataTable)
             table.clear()
@@ -224,9 +214,7 @@ class ContactsList(Static):
                     contact.get("phone", ""),
                 )
 
-            self.update_status(
-                f"Found {len(results)} contacts matching '{search_term}'"
-            )
+            self.update_status(f"Found {len(results)} contacts matching '{search_term}'")
 
         except Exception as e:
             self.update_status(f"Search error: {str(e)}")
@@ -278,18 +266,14 @@ class ContactsList(Static):
         table = self.query_one("#contacts-table", DataTable)
         if table.cursor_row is not None:
             contact_id = table.get_row_at(table.cursor_row)[0]
-            self.app.push_screen(
-                DeleteConfirmationModal(contact_id, self.load_contacts)
-            )
+            self.app.push_screen(DeleteConfirmationModal(contact_id, self.load_contacts))
 
     def action_edit_contact(self) -> None:
         """Edit the selected contact."""
         table = self.query_one("#contacts-table", DataTable)
         if table.cursor_row is not None:
             contact_id = table.get_row_at(table.cursor_row)[0]
-            self.app.push_screen(
-                ContactForm(contact_id=contact_id, on_saved=self.load_contacts)
-            )
+            self.app.push_screen(ContactForm(contact_id=contact_id, on_saved=self.load_contacts))
 
     def action_view_contact(self) -> None:
         """View the selected contact."""

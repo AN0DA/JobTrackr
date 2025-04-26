@@ -1,10 +1,11 @@
 """Form for creating/editing companies."""
 
+from collections.abc import Callable
+
 from textual.app import ComposeResult
+from textual.containers import Container, Horizontal, Vertical
 from textual.screen import Screen
-from textual.containers import Container, Vertical, Horizontal
-from textual.widgets import Input, Button, Label, TextArea, Select, Static
-from typing import Callable, Optional
+from textual.widgets import Button, Input, Label, Select, Static, TextArea
 
 from src.db.models import CompanyType
 from src.services.company_service import CompanyService
@@ -17,7 +18,7 @@ class CompanyForm(Screen):
         self,
         company_id: str = None,
         readonly: bool = False,
-        on_saved: Optional[Callable] = None,
+        on_saved: Callable | None = None,
     ):
         """Initialize the form.
 
@@ -104,9 +105,7 @@ class CompanyForm(Screen):
                 self.query_one("#size", Input).value = company_data["size"]
 
             if company_data.get("company_type"):
-                self.query_one("#company-type", Select).value = company_data[
-                    "company_type"
-                ]
+                self.query_one("#company-type", Select).value = company_data["company_type"]
 
             if company_data.get("notes"):
                 self.query_one("#notes", TextArea).text = company_data["notes"]

@@ -1,14 +1,14 @@
-from typing import Dict, Any
+from datetime import datetime
+from typing import Any
 
 from textual.app import ComposeResult
-from textual.screen import Screen
 from textual.containers import (
     Container,
     Horizontal,
     Vertical,
 )
-from textual.widgets import Static, Button, DataTable, TabPane, TabbedContent
-from datetime import datetime
+from textual.screen import Screen
+from textual.widgets import Button, DataTable, Static, TabbedContent, TabPane
 
 from src.services.application_service import ApplicationService
 from src.services.change_record_service import ChangeRecordService
@@ -121,33 +121,21 @@ class ApplicationDetail(Screen):
                 return
 
             # Update header fields
-            self.query_one("#app-job-title", Static).renderable = self.application_data[
-                "job_title"
-            ]
-            self.query_one(
-                "#app-position", Static
-            ).renderable = self.application_data.get("position", "N/A")
-            self.query_one("#app-status", Static).renderable = self.application_data[
-                "status"
-            ]
+            self.query_one("#app-job-title", Static).renderable = self.application_data["job_title"]
+            self.query_one("#app-position", Static).renderable = self.application_data.get("position", "N/A")
+            self.query_one("#app-status", Static).renderable = self.application_data["status"]
             applied_date_str = self.application_data.get("applied_date")
             if applied_date_str:
                 try:
                     applied_date = datetime.fromisoformat(applied_date_str)
-                    self.query_one(
-                        "#app-applied-date", Static
-                    ).renderable = applied_date.strftime("%Y-%m-%d")
+                    self.query_one("#app-applied-date", Static).renderable = applied_date.strftime("%Y-%m-%d")
                 except (ValueError, TypeError):
-                    self.query_one(
-                        "#app-applied-date", Static
-                    ).renderable = "Invalid Date"
+                    self.query_one("#app-applied-date", Static).renderable = "Invalid Date"
             else:
                 self.query_one("#app-applied-date", Static).renderable = "N/A"
 
             # Update company info
-            company_name = self.application_data.get("company", {}).get(
-                "name", "Unknown"
-            )
+            company_name = self.application_data.get("company", {}).get("name", "Unknown")
             self.query_one("#app-company", Static).renderable = company_name
 
             # Update notes content
@@ -161,9 +149,7 @@ class ApplicationDetail(Screen):
             self.load_interactions()
             self.load_contacts()
 
-            self.app.sub_title = (
-                f"Loaded details for {self.application_data['job_title']}"
-            )
+            self.app.sub_title = f"Loaded details for {self.application_data['job_title']}"
 
         except Exception as e:
             self.app.sub_title = f"Error loading application details: {str(e)}"
@@ -246,9 +232,7 @@ class ApplicationDetail(Screen):
         contacts_table.clear()
 
         # Just a placeholder for now
-        contacts_table.add_row(
-            "No contacts associated with this application", "", "", ""
-        )
+        contacts_table.add_row("No contacts associated with this application", "", "", "")
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button presses."""
@@ -268,14 +252,12 @@ class ApplicationDetail(Screen):
                 StatusTransitionDialog,
             )
 
-            self.app.push_screen(
-                StatusTransitionDialog(self.app_id, self.application_data["status"])
-            )
+            self.app.push_screen(StatusTransitionDialog(self.app_id, self.application_data["status"]))
 
         elif button_id == "add-interaction":
             self.app.push_screen(InteractionForm(application_id=self.app_id))
 
-    def _format_change(self, change: Dict[str, Any]) -> str:
+    def _format_change(self, change: dict[str, Any]) -> str:
         """Format change record details for display."""
         if change["change_type"] == "STATUS_CHANGE":
             return f"Status changed from {change['old_value']} to {change['new_value']}"

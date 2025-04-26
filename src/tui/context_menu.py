@@ -1,8 +1,8 @@
 """Context menu for applications."""
 
 from textual.app import ComposeResult
-from textual.screen import ModalScreen
 from textual.containers import Container, Vertical
+from textual.screen import ModalScreen
 from textual.widgets import Button, Label
 
 
@@ -22,20 +22,12 @@ class ApplicationContextMenu(ModalScreen):
             with Vertical(id="menu-actions"):
                 # Status transitions based on current status
                 if self.status == "SAVED":
-                    yield Button(
-                        "➤ Mark as APPLIED", variant="primary", id="change-to-applied"
-                    )
+                    yield Button("➤ Mark as APPLIED", variant="primary", id="change-to-applied")
 
                 elif self.status == "APPLIED":
-                    yield Button(
-                        "➤ Got PHONE SCREEN", variant="primary", id="change-to-phone"
-                    )
-                    yield Button(
-                        "➤ Got INTERVIEW", variant="primary", id="change-to-interview"
-                    )
-                    yield Button(
-                        "➤ Mark as REJECTED", variant="error", id="change-to-rejected"
-                    )
+                    yield Button("➤ Got PHONE SCREEN", variant="primary", id="change-to-phone")
+                    yield Button("➤ Got INTERVIEW", variant="primary", id="change-to-interview")
+                    yield Button("➤ Mark as REJECTED", variant="error", id="change-to-rejected")
 
                 elif self.status in [
                     "PHONE_SCREEN",
@@ -47,20 +39,12 @@ class ApplicationContextMenu(ModalScreen):
                         variant="primary",
                         id="change-to-next-interview",
                     )
-                    yield Button(
-                        "➤ Got an OFFER", variant="success", id="change-to-offer"
-                    )
-                    yield Button(
-                        "➤ Mark as REJECTED", variant="error", id="change-to-rejected"
-                    )
+                    yield Button("➤ Got an OFFER", variant="success", id="change-to-offer")
+                    yield Button("➤ Mark as REJECTED", variant="error", id="change-to-rejected")
 
                 elif self.status == "OFFER":
-                    yield Button(
-                        "➤ Mark as ACCEPTED", variant="success", id="change-to-accepted"
-                    )
-                    yield Button(
-                        "➤ Mark as REJECTED", variant="error", id="change-to-rejected"
-                    )
+                    yield Button("➤ Mark as ACCEPTED", variant="success", id="change-to-accepted")
+                    yield Button("➤ Mark as REJECTED", variant="error", id="change-to-rejected")
                     yield Button(
                         "➤ Mark as WITHDRAWN",
                         variant="warning",
@@ -74,9 +58,7 @@ class ApplicationContextMenu(ModalScreen):
                 yield Button("View Detailed Timeline", id="view-details-timeline")
                 yield Button("Edit Application", id="edit-application")
                 yield Label("─" * 30, classes="menu-divider")
-                yield Button(
-                    "Delete Application", variant="error", id="delete-application"
-                )
+                yield Button("Delete Application", variant="error", id="delete-application")
                 yield Label("─" * 30, classes="menu-divider")
                 yield Button("Close Menu", id="close-menu")
 
@@ -122,9 +104,7 @@ class ApplicationContextMenu(ModalScreen):
 
                 service = ApplicationService()
                 try:
-                    service.update_application(
-                        self.application_id, {"status": new_status}
-                    )
+                    service.update_application(self.application_id, {"status": new_status})
                     self.app.sub_title = f"Status updated to {new_status}"
 
                     # Refresh applications list if visible
@@ -145,16 +125,12 @@ class ApplicationContextMenu(ModalScreen):
                 StatusTransitionDialog,
             )
 
-            self.app.push_screen(
-                StatusTransitionDialog(self.application_id, self.status)
-            )
+            self.app.push_screen(StatusTransitionDialog(self.application_id, self.status))
 
         elif button_id == "view-details":
             from src.tui.tabs.applications.application_form import ApplicationForm
 
-            self.app.push_screen(
-                ApplicationForm(app_id=self.application_id, readonly=True)
-            )
+            self.app.push_screen(ApplicationForm(app_id=self.application_id, readonly=True))
 
         elif button_id == "edit-application":
             from src.tui.tabs.applications.application_form import ApplicationForm

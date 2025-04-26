@@ -1,13 +1,13 @@
-from textual.app import ComposeResult
-from textual.screen import Screen
-from textual.containers import Container, Horizontal, Grid
-from textual.widgets import Static, Button, Input, Label, Switch
-from textual.widgets import Footer, Header
-from textual.binding import Binding
 import os
 
-from src.db.settings import Settings
+from textual.app import ComposeResult
+from textual.binding import Binding
+from textual.containers import Container, Grid, Horizontal
+from textual.screen import Screen
+from textual.widgets import Button, Footer, Header, Input, Label, Static, Switch
+
 from src.db.database import change_database
+from src.db.settings import Settings
 from src.tui.widgets.file_dialog import FileDialog
 
 
@@ -92,12 +92,8 @@ class SettingsScreen(Screen):
         export_dir = self.settings.get("export_directory")
         self.query_one("#export-dir", Input).value = export_dir
 
-        self.query_one("#updates-switch", Switch).value = self.settings.get(
-            "check_updates", True
-        )
-        self.query_one("#window-size-switch", Switch).value = self.settings.get(
-            "save_window_size", True
-        )
+        self.query_one("#updates-switch", Switch).value = self.settings.get("check_updates", True)
+        self.query_one("#window-size-switch", Switch).value = self.settings.get("save_window_size", True)
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button presses."""

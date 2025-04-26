@@ -1,15 +1,16 @@
+import enum
+from datetime import datetime
+
 from sqlalchemy import (
     Column,
-    Integer,
-    String,
-    Text,
     DateTime,
     ForeignKey,
+    Integer,
+    String,
     Table,
+    Text,
 )
 from sqlalchemy.orm import relationship
-from datetime import datetime
-import enum
 
 from src.db.database import Base
 
@@ -69,9 +70,7 @@ class CompanyRelationship(Base):
     id = Column(Integer, primary_key=True)
     source_company_id = Column(Integer, ForeignKey("companies.id"), nullable=False)
     target_company_id = Column(Integer, ForeignKey("companies.id"), nullable=False)
-    relationship_type = Column(
-        String, nullable=False
-    )  # e.g., "recruits_for", "parent_company", etc.
+    relationship_type = Column(String, nullable=False)  # e.g., "recruits_for", "parent_company", etc.
     notes = Column(Text)
 
     # Relationships
@@ -99,9 +98,7 @@ class Company(Base):
     website = Column(String)
     industry = Column(String, index=True)
     size = Column(String)
-    type = Column(
-        String, default=CompanyType.DIRECT_EMPLOYER.value
-    )  # Default to direct employer
+    type = Column(String, default=CompanyType.DIRECT_EMPLOYER.value)  # Default to direct employer
     notes = Column(Text)
 
     # Relationships
@@ -135,24 +132,16 @@ class Application(Base):
     description = Column(Text)
     notes = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
-    updated_at = Column(
-        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, index=True
-    )
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, index=True)
 
     # Foreign keys
     company_id = Column(Integer, ForeignKey("companies.id"))
 
     # Relationships
     company = relationship("Company", back_populates="applications")
-    contacts = relationship(
-        "Contact", secondary=application_contact, back_populates="applications"
-    )
-    interactions = relationship(
-        "Interaction", back_populates="application", cascade="all, delete-orphan"
-    )
-    change_records = relationship(
-        "ChangeRecord", back_populates="application", cascade="all, delete-orphan"
-    )
+    contacts = relationship("Contact", secondary=application_contact, back_populates="applications")
+    interactions = relationship("Interaction", back_populates="application", cascade="all, delete-orphan")
+    change_records = relationship("ChangeRecord", back_populates="application", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<Application(id={self.id}, job_title='{self.job_title}', company_id={self.company_id})>"
@@ -173,12 +162,8 @@ class Contact(Base):
 
     # Relationships
     company = relationship("Company", back_populates="contacts")
-    applications = relationship(
-        "Application", secondary=application_contact, back_populates="contacts"
-    )
-    interactions = relationship(
-        "Interaction", secondary=interaction_contact, back_populates="contacts"
-    )
+    applications = relationship("Application", secondary=application_contact, back_populates="contacts")
+    interactions = relationship("Interaction", secondary=interaction_contact, back_populates="contacts")
 
     def __repr__(self):
         return f"<Contact(id={self.id}, name='{self.name}')>"
@@ -197,9 +182,7 @@ class Interaction(Base):
 
     # Relationships
     application = relationship("Application", back_populates="interactions")
-    contacts = relationship(
-        "Contact", secondary=interaction_contact, back_populates="interactions"
-    )
+    contacts = relationship("Contact", secondary=interaction_contact, back_populates="interactions")
 
     def __repr__(self):
         return f"<Interaction(id={self.id}, type='{self.type}')>"

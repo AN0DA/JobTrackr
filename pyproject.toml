@@ -67,7 +67,7 @@ select = [
     "T201",
     "UP",
 ]
-ignore = ["E501", "B008"]
+ignore = ["E501", "B008", "SIM117"]
 unfixable = ["B"]
 
 

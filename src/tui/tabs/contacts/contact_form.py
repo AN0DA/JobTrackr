@@ -1,11 +1,12 @@
-from textual.app import ComposeResult
-from textual.screen import Screen
-from textual.containers import Container, Vertical, Horizontal
-from textual.widgets import Input, Button, Label, TextArea, Select, Static
-from typing import Callable, Optional
+from collections.abc import Callable
 
-from src.services.contact_service import ContactService
+from textual.app import ComposeResult
+from textual.containers import Container, Horizontal, Vertical
+from textual.screen import Screen
+from textual.widgets import Button, Input, Label, Select, Static, TextArea
+
 from src.services.company_service import CompanyService
+from src.services.contact_service import ContactService
 
 
 class ContactForm(Screen):
@@ -15,7 +16,7 @@ class ContactForm(Screen):
         self,
         contact_id: str = None,
         readonly: bool = False,
-        on_saved: Optional[Callable] = None,
+        on_saved: Callable | None = None,
     ):
         """Initialize the form.
 
@@ -130,9 +131,7 @@ class ContactForm(Screen):
 
             # Set company if available
             if contact_data.get("company"):
-                self.query_one("#company-select", Select).value = str(
-                    contact_data["company"]["id"]
-                )
+                self.query_one("#company-select", Select).value = str(contact_data["company"]["id"])
 
         except Exception as e:
             self.app.sub_title = f"Error loading contact: {str(e)}"
@@ -150,7 +149,7 @@ class ContactForm(Screen):
         elif button_id == "new-company":
             from src.tui.tabs.companies.company_form import CompanyForm
 
-            def refresh_companies():
+            def refresh_companies() -> None:
                 self.load_companies()
 
             self.app.push_screen(CompanyForm(on_saved=refresh_companies))
