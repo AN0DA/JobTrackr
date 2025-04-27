@@ -1,4 +1,3 @@
-import enum
 from datetime import datetime
 
 from sqlalchemy import (
@@ -12,31 +11,8 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 
+from src.config import CompanyType
 from src.db.database import Base
-
-
-# Enums for application statuses and types
-class ApplicationStatus(enum.Enum):
-    SAVED = "SAVED"
-    APPLIED = "APPLIED"
-    PHONE_SCREEN = "PHONE_SCREEN"
-    INTERVIEW = "INTERVIEW"
-    TECHNICAL_INTERVIEW = "TECHNICAL_INTERVIEW"
-    OFFER = "OFFER"
-    ACCEPTED = "ACCEPTED"
-    REJECTED = "REJECTED"
-    WITHDRAWN = "WITHDRAWN"
-
-
-class InteractionType(enum.Enum):
-    NOTE = "NOTE"
-    LINKEDIN = "LINKEDIN"
-    EMAIL = "EMAIL"
-    PHONE_CALL = "PHONE_CALL"
-    INTERVIEW = "INTERVIEW"
-    OFFER = "OFFER"
-    FOLLOW_UP = "FOLLOW_UP"
-
 
 # Association tables for many-to-many relationships
 application_contact = Table(
@@ -54,16 +30,6 @@ interaction_contact = Table(
 )
 
 
-# Add this enum to the top near other enums
-class CompanyType(enum.Enum):
-    DIRECT_EMPLOYER = "DIRECT_EMPLOYER"  # Company that directly employs people
-    RECRUITER = "RECRUITER"  # Recruitment agency
-    STAFFING = "STAFFING"  # Staffing/contracting company
-    CLIENT = "CLIENT"  # Client company (for contractors)
-    OTHER = "OTHER"  # Other type
-
-
-# Add this new model for company relationships
 class CompanyRelationship(Base):
     __tablename__ = "company_relationships"
 
@@ -89,7 +55,6 @@ class CompanyRelationship(Base):
         return f"<CompanyRelationship(source={self.source_company_id}, target={self.target_company_id}, type='{self.relationship_type}')>"
 
 
-# Then update the Company class to include the type field and relationships
 class Company(Base):
     __tablename__ = "companies"
 
@@ -186,15 +151,6 @@ class Interaction(Base):
 
     def __repr__(self):
         return f"<Interaction(id={self.id}, type='{self.type}')>"
-
-
-class ChangeType(enum.Enum):
-    STATUS_CHANGE = "STATUS_CHANGE"
-    INTERACTION_ADDED = "INTERACTION_ADDED"
-    CONTACT_ADDED = "CONTACT_ADDED"
-    APPLICATION_UPDATED = "APPLICATION_UPDATED"
-    NOTE_ADDED = "NOTE_ADDED"
-    DOCUMENT_ADDED = "DOCUMENT_ADDED"
 
 
 class ChangeRecord(Base):

@@ -1,5 +1,3 @@
-"""Form for creating company relationships."""
-
 from collections.abc import Callable
 
 from textual.app import ComposeResult
@@ -7,6 +5,7 @@ from textual.containers import Container, Horizontal, Vertical
 from textual.screen import ModalScreen
 from textual.widgets import Button, Input, Label, Select, TextArea
 
+from src.config import COMPANY_RELATIONSHIP_TYPES
 from src.services.company_service import CompanyService
 
 
@@ -32,17 +31,6 @@ class CompanyRelationshipForm(ModalScreen):
         self.on_saved = on_saved
         self.companies = []
 
-        # Predefined relationship types
-        self.relationship_types = [
-            "recruits_for",
-            "parent_company",
-            "subsidiary",
-            "client",
-            "vendor",
-            "partner",
-            "other",
-        ]
-
     def compose(self) -> ComposeResult:
         with Container(id="relationship-form-container", classes="modal-container"):
             with Container(id="relationship-form", classes="modal-content"):
@@ -60,7 +48,7 @@ class CompanyRelationshipForm(ModalScreen):
                     # Relationship type
                     yield Label("Relationship Type:", classes="field-label")
                     yield Select(
-                        [(rt, rt) for rt in self.relationship_types],
+                        [(rt, rt) for rt in COMPANY_RELATIONSHIP_TYPES],
                         id="relationship-type",
                     )
 
@@ -89,12 +77,12 @@ class CompanyRelationshipForm(ModalScreen):
             service = CompanyService()
 
             # Get current company details for display
-            source_company = service.get_company(self.source_company_id)
+            source_company = service.get(self.source_company_id)
             if source_company:
                 self.query_one("#source-company", Input).value = source_company["name"]
 
             # Get all companies for target selection
-            self.companies = service.get_companies()
+            self.companies = service.get_all()
 
             # Remove the source company from options
             target_companies = [c for c in self.companies if c["id"] != self.source_company_id]
@@ -102,8 +90,8 @@ class CompanyRelationshipForm(ModalScreen):
             # Update target company dropdown
             target_select = self.query_one("#target-company", Select)
             target_select.clear()
-            for company in target_companies:
-                target_select.add_option(company["name"], str(company["id"]))
+            target_options = [(company["name"], str(company["id"])) for company in target_companies]
+            target_select.set_options(target_options)
 
         except Exception as e:
             self.app.sub_title = f"Error loading companies: {str(e)}"
@@ -155,22 +143,24 @@ class CompanyRelationshipForm(ModalScreen):
             service = CompanyService()
 
             relationship_type = self.query_one("#relationship-type", Select).value
-            target_company_id = int(self.query_one("#target-company", Select).value)
-            notes = self.query_one("#relationship-notes", TextArea).text
+            target_company_id_str = self.query_one("#target-company", Select).value
 
-            # Validate
+            # Validate inputs
             if not relationship_type:
                 self.app.sub_title = "Please select a relationship type"
                 return
 
-            if not target_company_id:
+            if not target_company_id_str:
                 self.app.sub_title = "Please select a target company"
                 return
 
+            target_company_id = int(target_company_id_str)
+            notes = self.query_one("#relationship-notes", TextArea).text
+
             # Create or update the relationship
             if self.relationship_id:
-                # Update logic would go here
-                pass
+                # Update logic would go here when implemented
+                self.app.sub_title = "Relationship update not yet implemented"
             else:
                 service.create_relationship(
                     source_id=self.source_company_id,
@@ -178,8 +168,7 @@ class CompanyRelationshipForm(ModalScreen):
                     relationship_type=relationship_type,
                     notes=notes,
                 )
-
-            self.app.sub_title = "Relationship saved successfully"
+                self.app.sub_title = "Relationship created successfully"
 
             # Run callback if provided
             if self.on_saved:

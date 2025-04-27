@@ -1,17 +1,16 @@
-"""Companies management screen for the Job Tracker TUI."""
-
 from textual.app import ComposeResult
 from textual.containers import Container, Horizontal, Vertical
-from textual.screen import ModalScreen
-from textual.widgets import Button, DataTable, Input, Label, Select, Static
+from textual.widgets import Button, DataTable, Input, Select, Static
 
-from src.db.models import CompanyType
+from src.config import CompanyType
 from src.services.company_service import CompanyService
 from src.tui.tabs.companies.company_detail import CompanyDetailScreen
 from src.tui.tabs.companies.company_form import CompanyForm
+from src.tui.widgets.confirmation_modal import ConfirmationModal
+from src.tui.widgets.list_view import ListView
 
 
-class CompaniesList(Static):
+class CompaniesList(ListView):
     """Companies listing and management screen."""
 
     BINDINGS = [
@@ -22,9 +21,16 @@ class CompaniesList(Static):
     ]
 
     def __init__(self):
-        super().__init__()
+        """Initialize the companies listing."""
+        columns = ["ID", "Name", "Industry", "Type", "Website", "Size"]
+        super().__init__(
+            service=CompanyService(),
+            columns=columns,
+            title="Companies",
+        )
         self.sort_column = "Name"
         self.sort_ascending = True
+        self.company_type_filter = None
 
     def compose(self) -> ComposeResult:
         """Compose the companies screen layout."""
@@ -36,7 +42,7 @@ class CompaniesList(Static):
                     with Vertical(classes="filter-section"):
                         yield Static("Type:", classes="filter-label")
                         yield Select(
-                            [(ct.value, ct.value) for ct in CompanyType] + [("All", "All")],
+                            self._get_company_type_options(),
                             value="All",
                             id="type-filter",
                             classes="filter-dropdown",
@@ -66,6 +72,12 @@ class CompaniesList(Static):
                     yield Button("Edit", id="edit-company", disabled=True)
                     yield Button("Delete", id="delete-company", variant="error", disabled=True)
 
+    def _get_company_type_options(self):
+        """Get options for the company type filter dropdown."""
+        options = [(ct.value, ct.value) for ct in CompanyType]
+        options.insert(0, ("All", "All"))
+        return options
+
     def on_mount(self) -> None:
         """Set up the screen when mounted."""
         table = self.query_one("#companies-table", DataTable)
@@ -89,10 +101,11 @@ class CompaniesList(Static):
     def load_companies(self, company_type: str = None) -> None:
         """Load companies from the database."""
         self.update_status("Loading companies...")
+        self.company_type_filter = company_type
 
         try:
             service = CompanyService()
-            companies = service.get_companies()
+            companies = service.get_all()
 
             # Apply type filter if specified
             if company_type and company_type != "All":
@@ -106,6 +119,15 @@ class CompaniesList(Static):
 
             # Apply current sort settings
             self._sort_companies(companies_list)
+
+            if not companies_list:
+                # Handle empty state
+                table.add_column_span = len(table.columns)
+                self.update_status("No companies found")
+
+                # Disable action buttons
+                self._disable_action_buttons()
+                return
 
             for company in companies_list:
                 table.add_row(
@@ -141,16 +163,16 @@ class CompaniesList(Static):
             self.app.push_screen(CompanyForm(on_saved=self.load_companies))
 
         elif button_id == "view-company" and table.cursor_row is not None:
-            app_id = table.get_row_at(table.cursor_row)[0]
-            self.app.push_screen(CompanyDetailScreen(int(app_id)))
+            company_id = table.get_row_at(table.cursor_row)[0]
+            self.app.push_screen(CompanyDetailScreen(int(company_id)))
 
         elif button_id == "edit-company" and table.cursor_row is not None:
-            app_id = table.get_row_at(table.cursor_row)[0]
-            self.app.push_screen(CompanyForm(company_id=app_id, on_saved=self.load_companies))
+            company_id = table.get_row_at(table.cursor_row)[0]
+            self.app.push_screen(CompanyForm(company_id=company_id, on_saved=self.load_companies))
 
         elif button_id == "delete-company" and table.cursor_row is not None:
-            app_id = table.get_row_at(table.cursor_row)[0]
-            self.app.push_screen(DeleteConfirmationModal(app_id, self.load_companies))
+            company_id = table.get_row_at(table.cursor_row)[0]
+            self._confirm_delete_company(company_id)
 
         elif button_id == "search-button":
             search_term = self.query_one("#company-search", Input).value
@@ -159,14 +181,14 @@ class CompaniesList(Static):
     def search_companies(self, search_term: str) -> None:
         """Search companies by name or industry."""
         if not search_term:
-            self.load_companies()
+            self.load_companies(self.company_type_filter)
             return
 
         self.update_status(f"Searching for '{search_term}'...")
 
         try:
             service = CompanyService()
-            all_companies = service.get_companies()
+            all_companies = service.get_all()
 
             # Simple case-insensitive search
             search_term = search_term.lower()
@@ -178,8 +200,18 @@ class CompaniesList(Static):
                 or (c.get("notes") and search_term in c.get("notes", "").lower())
             ]
 
+            # Apply type filter if active
+            if self.company_type_filter and self.company_type_filter != "All":
+                filtered_companies = [c for c in filtered_companies if c.get("type") == self.company_type_filter]
+
             table = self.query_one("#companies-table", DataTable)
             table.clear()
+
+            if not filtered_companies:
+                # Handle empty search results
+                self.update_status(f"No companies found matching '{search_term}'")
+                self._disable_action_buttons()
+                return
 
             for company in filtered_companies:
                 table.add_row(
@@ -200,6 +232,16 @@ class CompaniesList(Static):
         """Update status message in the footer."""
         self.app.sub_title = message
 
+    def _disable_action_buttons(self) -> None:
+        """Disable all action buttons."""
+        view_btn = self.query_one("#view-company", Button)
+        edit_btn = self.query_one("#edit-company", Button)
+        delete_btn = self.query_one("#delete-company", Button)
+
+        view_btn.disabled = True
+        edit_btn.disabled = True
+        delete_btn.disabled = True
+
     def on_data_table_row_highlighted(self, event: DataTable.RowHighlighted) -> None:
         """Enable buttons when a row is highlighted."""
         view_btn = self.query_one("#view-company", Button)
@@ -214,7 +256,7 @@ class CompaniesList(Static):
         """Open the company detail view when a row is selected."""
         table = self.query_one("#companies-table", DataTable)
         company_id = table.get_row(event.row_key)[0]
-        self.app.push_screen(CompanyDetailScreen(int(company_id)))
+        self.app.push_screen(CompanyDetailScreen(int(company_id), on_updated=self.load_companies))
 
     def _sort_companies(self, companies):
         """Sort companies based on current sort settings."""
@@ -234,6 +276,38 @@ class CompaniesList(Static):
         # Sort companies
         companies.sort(key=sort_key, reverse=not self.sort_ascending)
 
+    def _confirm_delete_company(self, company_id: str) -> None:
+        """Show confirmation dialog for company deletion."""
+
+        def do_delete():
+            try:
+                service = CompanyService()
+                success = service.delete(int(company_id))
+
+                if success:
+                    self.app.sub_title = f"Successfully deleted company #{company_id}"
+                    self.load_companies(self.company_type_filter)
+                else:
+                    self.app.sub_title = f"Company #{company_id} not found"
+            except ValueError as e:
+                self.app.sub_title = str(e)
+            except Exception as e:
+                self.app.sub_title = f"Error deleting company: {str(e)}"
+
+        self.app.push_screen(
+            ConfirmationModal(
+                title="Confirm Deletion",
+                message=(
+                    f"Are you sure you want to delete company #{company_id}?\n\n"
+                    "This will permanently remove the company and all its relationships."
+                ),
+                confirm_text="Delete",
+                cancel_text="Cancel",
+                on_confirm=do_delete,
+                dangerous=True,
+            )
+        )
+
     def action_add_company(self) -> None:
         """Open the company creation form."""
         self.app.push_screen(CompanyForm(on_saved=self.load_companies))
@@ -243,7 +317,7 @@ class CompaniesList(Static):
         table = self.query_one("#companies-table", DataTable)
         if table.cursor_row is not None:
             company_id = table.get_row_at(table.cursor_row)[0]
-            self.app.push_screen(DeleteConfirmationModal(company_id, self.load_companies))
+            self._confirm_delete_company(company_id)
 
     def action_edit_company(self) -> None:
         """Edit the selected company."""
@@ -258,53 +332,3 @@ class CompaniesList(Static):
         if table.cursor_row is not None:
             company_id = table.get_row_at(table.cursor_row)[0]
             self.app.push_screen(CompanyDetailScreen(int(company_id)))
-
-
-class DeleteConfirmationModal(ModalScreen):
-    """Confirmation dialog for deleting companies."""
-
-    def __init__(self, company_id: str, on_delete=None):
-        super().__init__()
-        self.company_id = company_id
-        self.on_delete = on_delete
-
-    def compose(self) -> ComposeResult:
-        yield Container(
-            Label(f"Are you sure you want to delete company #{self.company_id}?"),
-            Label(
-                "This will permanently remove the company and all its relationships.",
-                classes="warning-text",
-            ),
-            Horizontal(
-                Button("Cancel", variant="primary", id="cancel"),
-                Button("Delete", variant="error", id="confirm"),
-                id="buttons",
-            ),
-            id="dialog",
-        )
-
-    def on_button_pressed(self, event: Button.Pressed) -> None:
-        if event.button.id == "cancel":
-            self.app.pop_screen()
-        elif event.button.id == "confirm":
-            self.delete_company()
-
-    def delete_company(self) -> None:
-        try:
-            service = CompanyService()
-            success = service.delete_company(int(self.company_id))
-
-            if success:
-                self.app.sub_title = f"Successfully deleted company #{self.company_id}"
-            else:
-                self.app.sub_title = f"Company #{self.company_id} not found"
-
-            self.app.pop_screen()
-
-            # Run callback after deletion
-            if self.on_delete:
-                self.on_delete()
-
-        except Exception as e:
-            self.app.sub_title = f"Error deleting company: {str(e)}"
-            self.app.pop_screen()

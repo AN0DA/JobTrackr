@@ -87,7 +87,7 @@ class ContactForm(Screen):
         """Load companies for the dropdown."""
         try:
             service = CompanyService()
-            self.companies = service.get_companies()
+            self.companies = service.get_all()
 
             company_values = [(company["name"], str(company["id"])) for company in self.companies]
             company_values.append(("No Company", ""))
@@ -102,7 +102,7 @@ class ContactForm(Screen):
         """Load contact data for editing."""
         try:
             service = ContactService()
-            contact_data = service.get_contact(int(self.contact_id))
+            contact_data = service.get(int(self.contact_id))
 
             if not contact_data:
                 self.app.sub_title = f"Contact {self.contact_id} not found"
@@ -153,10 +153,7 @@ class ContactForm(Screen):
         elif button_id == "new-company":
             from src.tui.tabs.companies.company_form import CompanyForm
 
-            def refresh_companies() -> None:
-                self.load_companies()
-
-            self.app.push_screen(CompanyForm(on_saved=refresh_companies))
+            self.app.push_screen(CompanyForm(on_saved=self.load_companies))
 
     def save_contact(self) -> None:
         """Save the contact data."""
@@ -188,11 +185,11 @@ class ContactForm(Screen):
 
             if self.contact_id:
                 # Update existing contact
-                service.update_contact(int(self.contact_id), contact_data)
+                service.update(int(self.contact_id), contact_data)
                 self.app.sub_title = "Contact updated successfully"
             else:
                 # Create new contact
-                service.create_contact(contact_data)
+                service.create(contact_data)
                 self.app.sub_title = "Contact created successfully"
 
             # Call the on_saved callback if provided

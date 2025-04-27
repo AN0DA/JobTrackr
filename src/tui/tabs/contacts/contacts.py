@@ -1,17 +1,16 @@
-"""Contacts management screen for the Job Tracker TUI."""
-
 from textual.app import ComposeResult
 from textual.containers import Container, Horizontal, Vertical
-from textual.screen import ModalScreen
-from textual.widgets import Button, DataTable, Input, Label, Select, Static
+from textual.widgets import Button, DataTable, Input, Select, Static
 
 from src.services.company_service import CompanyService
 from src.services.contact_service import ContactService
 from src.tui.tabs.contacts.contact_detail import ContactDetailScreen
 from src.tui.tabs.contacts.contact_form import ContactForm
+from src.tui.widgets.confirmation_modal import ConfirmationModal
+from src.tui.widgets.list_view import ListView
 
 
-class ContactsList(Static):
+class ContactsList(ListView):
     """Contacts listing and management screen."""
 
     BINDINGS = [
@@ -22,7 +21,13 @@ class ContactsList(Static):
     ]
 
     def __init__(self) -> None:
-        super().__init__()
+        """Initialize the contacts listing."""
+        columns = ["ID", "Name", "Title", "Company", "Email", "Phone"]
+        super().__init__(
+            service=ContactService(),
+            columns=columns,
+            title="Contacts",
+        )
         self.sort_column = "Name"
         self.sort_ascending = True
         self.companies = []
@@ -76,6 +81,7 @@ class ContactsList(Static):
         )
         table.cursor_type = "row"
         table.can_focus = True
+        table.zebra_stripes = True
 
         # Enable sorting
         table.sort_column_click = True
@@ -83,8 +89,7 @@ class ContactsList(Static):
         # Load companies for filtering first, before trying to load contacts
         try:
             self.load_companies()
-            # Explicitly load contacts even if companies aren't available
-            self.load_contacts()
+            # Contacts will be loaded after companies are loaded
         except Exception as e:
             self.update_status(f"Error during mount: {str(e)}")
 
@@ -92,10 +97,12 @@ class ContactsList(Static):
         """Load companies for filtering."""
         try:
             service = CompanyService()
-            self.companies = service.get_companies()
+            self.companies = service.get_all()
 
+            # Create options list
             company_values = [(company["name"], str(company["id"])) for company in self.companies]
-            company_values.append(("No Company", ""))
+            company_values.insert(0, ("All Companies", "All"))
+            company_values.append(("No Company", "None"))
 
             company_select = self.query_one("#company-filter", Select)
             company_select.set_options(company_values)
@@ -111,14 +118,14 @@ class ContactsList(Static):
     def load_contacts(self, company_id: str = None) -> None:
         """Load contacts from the database."""
         self.update_status("Loading contacts...")
+        self.company_filter = company_id
 
         try:
             service = ContactService()
 
-            # Convert company_id to int if not None or "All"
-            filter_company_id = None
-            if company_id and company_id != "All":
-                filter_company_id = int(company_id)
+            filter_company_id = (
+                None if not company_id or company_id == "All" or company_id == "None" else int(company_id)
+            )
 
             contacts = service.get_contacts(company_id=filter_company_id)
 
@@ -127,6 +134,15 @@ class ContactsList(Static):
 
             # Convert to list for sorting
             contacts_list = list(contacts)
+
+            if not contacts_list:
+                # Handle empty state
+                table.add_column_span = len(table.columns)
+                self.update_status("No contacts found")
+
+                # Disable action buttons
+                self._disable_action_buttons()
+                return
 
             # Apply current sort settings
             self._sort_contacts(contacts_list)
@@ -149,7 +165,6 @@ class ContactsList(Static):
         """Handle company filter changes."""
         if event.select.id == "company-filter":
             company_id = event.value
-            self.company_filter = company_id
             self.load_contacts(company_id)
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
@@ -175,7 +190,7 @@ class ContactsList(Static):
 
         elif button_id == "delete-contact" and table.cursor_row is not None:
             contact_id = table.get_row_at(table.cursor_row)[0]
-            self.app.push_screen(DeleteConfirmationModal(contact_id, self.load_contacts))
+            self._confirm_delete_contact(contact_id)
 
         elif button_id == "search-button":
             search_term = self.query_one("#contact-search", Input).value
@@ -195,11 +210,21 @@ class ContactsList(Static):
 
             # Apply company filter if active
             if self.company_filter and self.company_filter != "All":
-                filter_id = int(self.company_filter)
-                results = [c for c in results if c.get("company", {}).get("id") == filter_id]
+                if self.company_filter == "None":
+                    # Filter for contacts without company
+                    results = [c for c in results if not c.get("company")]
+                else:
+                    filter_id = int(self.company_filter)
+                    results = [c for c in results if c.get("company", {}).get("id") == filter_id]
 
             table = self.query_one("#contacts-table", DataTable)
             table.clear()
+
+            if not results:
+                # Handle empty search results
+                self.update_status(f"No contacts found matching '{search_term}'")
+                self._disable_action_buttons()
+                return
 
             for contact in results:
                 table.add_row(
@@ -220,6 +245,16 @@ class ContactsList(Static):
         """Update status message in the footer."""
         self.app.sub_title = message
 
+    def _disable_action_buttons(self) -> None:
+        """Disable all action buttons."""
+        view_btn = self.query_one("#view-contact", Button)
+        edit_btn = self.query_one("#edit-contact", Button)
+        delete_btn = self.query_one("#delete-contact", Button)
+
+        view_btn.disabled = True
+        edit_btn.disabled = True
+        delete_btn.disabled = True
+
     def on_data_table_row_highlighted(self, event: DataTable.RowHighlighted) -> None:
         """Enable buttons when a row is highlighted."""
         view_btn = self.query_one("#view-contact", Button)
@@ -233,10 +268,8 @@ class ContactsList(Static):
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
         """Open the contact detail view when a row is selected."""
         table = self.query_one("#contacts-table", DataTable)
-        row = table.get_row_at(event.cursor_row)
-        if row:
-            contact_id = row[0]
-            self.app.push_screen(ContactDetailScreen(int(contact_id)))
+        contact_id = int(table.get_row(event.row_key)[0])
+        self.app.push_screen(ContactDetailScreen(contact_id, on_updated=self.load_contacts))
 
     def _sort_contacts(self, contacts):
         """Sort contacts based on current sort settings."""
@@ -256,6 +289,36 @@ class ContactsList(Static):
         # Sort contacts
         contacts.sort(key=sort_key, reverse=not self.sort_ascending)
 
+    def _confirm_delete_contact(self, contact_id: str) -> None:
+        """Show confirmation dialog for contact deletion."""
+
+        def do_delete():
+            try:
+                service = ContactService()
+                success = service.delete(int(contact_id))
+
+                if success:
+                    self.app.sub_title = f"Successfully deleted contact #{contact_id}"
+                    self.load_contacts(self.company_filter)
+                else:
+                    self.app.sub_title = f"Contact #{contact_id} not found"
+            except Exception as e:
+                self.app.sub_title = f"Error deleting contact: {str(e)}"
+
+        self.app.push_screen(
+            ConfirmationModal(
+                title="Confirm Deletion",
+                message=(
+                    f"Are you sure you want to delete contact #{contact_id}?\n\n"
+                    "This will permanently remove the contact from the database."
+                ),
+                confirm_text="Delete",
+                cancel_text="Cancel",
+                on_confirm=do_delete,
+                dangerous=True,
+            )
+        )
+
     def action_add_contact(self) -> None:
         """Open the contact creation form."""
         self.app.push_screen(ContactForm(on_saved=self.load_contacts))
@@ -265,7 +328,7 @@ class ContactsList(Static):
         table = self.query_one("#contacts-table", DataTable)
         if table.cursor_row is not None:
             contact_id = table.get_row_at(table.cursor_row)[0]
-            self.app.push_screen(DeleteConfirmationModal(contact_id, self.load_contacts))
+            self._confirm_delete_contact(contact_id)
 
     def action_edit_contact(self) -> None:
         """Edit the selected contact."""
@@ -280,53 +343,3 @@ class ContactsList(Static):
         if table.cursor_row is not None:
             contact_id = table.get_row_at(table.cursor_row)[0]
             self.app.push_screen(ContactDetailScreen(int(contact_id)))
-
-
-class DeleteConfirmationModal(ModalScreen):
-    """Confirmation dialog for deleting contacts."""
-
-    def __init__(self, contact_id: str, on_delete=None):
-        super().__init__()
-        self.contact_id = contact_id
-        self.on_delete = on_delete
-
-    def compose(self) -> ComposeResult:
-        yield Container(
-            Label(f"Are you sure you want to delete contact #{self.contact_id}?"),
-            Label(
-                "This will permanently remove the contact from the database.",
-                classes="warning-text",
-            ),
-            Horizontal(
-                Button("Cancel", variant="primary", id="cancel"),
-                Button("Delete", variant="error", id="confirm"),
-                id="buttons",
-            ),
-            id="dialog",
-        )
-
-    def on_button_pressed(self, event: Button.Pressed) -> None:
-        if event.button.id == "cancel":
-            self.app.pop_screen()
-        elif event.button.id == "confirm":
-            self.delete_contact()
-
-    def delete_contact(self) -> None:
-        try:
-            service = ContactService()
-            success = service.delete_contact(int(self.contact_id))
-
-            if success:
-                self.app.sub_title = f"Successfully deleted contact #{self.contact_id}"
-            else:
-                self.app.sub_title = f"Contact #{self.contact_id} not found"
-
-            self.app.pop_screen()
-
-            # Run callback after deletion
-            if self.on_delete:
-                self.on_delete()
-
-        except Exception as e:
-            self.app.sub_title = f"Error deleting contact: {str(e)}"
-            self.app.pop_screen()

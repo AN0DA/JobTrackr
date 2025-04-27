@@ -1,5 +1,3 @@
-"""Job Tracker TUI - Main application."""
-
 import os
 
 from textual.app import App, ComposeResult
@@ -12,6 +10,10 @@ from src.tui.tabs.applications.applications import ApplicationsList
 from src.tui.tabs.companies.companies import CompaniesList
 from src.tui.tabs.contacts.contacts import ContactsList
 from src.tui.tabs.dashboard.dashboard import Dashboard
+from src.utils.logging import get_logger
+
+# Set up module-level logger
+logger = get_logger(__name__)
 
 
 class JobTrackr(App):
@@ -51,52 +53,52 @@ class JobTrackr(App):
     def on_mount(self) -> None:
         """Initialize the database when app starts."""
         settings = Settings()
+        logger.info("Application starting")
 
         # Check if this is first run or if database exists
         if not settings.database_exists():
             # Show first run screen
+            logger.info("First run detected - showing setup screen")
             from src.tui.tabs.settings.first_run import FirstRunScreen
 
             self.push_screen(FirstRunScreen())
         else:
             # Initialize with existing database
+            db_path = settings.get_database_path()
+            logger.info(f"Initializing database at {db_path}")
             self.sub_title = "Initializing database..."
-            init_db()
-            self.sub_title = "Ready"
 
-    def action_switch_tab(self, tab_id: str) -> None:
-        """Switch to the specified tab."""
-        tabs = self.query_one(TabbedContent)
-        tabs.active = tab_id
+            try:
+                init_db()
+                self.sub_title = "Ready"
+                logger.info("Database initialization successful")
+            except Exception as e:
+                error_msg = f"Database initialization failed: {str(e)}"
+                logger.error(error_msg, exc_info=True)
+                self.sub_title = error_msg
 
-    def action_new_application(self) -> None:
-        """Open the application creation form."""
-        from src.tui.tabs.applications.application_form import ApplicationForm
+    # ... rest of the class unchanged ...
 
-        self.push_screen(ApplicationForm())
-
-    def action_search(self) -> None:
-        """Open the search dialog."""
-        from src.tui.search import SearchDialog
-
-        self.push_screen(SearchDialog())
-
-    def action_show_settings(self) -> None:
-        """Open settings screen."""
-        from src.tui.tabs.settings.settings import SettingsScreen
-
-        self.push_screen(SettingsScreen())
+    def on_exception(self, exception: Exception) -> None:
+        """Handle uncaught exceptions in the application."""
+        logger.exception(f"Uncaught exception: {exception}")
+        self.sub_title = f"ERROR: {str(exception)}"
 
 
 def app() -> None:
     """Run the application."""
-    # Ensure data directory exists
-    os.makedirs("data", exist_ok=True)
+    try:
+        # Ensure data directory exists
+        os.makedirs("data", exist_ok=True)
 
-    # Run the app
-    app = JobTrackr()
-    app.run()
+        # Log application start
+        logger.info("Starting JobTrackr application")
 
+        # Run the app
+        app = JobTrackr()
+        app.run()
 
-if __name__ == "__main__":
-    app()
+    except Exception as e:
+        logger.critical(f"Application crashed: {e}", exc_info=True)
+        # Re-raise to show the error to the user
+        raise

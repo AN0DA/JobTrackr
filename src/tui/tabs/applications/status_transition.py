@@ -1,5 +1,4 @@
-"""Dialog for transitioning application status."""
-
+from collections.abc import Callable
 from datetime import datetime
 
 from textual.app import ComposeResult
@@ -7,17 +6,25 @@ from textual.containers import Container, Horizontal, Vertical
 from textual.screen import ModalScreen
 from textual.widgets import Button, Label, Select, TextArea
 
-from src.db.models import ApplicationStatus
+from src.config import ApplicationStatus
 from src.services.application_service import ApplicationService
 
 
 class StatusTransitionDialog(ModalScreen):
     """Modal dialog for changing application status."""
 
-    def __init__(self, application_id, current_status):
+    def __init__(self, application_id: int, current_status: str, on_updated: Callable | None = None):
+        """Initialize status transition dialog.
+
+        Args:
+            application_id: ID of the application to modify
+            current_status: Current status of the application
+            on_updated: Callback function to run when status is updated
+        """
         super().__init__()
         self.application_id = application_id
         self.current_status = current_status
+        self.on_updated = on_updated
 
     def compose(self) -> ComposeResult:
         with Container(id="transition-dialog"):
@@ -71,7 +78,7 @@ class StatusTransitionDialog(ModalScreen):
 
             # Update application status
             service = ApplicationService()
-            service.update_application(self.application_id, {"status": new_status})
+            service.update(self.application_id, {"status": new_status})
 
             # Create interaction record for the status change
             if note:
@@ -85,14 +92,12 @@ class StatusTransitionDialog(ModalScreen):
                 )
 
             self.app.sub_title = f"Status updated to {new_status}"
+
+            # Call the on_updated callback if provided
+            if self.on_updated:
+                self.on_updated()
+
             self.app.pop_screen()
-
-            # Refresh applications list if visible
-            from src.tui.tabs.applications.applications import ApplicationsList
-
-            app_list = self.app.query_one(ApplicationsList)
-            if app_list:
-                app_list.load_applications()
 
         except Exception as e:
             self.app.sub_title = f"Error updating status: {str(e)}"

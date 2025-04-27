@@ -1,3 +1,6 @@
+"""Application detail view screen."""
+
+from collections.abc import Callable
 from datetime import datetime
 from typing import Any
 
@@ -19,11 +22,17 @@ from src.tui.tabs.applications.interaction_form import InteractionForm
 class ApplicationDetail(Screen):
     """Detailed view of an application showing history and interactions."""
 
-    def __init__(self, app_id: int):
-        """Initialize the application detail screen."""
+    def __init__(self, app_id: int, on_updated: Callable | None = None):
+        """Initialize the application detail screen.
+
+        Args:
+            app_id: The ID of the application to display
+            on_updated: Callback function to run when application is updated
+        """
         super().__init__()
         self.app_id = app_id
         self.application_data = None
+        self.on_updated = on_updated
 
     def compose(self) -> ComposeResult:
         """Compose the screen layout."""
@@ -114,7 +123,7 @@ class ApplicationDetail(Screen):
         try:
             # Load basic application data
             app_service = ApplicationService()
-            self.application_data = app_service.get_application(self.app_id)
+            self.application_data = app_service.get(self.app_id)
 
             if not self.application_data:
                 self.app.sub_title = f"Application {self.app_id} not found"
@@ -241,21 +250,26 @@ class ApplicationDetail(Screen):
         # Action buttons
         if button_id == "back-button":
             self.app.pop_screen()
+            # Call the on_updated callback if provided
+            if self.on_updated:
+                self.on_updated()
 
         elif button_id == "edit-application":
             from src.tui.tabs.applications.application_form import ApplicationForm
 
-            self.app.push_screen(ApplicationForm(app_id=self.app_id))
+            self.app.push_screen(ApplicationForm(app_id=self.app_id, on_saved=self.load_application_data))
 
         elif button_id == "change-status":
-            from src.tui.tabs.applications.status_transition import (
-                StatusTransitionDialog,
+            from src.tui.tabs.applications.status_transition import StatusTransitionDialog
+
+            self.app.push_screen(
+                StatusTransitionDialog(
+                    self.app_id, self.application_data["status"], on_updated=self.load_application_data
+                )
             )
 
-            self.app.push_screen(StatusTransitionDialog(self.app_id, self.application_data["status"]))
-
         elif button_id == "add-interaction":
-            self.app.push_screen(InteractionForm(application_id=self.app_id))
+            self.app.push_screen(InteractionForm(application_id=self.app_id, on_saved=self.load_application_data))
 
     def _format_change(self, change: dict[str, Any]) -> str:
         """Format change record details for display."""

@@ -1,4 +1,4 @@
-"""Detail screen for viewing a company and its relationships."""
+from collections.abc import Callable
 
 from textual.app import ComposeResult
 from textual.containers import Container, Grid, Horizontal, Vertical
@@ -8,15 +8,23 @@ from textual.widgets import Button, DataTable, Label, Static, TabbedContent, Tab
 from src.services.application_service import ApplicationService
 from src.services.company_service import CompanyService
 from src.tui.tabs.companies.relationship_form import CompanyRelationshipForm
+from src.tui.widgets.confirmation_modal import ConfirmationModal
 
 
 class CompanyDetailScreen(Screen):
     """Screen for viewing details about a company."""
 
-    def __init__(self, company_id: int):
+    def __init__(self, company_id: int, on_updated: Callable | None = None):
+        """Initialize company detail screen.
+
+        Args:
+            company_id: ID of company to display
+            on_updated: Optional callback when company is updated
+        """
         super().__init__()
         self.company_id = company_id
         self.company_data = None
+        self.on_updated = on_updated
 
     def compose(self) -> ComposeResult:
         with Container(id="company-detail"):
@@ -82,7 +90,7 @@ class CompanyDetailScreen(Screen):
         try:
             # Load company details
             service = CompanyService()
-            self.company_data = service.get_company(self.company_id)
+            self.company_data = service.get(self.company_id)
 
             if not self.company_data:
                 self.app.sub_title = f"Company {self.company_id} not found"
@@ -92,7 +100,7 @@ class CompanyDetailScreen(Screen):
             self.query_one("#company-name", Static).update(self.company_data.get("name", "Unknown"))
 
             # Make sure company type is a string
-            company_type = self.company_data.get("company_type", "")
+            company_type = self.company_data.get("type", "")
             if company_type is None:
                 company_type = "DIRECT_EMPLOYER"
             self.query_one("#company-type", Static).update(f"Type: {company_type}")
@@ -147,7 +155,7 @@ class CompanyDetailScreen(Screen):
                 direction = "→" if rel["direction"] == "outgoing" else "←"
                 table.add_row(
                     rel["company_name"],
-                    rel["company_type"],
+                    rel.get("company_type", ""),
                     rel["relationship_type"],
                     direction,
                     "Edit | Delete",
@@ -187,26 +195,50 @@ class CompanyDetailScreen(Screen):
 
         if button_id == "back-button":
             self.app.pop_screen()
+            # Call the on_updated callback if provided
+            if self.on_updated:
+                self.on_updated()
 
         elif button_id == "edit-company":
             from src.tui.tabs.companies.company_form import CompanyForm
 
-            def refresh_after_edit() -> None:
-                self.load_company_data()
-
-            self.app.push_screen(CompanyForm(company_id=str(self.company_id), on_saved=refresh_after_edit))
+            self.app.push_screen(CompanyForm(company_id=str(self.company_id), on_saved=self.load_company_data))
 
         elif button_id == "add-relationship":
             self.app.push_screen(
                 CompanyRelationshipForm(source_company_id=self.company_id, on_saved=self.load_relationships)
             )
 
+    def _confirm_delete_relationship(self, relationship_id: str) -> None:
+        """Show confirmation dialog for relationship deletion."""
+
+        def do_delete():
+            try:
+                # This would need a delete_relationship method in the company service
+                # For now it's just a placeholder
+                self.app.sub_title = "Relationship deletion not implemented yet"
+                self.load_relationships()
+            except Exception as e:
+                self.app.sub_title = f"Error deleting relationship: {str(e)}"
+
+        self.app.push_screen(
+            ConfirmationModal(
+                title="Confirm Deletion",
+                message="Are you sure you want to delete this relationship?",
+                confirm_text="Delete",
+                cancel_text="Cancel",
+                on_confirm=do_delete,
+                dangerous=True,
+            )
+        )
+
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
         """Handle row selection in tables."""
         table_id = event.data_table.id
 
         if table_id == "relationships-table":
-            # Handle relationship selection - could open edit dialog
+            # Handle relationship selection - placeholder for future implementation
+            # For full implementation, we would get the relationship ID and show actions
             pass
 
         elif table_id == "applications-table":
@@ -216,4 +248,4 @@ class CompanyDetailScreen(Screen):
             row = event.data_table.get_row(event.row_key)
             if row[0] != "No applications found":
                 app_id = int(row[0])
-                self.app.push_screen(ApplicationDetail(app_id))
+                self.app.push_screen(ApplicationDetail(app_id, on_updated=self.load_applications))

@@ -1,7 +1,9 @@
+from collections.abc import Callable
+
 from textual.app import ComposeResult
 from textual.containers import Container, Grid, Horizontal, Vertical
 from textual.screen import Screen
-from textual.widgets import Button, DataTable, Header, Label, Static
+from textual.widgets import Button, DataTable, Label, Static
 
 from src.services.contact_service import ContactService
 
@@ -9,14 +11,19 @@ from src.services.contact_service import ContactService
 class ContactDetailScreen(Screen):
     """Screen for viewing details about a contact."""
 
-    def __init__(self, contact_id: int):
+    def __init__(self, contact_id: int, on_updated: Callable | None = None):
+        """Initialize the contact detail screen.
+
+        Args:
+            contact_id: ID of the contact to display
+            on_updated: Callback function to run when contact is updated
+        """
         super().__init__()
         self.contact_id = contact_id
         self.contact_data = None
+        self.on_updated = on_updated
 
     def compose(self) -> ComposeResult:
-        yield Header()
-
         with Container(id="contact-detail"):
             with Horizontal(id="contact-header"):
                 with Vertical(id="contact-identity"):
@@ -72,7 +79,7 @@ class ContactDetailScreen(Screen):
         try:
             # Load contact details
             service = ContactService()
-            self.contact_data = service.get_contact(self.contact_id)
+            self.contact_data = service.get(self.contact_id)
 
             if not self.contact_data:
                 self.app.sub_title = f"Contact {self.contact_id} not found"
@@ -160,16 +167,15 @@ class ContactDetailScreen(Screen):
 
         if button_id == "back-button":
             self.app.pop_screen()
+            # Call the on_updated callback if provided
+            if self.on_updated:
+                self.on_updated()
 
         elif button_id == "edit-contact":
             from src.tui.tabs.contacts.contact_form import ContactForm
 
-            def refresh_after_edit() -> None:
-                self.load_contact_data()
-
-            self.app.push_screen(ContactForm(contact_id=str(self.contact_id), on_saved=refresh_after_edit))
+            self.app.push_screen(ContactForm(contact_id=str(self.contact_id), on_saved=self.load_contact_data))
 
         elif button_id == "add-to-application":
-            # This would open a dialog to add the contact to an application
-            # Not implemented in this example
-            self.app.sub_title = "This feature is not yet implemented"
+            # In the future, this would open a dialog to add the contact to an application
+            self.app.sub_title = "Adding to application not implemented yet"

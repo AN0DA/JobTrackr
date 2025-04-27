@@ -3,46 +3,109 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import desc, func, or_
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import Session, joinedload
 
+from src.config import ApplicationStatus, ChangeType
 from src.db.database import get_session
-from src.db.models import (
-    Application,
-    ApplicationStatus,
-    ChangeType,
-    Company,
-)
+from src.db.models import Application, Company
+from src.services.base_service import BaseService
 from src.services.change_record_service import ChangeRecordService
 
 logger = logging.getLogger(__name__)
 
 
-class ApplicationService:
+class ApplicationService(BaseService):
     """Service for application-related operations."""
 
-    def get_application(self, _id: int) -> dict[str, Any] | None:
-        """Get a specific application by ID."""
-        session = get_session()
-        try:
-            app = session.query(Application).filter(Application.id == _id).first()
-            if not app:
-                return None
+    model_class = Application
+    entity_name = "application"
 
-            return self._application_to_dict(app)
-        except Exception as e:
-            logger.error(f"Error fetching application {_id}: {e}")
-            raise
-        finally:
-            session.close()
+    def _create_entity_from_dict(self, data: dict[str, Any], session: Session) -> Application:
+        """Create an Application object from a dictionary."""
+        # Handle date conversion if needed
+        applied_date = data["applied_date"]
+        if isinstance(applied_date, str):
+            applied_date = datetime.fromisoformat(applied_date)
 
-    def get_applications(
-        self,
-        status: str | None = None,
-        offset: int = 0,
-        limit: int = 10,
-        sort_by: str = "applied_date",
-        sort_desc: bool = True,
-    ) -> list[dict[str, Any]]:
+        return Application(
+            job_title=data["job_title"],
+            position=data["position"],
+            location=data.get("location"),
+            salary=data.get("salary"),
+            status=data["status"],
+            applied_date=applied_date,
+            link=data.get("link"),
+            description=data.get("description"),
+            notes=data.get("notes"),
+            company_id=data["company_id"],
+        )
+
+    def _update_entity_from_dict(self, app: Application, data: dict[str, Any], session: Session) -> None:
+        """Update an Application object from a dictionary."""
+        # Track changes for important fields
+        change_records = []
+
+        # Check for status change
+        if "status" in data and data["status"] != app.status:
+            change_records.append(
+                {
+                    "application_id": app.id,
+                    "change_type": ChangeType.STATUS_CHANGE.value,
+                    "old_value": app.status,
+                    "new_value": data["status"],
+                    "notes": f"Status changed from {app.status} to {data['status']}",
+                }
+            )
+
+        # Update fields
+        for key, value in data.items():
+            if hasattr(app, key):
+                # Special case for applied_date
+                if key == "applied_date" and isinstance(value, str):
+                    setattr(app, key, datetime.fromisoformat(value))
+                else:
+                    setattr(app, key, value)
+
+        # Record changes after session is committed
+        self._record_changes(app.id, change_records)
+
+    def _record_changes(self, app_id: int, change_records: list[dict[str, Any]]) -> None:
+        """Record changes to the application."""
+        change_record_service = ChangeRecordService()
+        for record in change_records:
+            change_record_service.create(record)
+
+    def _entity_to_dict(self, app: Application, include_details: bool = True) -> dict[str, Any]:
+        """Convert an Application object to a dictionary."""
+        result = {
+            "id": app.id,
+            "job_title": app.job_title,
+            "position": app.position,
+            "status": app.status,
+            "applied_date": app.applied_date.isoformat(),
+            "created_at": app.created_at.isoformat(),
+        }
+
+        # Add company information if available
+        if app.company:
+            result["company"] = {"id": app.company.id, "name": app.company.name}
+
+        # Include additional details if requested
+        if include_details:
+            result.update(
+                {
+                    "location": app.location,
+                    "salary": app.salary,
+                    "link": app.link,
+                    "description": app.description,
+                    "notes": app.notes,
+                    "updated_at": app.updated_at.isoformat() if app.updated_at else None,
+                }
+            )
+
+        return result
+
+    def get_applications(self, status: str | None = None, **kwargs) -> list[dict[str, Any]]:
         """Get applications with optional filtering and sorting."""
         session = get_session()
         try:
@@ -52,6 +115,9 @@ class ApplicationService:
                 query = query.filter(Application.status == status)
 
             # Apply sorting
+            sort_by = kwargs.get("sort_by", "applied_date")
+            sort_desc = kwargs.get("sort_desc", True)
+
             if sort_by == "job_title":
                 query = query.order_by(desc(Application.job_title) if sort_desc else Application.job_title)
             elif sort_by == "position":
@@ -64,96 +130,15 @@ class ApplicationService:
                 query = query.order_by(desc(Application.applied_date) if sort_desc else Application.applied_date)
 
             # Apply pagination
+            offset = kwargs.get("offset", 0)
+            limit = kwargs.get("limit", 10)
             applications = query.offset(offset).limit(limit).all()
 
             # Convert to dictionaries
-            return [self._application_to_dict(app, include_details=False) for app in applications]
+            return [self._entity_to_dict(app, include_details=False) for app in applications]
 
         except Exception as e:
             logger.error(f"Error fetching applications: {e}")
-            raise
-        finally:
-            session.close()
-
-    def create_application(self, data: dict[str, Any]) -> dict[str, Any]:
-        """Create a new application."""
-        session = get_session()
-        try:
-            # Create application object
-            app = Application(
-                job_title=data["job_title"],
-                position=data["position"],
-                location=data.get("location"),
-                salary=data.get("salary"),
-                status=data["status"],
-                applied_date=datetime.fromisoformat(data["applied_date"])
-                if isinstance(data["applied_date"], str)
-                else data["applied_date"],
-                link=data.get("link"),
-                description=data.get("description"),
-                notes=data.get("notes"),
-                company_id=data["company_id"],
-            )
-
-            # Add to session and commit
-            session.add(app)
-            session.commit()
-            session.refresh(app)
-
-            return self._application_to_dict(app)
-        except Exception as e:
-            session.rollback()
-            logger.error(f"Error creating application: {e}")
-            raise
-        finally:
-            session.close()
-
-    def update_application(self, _id: int, data: dict[str, Any]) -> dict[str, Any]:
-        """Update an existing application and record the changes."""
-        session = get_session()
-        try:
-            # Get application
-            app = session.query(Application).filter(Application.id == _id).first()
-            if not app:
-                raise ValueError(f"Application with ID {_id} not found")
-
-            # Track changes for important fields
-            change_records = []
-
-            # Check for status change
-            if "status" in data and data["status"] != app.status:
-                change_records.append(
-                    {
-                        "application_id": _id,
-                        "change_type": ChangeType.STATUS_CHANGE.value,
-                        "old_value": app.status,
-                        "new_value": data["status"],
-                        "notes": f"Status changed from {app.status} to {data['status']}",
-                    }
-                )
-
-            # Update fields
-            for key, value in data.items():
-                if hasattr(app, key):
-                    # Special case for applied_date
-                    if key == "applied_date" and isinstance(value, str):
-                        setattr(app, key, datetime.fromisoformat(value))
-                    else:
-                        setattr(app, key, value)
-
-            # Commit changes
-            session.commit()
-            session.refresh(app)
-
-            # Record changes
-            change_record_service = ChangeRecordService()
-            for record in change_records:
-                change_record_service.create_change_record(record)
-
-            return self._application_to_dict(app)
-        except Exception as e:
-            session.rollback()
-            logger.error(f"Error updating application {_id}: {e}")
             raise
         finally:
             session.close()
@@ -181,7 +166,7 @@ class ApplicationService:
             query = query.filter(or_(*conditions)).order_by(Application.applied_date.desc())
 
             applications = query.all()
-            return [self._application_to_dict(app, include_details=False) for app in applications]
+            return [self._entity_to_dict(app, include_details=False) for app in applications]
         finally:
             session.close()
 
@@ -191,7 +176,7 @@ class ApplicationService:
         try:
             query = session.query(Application).filter(Application.company_id == company_id)
             applications = query.order_by(Application.applied_date.desc()).all()
-            return [self._application_to_dict(app, include_details=False) for app in applications]
+            return [self._entity_to_dict(app, include_details=False) for app in applications]
         except Exception as e:
             logger.error(f"Error fetching applications for company {company_id}: {e}")
             raise
@@ -257,54 +242,6 @@ class ApplicationService:
         finally:
             session.close()
 
-    def _application_to_dict(self, app: Application, include_details: bool = True) -> dict[str, Any]:
-        """Convert an Application object to a dictionary."""
-        result = {
-            "id": app.id,
-            "job_title": app.job_title,
-            "position": app.position,
-            "status": app.status,
-            "applied_date": app.applied_date.isoformat(),
-            "created_at": app.created_at.isoformat(),
-        }
-
-        # Add company information if available
-        if app.company:
-            result["company"] = {"id": app.company.id, "name": app.company.name}
-
-        # Include additional details if requested
-        if include_details:
-            result.update(
-                {
-                    "location": app.location,
-                    "salary": app.salary,
-                    "link": app.link,
-                    "description": app.description,
-                    "notes": app.notes,  # Now properly handled
-                    "updated_at": app.updated_at.isoformat() if app.updated_at else None,
-                }
-            )
-
-        return result
-
-    def delete_application(self, _id: int) -> bool:
-        """Delete an application."""
-        session = get_session()
-        try:
-            app = session.query(Application).filter(Application.id == _id).first()
-            if not app:
-                return False
-
-            session.delete(app)
-            session.commit()
-            return True
-        except Exception as e:
-            session.rollback()
-            logger.error(f"Error deleting application {_id}: {e}")
-            raise
-        finally:
-            session.close()
-
     def get_dashboard_stats(self) -> dict[str, Any]:
         """Get dashboard statistics."""
         session = get_session()
@@ -322,7 +259,7 @@ class ApplicationService:
 
             # Get recent applications
             recent_apps = session.query(Application).order_by(Application.applied_date.desc()).limit(5).all()
-            recent_applications = [self._application_to_dict(app, include_details=False) for app in recent_apps]
+            recent_applications = [self._entity_to_dict(app, include_details=False) for app in recent_apps]
 
             return {
                 "total_applications": total_count,
@@ -337,33 +274,7 @@ class ApplicationService:
 
     def add_interaction(self, data: dict[str, Any]) -> dict[str, Any]:
         """Add an interaction to an application."""
-        session = get_session()
-        try:
-            from src.db.models import Interaction
+        from src.services.interaction_service import InteractionService
 
-            # Create interaction object
-            interaction = Interaction(
-                application_id=data["application_id"],
-                type=data["type"],
-                date=datetime.fromisoformat(data["date"]) if isinstance(data["date"], str) else data["date"],
-                notes=data.get("notes"),
-            )
-
-            # Add to session and commit
-            session.add(interaction)
-            session.commit()
-            session.refresh(interaction)
-
-            return {
-                "id": interaction.id,
-                "type": interaction.type,
-                "date": interaction.date.isoformat(),
-                "notes": interaction.notes,
-                "application_id": interaction.application_id,
-            }
-        except Exception as e:
-            session.rollback()
-            logger.error(f"Error creating interaction: {e}")
-            raise
-        finally:
-            session.close()
+        interaction_service = InteractionService()
+        return interaction_service.create(data)

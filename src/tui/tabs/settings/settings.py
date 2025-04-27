@@ -4,8 +4,9 @@ from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Container, Grid, Horizontal
 from textual.screen import Screen
-from textual.widgets import Button, Footer, Header, Input, Label, Static, Switch
+from textual.widgets import Button, Footer, Header, Input, Label, Select, Static, Switch
 
+from src.config import LOG_DIR, LOG_LEVEL
 from src.db.database import change_database
 from src.db.settings import Settings
 from src.tui.widgets.file_dialog import FileDialog
@@ -54,6 +55,28 @@ class SettingsScreen(Screen):
                     yield Label("Save window size:")
                     yield Switch(id="window-size-switch")
 
+                yield Static("Logging Settings", classes="settings-section-title")
+
+                with Grid(id="logging-settings-grid"):
+                    yield Label("Log Level:")
+                    yield Select(
+                        [
+                            ("DEBUG", "DEBUG"),
+                            ("INFO", "INFO"),
+                            ("WARNING", "WARNING"),
+                            ("ERROR", "ERROR"),
+                            ("CRITICAL", "CRITICAL"),
+                        ],
+                        id="log-level-select",
+                        value=LOG_LEVEL,
+                    )
+
+                    yield Label("Log Directory:")
+                    yield Static(str(LOG_DIR), id="log-dir-display")
+
+                    yield Label("")
+                    yield Button("View Logs", id="view-logs")
+
             # Action buttons
             with Horizontal(id="settings-actions"):
                 yield Button("Save Settings", variant="primary", id="save-settings")
@@ -87,6 +110,9 @@ class SettingsScreen(Screen):
 
         elif button_id == "apply-db-changes":
             self.apply_database_changes()
+
+        elif button_id == "view-logs":
+            self.view_logs()
 
         elif button_id == "save-settings":
             self.save_all_settings()
@@ -149,6 +175,21 @@ class SettingsScreen(Screen):
             self.app.sub_title = f"Error: {str(e)}"
             self.query_one("#db-status", Static).update(f"Error: {str(e)}")
             self.query_one("#db-status").styles.color = "red"
+
+    def view_logs(self) -> None:
+        """Open log directory or file."""
+        import webbrowser
+
+        # Use platform-specific file browser
+        try:
+            log_dir = str(LOG_DIR)
+            if os.path.exists(log_dir):
+                webbrowser.open(f"file://{log_dir}")
+                self.app.sub_title = f"Opening log directory: {log_dir}"
+            else:
+                self.app.sub_title = "Log directory does not exist yet"
+        except Exception as e:
+            self.app.sub_title = f"Error opening logs: {str(e)}"
 
     def save_all_settings(self) -> None:
         """Save all settings."""

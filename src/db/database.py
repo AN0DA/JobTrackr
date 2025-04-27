@@ -1,4 +1,3 @@
-import logging
 import os
 
 from sqlalchemy import create_engine
@@ -6,11 +5,10 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import scoped_session, sessionmaker
 
 from src.db.settings import Settings
+from src.utils.logging import get_logger
 
-# Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-
-logger = logging.getLogger(__name__)
+# Set up module logger
+logger = get_logger(__name__)
 
 # Create base model class
 Base = declarative_base()
@@ -34,6 +32,9 @@ def init_db(db_path=None):
         db_dir = os.path.dirname(db_path)
         os.makedirs(db_dir, exist_ok=True)
 
+        # Log database location
+        logger.info(f"Initializing database at {db_path}")
+
         # Create database engine
         engine = create_engine(f"sqlite:///{db_path}", connect_args={"check_same_thread": False})
 
@@ -43,23 +44,26 @@ def init_db(db_path=None):
 
         # Create tables if they don't exist
         Base.metadata.create_all(engine)
-        logger.info(f"Database initialized successfully at {db_path}")
+        logger.info("Database tables created/verified successfully")
         return True
 
     except Exception as e:
-        logger.error(f"Error initializing database: {e}")
+        logger.error(f"Error initializing database: {e}", exc_info=True)
         return False
 
 
 def get_session():
     """Get a database session."""
     if SessionLocal is None:
+        logger.debug("No active session, initializing database")
         init_db()
 
     session = SessionLocal()
+    logger.debug("Database session created")
     try:
         return session
-    except:
+    except Exception as e:
+        logger.error(f"Error creating session: {e}", exc_info=True)
         session.close()
         raise
 
@@ -68,15 +72,26 @@ def change_database(new_path):
     """Change the database location."""
     global engine, SessionLocal
 
+    logger.info(f"Changing database to {new_path}")
+
     # Close existing connections
     if SessionLocal:
+        logger.debug("Closing existing session")
         SessionLocal.remove()
 
     if engine:
+        logger.debug("Disposing engine")
         engine.dispose()
 
     # Update settings
     settings.set("database_path", new_path)
 
     # Reinitialize with new path
-    return init_db(new_path)
+    result = init_db(new_path)
+
+    if result:
+        logger.info(f"Database changed successfully to {new_path}")
+    else:
+        logger.error(f"Failed to change database to {new_path}")
+
+    return result

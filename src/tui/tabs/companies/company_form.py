@@ -1,5 +1,3 @@
-"""Form for creating/editing companies."""
-
 from collections.abc import Callable
 
 from textual.app import ComposeResult
@@ -7,7 +5,7 @@ from textual.containers import Container, Horizontal, Vertical
 from textual.screen import Screen
 from textual.widgets import Button, Input, Label, Select, TextArea
 
-from src.db.models import CompanyType
+from src.config import CompanyType
 from src.services.company_service import CompanyService
 
 
@@ -40,8 +38,8 @@ class CompanyForm(Screen):
                 id="form-title",
             )
 
-            with Container(id="contact-fields", classes="form-page"):
-                with Vertical(id="contact-fields"):
+            with Container(id="company-fields", classes="form-page"):
+                with Vertical(id="company-fields"):
                     yield Label("Company Name *", classes="field-label")
                     yield Input(id="company-name", disabled=self.readonly)
 
@@ -84,7 +82,7 @@ class CompanyForm(Screen):
         """Load company data for editing."""
         try:
             service = CompanyService()
-            company_data = service.get_company(int(self.company_id))
+            company_data = service.get(int(self.company_id))
 
             if not company_data:
                 self.app.sub_title = f"Company {self.company_id} not found"
@@ -102,8 +100,8 @@ class CompanyForm(Screen):
             if company_data.get("size"):
                 self.query_one("#size", Input).value = company_data["size"]
 
-            if company_data.get("company_type"):
-                self.query_one("#company-type", Select).value = company_data["company_type"]
+            if company_data.get("type"):
+                self.query_one("#company-type", Select).value = company_data["type"]
 
             if company_data.get("notes"):
                 self.query_one("#notes", TextArea).text = company_data["notes"]
@@ -143,7 +141,7 @@ class CompanyForm(Screen):
                 "website": website or None,
                 "industry": industry or None,
                 "size": size or None,
-                "company_type": company_type,
+                "type": company_type,
                 "notes": notes or None,
             }
 
@@ -151,11 +149,11 @@ class CompanyForm(Screen):
 
             if self.company_id:
                 # Update existing company
-                service.update_company(int(self.company_id), company_data)
+                service.update(int(self.company_id), company_data)
                 self.app.sub_title = "Company updated successfully"
             else:
                 # Create new company
-                service.create_company(company_data)
+                service.create(company_data)
                 self.app.sub_title = "Company created successfully"
 
             # Call the on_saved callback if provided

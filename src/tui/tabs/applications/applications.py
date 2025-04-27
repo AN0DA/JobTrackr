@@ -1,17 +1,17 @@
-"""Applications management screen for the Job Tracker TUI."""
-
 from datetime import datetime
 
 from textual.app import ComposeResult
 from textual.containers import Container, Horizontal, Vertical
-from textual.screen import ModalScreen
-from textual.widgets import Button, DataTable, Input, Label, Select, Static
+from textual.widgets import Button, DataTable, Input, Select, Static
 
+from src.config import ApplicationStatus
 from src.services.application_service import ApplicationService
 from src.tui.tabs.applications.application_form import ApplicationForm
+from src.tui.widgets.confirmation_modal import ConfirmationModal
+from src.tui.widgets.list_view import ListView
 
 
-class ApplicationsList(Static):
+class ApplicationsList(ListView):
     """Applications listing and management screen."""
 
     BINDINGS = [
@@ -23,9 +23,14 @@ class ApplicationsList(Static):
     ]
 
     def __init__(self) -> None:
-        super().__init__()
-        self.sort_column = "Applied Date"
-        self.sort_ascending = False  # Default to newest first
+        """Initialize the applications listing."""
+        columns = ["ID", "Job Title", "Company", "Position", "Status", "Applied Date"]
+        super().__init__(
+            service=ApplicationService(),
+            columns=columns,
+            title="Applications",
+        )
+        self.current_status = None
 
     def compose(self) -> ComposeResult:
         """Compose the applications screen layout."""
@@ -37,27 +42,13 @@ class ApplicationsList(Static):
                     with Vertical(classes="filter-section"):
                         yield Static("Status:", classes="filter-label")
                         yield Select(
-                            [
-                                (status, status)
-                                for status in [
-                                    "All",
-                                    "SAVED",
-                                    "APPLIED",
-                                    "PHONE_SCREEN",
-                                    "INTERVIEW",
-                                    "TECHNICAL_INTERVIEW",
-                                    "OFFER",
-                                    "ACCEPTED",
-                                    "REJECTED",
-                                    "WITHDRAWN",
-                                ]
-                            ],
+                            self._get_status_options(),
                             value="All",
                             id="status-filter",
                             classes="filter-dropdown",
                         )
 
-                    # Search section (could be added in future)
+                    # Search section
                     with Horizontal(classes="search-section"):
                         yield Input(placeholder="Search applications...", id="app-search")
                         yield Button("🔍", id="search-button")
@@ -77,6 +68,12 @@ class ApplicationsList(Static):
                     yield Button("Edit", id="edit-app", disabled=True)
                     yield Button("Delete", id="delete-app", variant="error", disabled=True)
 
+    def _get_status_options(self):
+        """Get options for the status filter dropdown."""
+        options = [(status.value, status.value) for status in ApplicationStatus]
+        options.insert(0, ("All", "All"))
+        return options
+
     def on_mount(self) -> None:
         """Set up the screen when mounted."""
         table = self.query_one("#applications-table", DataTable)
@@ -85,7 +82,6 @@ class ApplicationsList(Static):
             "Job Title",
             "Company",
             "Position",
-            "Location",
             "Status",
             "Applied Date",
         )
@@ -100,8 +96,8 @@ class ApplicationsList(Static):
 
     def load_applications(self, status: str = None) -> None:
         """Load applications from the database with improved styling."""
-        # Update status to show loading
         self.update_status("Loading applications...")
+        self.current_status = status
 
         try:
             service = ApplicationService()
@@ -158,8 +154,8 @@ class ApplicationsList(Static):
                     str(app["id"]),
                     app["job_title"],
                     app.get("company", {}).get("name", ""),
-                    app["status"],
                     app["position"],
+                    app["status"],
                     formatted_date,
                 )
 
@@ -176,10 +172,6 @@ class ApplicationsList(Static):
 
             logging.error(error_message, exc_info=True)
 
-    def update_status(self, message: str) -> None:
-        """Update status message in the footer."""
-        self.app.sub_title = message
-
     def on_select_changed(self, event: Select.Changed) -> None:
         """Handle status filter changes."""
         if event.select.id == "status-filter":
@@ -192,7 +184,7 @@ class ApplicationsList(Static):
         table = self.query_one("#applications-table", DataTable)
 
         if button_id == "new-app":
-            self.app.push_screen(ApplicationForm())
+            self.app.push_screen(ApplicationForm(on_saved=self.load_applications))
 
         elif button_id == "view-app" and table.cursor_row is not None:
             app_id = table.get_row_at(table.cursor_row)[0]
@@ -200,11 +192,58 @@ class ApplicationsList(Static):
 
         elif button_id == "edit-app" and table.cursor_row is not None:
             app_id = table.get_row_at(table.cursor_row)[0]
-            self.app.push_screen(ApplicationForm(app_id=app_id))
+            self.app.push_screen(ApplicationForm(app_id=app_id, on_saved=self.load_applications))
 
         elif button_id == "delete-app" and table.cursor_row is not None:
             app_id = table.get_row_at(table.cursor_row)[0]
-            self.app.push_screen(DeleteConfirmationModal(app_id))
+            self._confirm_delete_application(app_id)
+
+        elif button_id == "search-button":
+            search_term = self.query_one("#app-search", Input).value
+            self.search_applications(search_term)
+
+    def search_applications(self, search_term: str) -> None:
+        """Search applications by keyword."""
+        if not search_term:
+            self.load_applications(self.current_status)
+            return
+
+        self.update_status(f"Searching for '{search_term}'...")
+
+        try:
+            service = ApplicationService()
+            applications = service.search_applications(search_term)
+
+            # Apply status filter if active
+            if self.current_status:
+                applications = [app for app in applications if app["status"] == self.current_status]
+
+            table = self.query_one("#applications-table", DataTable)
+            table.clear()
+
+            # Add results to table
+            for app in applications:
+                # Format applied date
+                try:
+                    applied_date = datetime.fromisoformat(app["applied_date"])
+                    formatted_date = applied_date.strftime("%Y-%m-%d")
+                except (ValueError, TypeError):
+                    formatted_date = app["applied_date"]
+
+                table.add_row(
+                    str(app["id"]),
+                    app["job_title"],
+                    app.get("company", {}).get("name", ""),
+                    app["position"],
+                    app["status"],
+                    formatted_date,
+                )
+
+            count = len(applications)
+            self.update_status(f"Found {count} application{'s' if count != 1 else ''} matching '{search_term}'")
+
+        except Exception as e:
+            self.update_status(f"Search error: {str(e)}")
 
     def on_data_table_row_highlighted(self, event: DataTable.RowHighlighted) -> None:
         """Enable buttons when a row is highlighted."""
@@ -227,55 +266,58 @@ class ApplicationsList(Static):
 
         self.app.push_screen(ApplicationDetail(int(app_id)))
 
-    def _sort_applications(self, applications):
-        """Sort applications based on current sort settings."""
-        # Define sort keys for each column
-        sort_keys = {
-            "ID": lambda app: int(app["id"]),
-            "Job Title": lambda app: app["job_title"].lower(),
-            "Company": lambda app: app.get("company", {}).get("name", "").lower(),
-            "Position": lambda app: app["position"].lower(),
-            "Location": lambda app: (app.get("location") or "").lower(),
-            "Status": lambda app: app["status"],
-            "Applied Date": lambda app: app["applied_date"],
-        }
+    def update_status(self, message: str) -> None:
+        """Update status message in the footer."""
+        self.app.sub_title = message
 
-        # Get sort key function
-        sort_key = sort_keys.get(self.sort_column, lambda app: app["applied_date"])
+    def _confirm_delete_application(self, app_id: str) -> None:
+        """Show a confirmation dialog for deleting an application."""
 
-        # Sort applications
-        applications.sort(key=sort_key, reverse=not self.sort_ascending)
+        def do_delete():
+            service = ApplicationService()
+            success = service.delete(int(app_id))
 
-    # Maintain all the original action methods
+            if success:
+                self.app.sub_title = f"Successfully deleted application #{app_id}"
+                self.load_applications(self.current_status)
+            else:
+                self.app.sub_title = f"Application #{app_id} not found"
+
+        self.app.push_screen(
+            ConfirmationModal(
+                title="Confirm Deletion",
+                message=f"Are you sure you want to delete application #{app_id}?",
+                confirm_text="Delete",
+                cancel_text="Cancel",
+                on_confirm=do_delete,
+                dangerous=True,
+            )
+        )
+
+    # Action methods for key bindings
     def action_add_application(self) -> None:
         """Open the application creation form."""
-        from src.tui.tabs.applications.application_form import ApplicationForm
-
-        self.app.push_screen(ApplicationForm())
+        self.app.push_screen(ApplicationForm(on_saved=self.load_applications))
 
     def action_delete_application(self) -> None:
         """Delete the selected application."""
         table = self.query_one("#applications-table", DataTable)
         if table.cursor_row is not None:
             app_id = table.get_row_at(table.cursor_row)[0]
-            self.app.push_screen(DeleteConfirmationModal(app_id))
+            self._confirm_delete_application(app_id)
 
     def action_edit_application(self) -> None:
         """Edit the selected application."""
         table = self.query_one("#applications-table", DataTable)
         if table.cursor_row is not None:
             app_id = table.get_row_at(table.cursor_row)[0]
-            from src.tui.tabs.applications.application_form import ApplicationForm
-
-            self.app.push_screen(ApplicationForm(app_id=app_id))
+            self.app.push_screen(ApplicationForm(app_id=app_id, on_saved=self.load_applications))
 
     def action_view_application(self) -> None:
         """View the selected application."""
         table = self.query_one("#applications-table", DataTable)
         if table.cursor_row is not None:
             app_id = table.get_row_at(table.cursor_row)[0]
-            from src.tui.tabs.applications.application_form import ApplicationForm
-
             self.app.push_screen(ApplicationForm(app_id=app_id, readonly=True))
 
     def action_change_status(self) -> None:
@@ -283,59 +325,11 @@ class ApplicationsList(Static):
         table = self.query_one("#applications-table", DataTable)
         if table.cursor_row is not None:
             app_id = table.get_row_at(table.cursor_row)[0]
-            status = table.get_row_at(table.cursor_row)[5]
-            from src.tui.tabs.applications.status_transition import (
-                StatusTransitionDialog,
-            )
+            status = table.get_row_at(table.cursor_row)[4]
+            from src.tui.tabs.applications.status_transition import StatusTransitionDialog
 
-            self.app.push_screen(StatusTransitionDialog(app_id, status))
+            self.app.push_screen(StatusTransitionDialog(app_id, status, self.load_applications))
 
     def action_refresh_applications(self) -> None:
         """Refresh the applications list."""
-        self.load_applications()
-
-
-class DeleteConfirmationModal(ModalScreen):
-    """Confirmation dialog for deleting applications."""
-
-    def __init__(self, app_id: str):
-        super().__init__()
-        self.app_id = app_id
-
-    def compose(self) -> ComposeResult:
-        yield Container(
-            Label(f"Are you sure you want to delete application #{self.app_id}?"),
-            Horizontal(
-                Button("Cancel", variant="primary", id="cancel"),
-                Button("Delete", variant="error", id="confirm"),
-                id="buttons",
-            ),
-            id="dialog",
-        )
-
-    def on_button_pressed(self, event: Button.Pressed) -> None:
-        if event.button.id == "cancel":
-            self.app.pop_screen()
-        elif event.button.id == "confirm":
-            self.delete_application()
-
-    def delete_application(self) -> None:
-        try:
-            service = ApplicationService()
-            success = service.delete_application(int(self.app_id))
-
-            if success:
-                self.app.sub_title = f"Successfully deleted application #{self.app_id}"
-            else:
-                self.app.sub_title = f"Application #{self.app_id} not found"
-
-            self.app.pop_screen()
-
-            # Refresh the applications list if it's visible
-            app_list = self.app.query_one(ApplicationsList)
-            if app_list:
-                app_list.load_applications()
-
-        except Exception as e:
-            self.app.sub_title = f"Error deleting application: {str(e)}"
-            self.app.pop_screen()
+        self.load_applications(self.current_status)

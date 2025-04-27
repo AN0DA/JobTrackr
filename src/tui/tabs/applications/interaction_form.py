@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from datetime import datetime, timedelta
 
 from textual.app import ComposeResult
@@ -5,18 +6,25 @@ from textual.containers import Container, Horizontal, Vertical
 from textual.screen import ModalScreen
 from textual.widgets import Button, Input, Label, Select, TextArea
 
-from src.db.models import InteractionType
+from src.config import InteractionType
 from src.services.interaction_service import InteractionService
 
 
 class InteractionForm(ModalScreen):
     """Form for creating or editing an interaction."""
 
-    def __init__(self, interaction_id: int = None, application_id: int = None):
-        """Initialize the form."""
+    def __init__(self, interaction_id: int = None, application_id: int = None, on_saved: Callable | None = None):
+        """Initialize the form.
+
+        Args:
+            interaction_id: ID of interaction to edit (None for new interaction)
+            application_id: ID of application to associate with (required for new)
+            on_saved: Callback function to run when interaction is saved
+        """
         super().__init__()
         self.interaction_id = interaction_id
         self.application_id = application_id
+        self.on_saved = on_saved
 
     def compose(self) -> ComposeResult:
         with Container(id="interaction-form"):
@@ -62,7 +70,7 @@ class InteractionForm(ModalScreen):
         """Load interaction data for editing."""
         try:
             service = InteractionService()
-            interaction = service.get_interaction(self.interaction_id)
+            interaction = service.get(self.interaction_id)
             if not interaction:
                 self.app.sub_title = f"Interaction {self.interaction_id} not found"
                 return
@@ -141,22 +149,18 @@ class InteractionForm(ModalScreen):
             service = InteractionService()
 
             if self.interaction_id:
-                service.update_interaction(self.interaction_id, interaction_data)
+                service.update(self.interaction_id, interaction_data)
                 self.app.sub_title = "Interaction updated successfully"
             else:
-                service.create_interaction(interaction_data)
+                service.create(interaction_data)
                 self.app.sub_title = "Interaction created successfully"
+
+            # Call the on_saved callback if provided
+            if self.on_saved:
+                self.on_saved()
 
             # Close the form
             self.app.pop_screen()
-
-            # Refresh application detail if visible
-            from src.tui.tabs.applications.application_detail import ApplicationDetail
-
-            detail_screen = self.app.screen
-            if isinstance(detail_screen, ApplicationDetail):
-                detail_screen.load_timeline()
-                detail_screen.load_interactions()
 
         except Exception as e:
             self.app.sub_title = f"Error saving interaction: {str(e)}"

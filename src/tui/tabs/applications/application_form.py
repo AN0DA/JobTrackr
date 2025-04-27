@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from datetime import datetime
 
 from textual.app import ComposeResult
@@ -5,6 +6,7 @@ from textual.containers import Container, Horizontal, Vertical
 from textual.screen import Screen
 from textual.widgets import Button, Input, Label, Select, Static, TextArea
 
+from src.config import ApplicationStatus
 from src.services.application_service import ApplicationService
 from src.services.company_service import CompanyService
 
@@ -12,10 +14,18 @@ from src.services.company_service import CompanyService
 class ApplicationForm(Screen):
     """Form for creating or editing a job application with multiple pages."""
 
-    def __init__(self, app_id=None, readonly=False):
+    def __init__(self, app_id=None, readonly=False, on_saved: Callable | None = None):
+        """Initialize the application form.
+
+        Args:
+            app_id: ID of the application to edit (None for new application)
+            readonly: Whether the form should be read-only
+            on_saved: Callback function to run when the application is saved
+        """
         super().__init__()
         self.app_id = app_id
         self.readonly = readonly
+        self.on_saved = on_saved
         self.companies = []
         self.current_page = 1
         self.total_pages = 3
@@ -49,20 +59,7 @@ class ApplicationForm(Screen):
 
                     yield Label("Status *", classes="field-label")
                     yield Select(
-                        [
-                            (status, status)
-                            for status in [
-                                "SAVED",
-                                "APPLIED",
-                                "PHONE_SCREEN",
-                                "INTERVIEW",
-                                "TECHNICAL_INTERVIEW",
-                                "OFFER",
-                                "ACCEPTED",
-                                "REJECTED",
-                                "WITHDRAWN",
-                            ]
-                        ],
+                        [(status.value, status.value) for status in ApplicationStatus],
                         id="status",
                         disabled=self.readonly,
                     )
@@ -201,7 +198,7 @@ class ApplicationForm(Screen):
         """Load companies for the dropdown."""
         try:
             service = CompanyService()
-            self.companies = service.get_companies()
+            self.companies = service.get_all()
 
             company_select = self.query_one("#company-select", Select)
             company_select.set_options([(company["name"], str(company["id"])) for company in self.companies])
@@ -213,13 +210,13 @@ class ApplicationForm(Screen):
         """Load application data for editing."""
         try:
             service = ApplicationService()
-            app_data = service.get_application(int(self.app_id))
+            app_data = service.get(int(self.app_id))
 
             if not app_data:
                 self.app.sub_title = f"Application {self.app_id} not found"
                 return
 
-            # Populate the form fields
+            # Populate form fields
             self.query_one("#job-title", Input).value = app_data["job_title"]
             self.query_one("#position", Input).value = app_data["position"]
 
@@ -254,73 +251,42 @@ class ApplicationForm(Screen):
     def save_application(self) -> None:
         """Save the application data."""
         try:
-            # Get values from form
-            job_title = self.query_one("#job-title", Input).value
-            company_id = self.query_one("#company-select", Select).value
-            position = self.query_one("#position", Input).value
-            location = self.query_one("#location", Input).value
-            salary = self.query_one("#salary", Input).value
-            status = self.query_one("#status", Select).value
-            applied_date = self.query_one("#applied-date", Input).value
-            link = self.query_one("#link", Input).value
-            description = self.query_one("#description", TextArea).text
-            notes = self.query_one("#notes", TextArea).text
+            # Make sure we store values from the current page
+            self.store_current_field_values()
 
             # Validate required fields
-            if not job_title:
-                self.app.sub_title = "Job title is required"
-                return
-
-            if not company_id:
-                self.app.sub_title = "Company is required"
-                return
-
-            if not position:
-                self.app.sub_title = "Position is required"
-                return
-
-            if not status:
-                self.app.sub_title = "Status is required"
-                return
-
-            if not applied_date:
-                self.app.sub_title = "Applied date is required"
-                return
-
-            # Prepare data
-            app_data = {
-                "job_title": job_title,
-                "company_id": int(company_id),
-                "position": position,
-                "location": location or None,
-                "salary": salary or None,
-                "status": status,
-                "applied_date": applied_date,
-                "link": link or None,
-                "description": description or None,
-                "notes": notes or None,
+            required_fields = {
+                "job_title": "Job title is required",
+                "company_id": "Company is required",
+                "position": "Position is required",
+                "status": "Status is required",
+                "applied_date": "Applied date is required",
             }
+
+            for field, message in required_fields.items():
+                if not self.application_data.get(field):
+                    self.app.sub_title = message
+                    # Go back to first page where most required fields are
+                    self.navigate_to_page(1)
+                    return
 
             service = ApplicationService()
 
             if self.app_id:
                 # Update existing application
-                service.update_application(int(self.app_id), app_data)
+                service.update(int(self.app_id), self.application_data)
                 self.app.sub_title = "Application updated successfully"
             else:
                 # Create new application
-                service.create_application(app_data)
+                service.create(self.application_data)
                 self.app.sub_title = "Application created successfully"
+
+            # Call the on_saved callback if provided
+            if self.on_saved:
+                self.on_saved()
 
             # Return to the previous screen
             self.app.pop_screen()
-
-            # Refresh the applications list if it's visible
-            from src.tui.tabs.applications.applications import ApplicationsList
-
-            app_list = self.app.query_one(ApplicationsList)
-            if app_list:
-                app_list.load_applications()
 
         except Exception as e:
             self.app.sub_title = f"Error saving application: {str(e)}"

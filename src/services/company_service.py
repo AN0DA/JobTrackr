@@ -1,122 +1,67 @@
 import logging
 from typing import Any
 
+from sqlalchemy.orm import Session
+
+from src.config import CompanyType
 from src.db.database import get_session
-from src.db.models import Company, CompanyRelationship, CompanyType
+from src.db.models import Company, CompanyRelationship
+from src.services.base_service import BaseService
 
 logger = logging.getLogger(__name__)
 
 
-class CompanyService:
+class CompanyService(BaseService):
     """Service for company-related operations."""
 
-    def get_company(self, _id: int) -> dict[str, Any] | None:
-        """Get a specific company by ID."""
-        session = get_session()
-        try:
-            company = session.query(Company).filter(Company.id == _id).first()
-            if not company:
-                return None
+    model_class = Company
+    entity_name = "company"
 
-            return self._company_to_dict(company)
-        except Exception as e:
-            logger.error(f"Error fetching company {_id}: {e}")
-            raise
-        finally:
-            session.close()
+    def _create_entity_from_dict(self, data: dict[str, Any], session: Session) -> Company:
+        """Create a Company object from a dictionary."""
+        return Company(
+            name=data["name"],
+            website=data.get("website"),
+            industry=data.get("industry"),
+            size=data.get("size"),
+            type=data.get("type", CompanyType.DIRECT_EMPLOYER.value),
+            notes=data.get("notes"),
+        )
 
-    def get_companies(self) -> list[dict[str, Any]]:
-        """Get all companies."""
-        session = get_session()
-        try:
-            companies = session.query(Company).all()
-            return [self._company_to_dict(company, include_details=False) for company in companies]
-        except Exception as e:
-            logger.error(f"Error fetching companies: {e}")
-            raise
-        finally:
-            session.close()
+    def _update_entity_from_dict(self, entity: Company, data: dict[str, Any], session: Session) -> None:
+        """Update a Company object from a dictionary."""
+        if "name" in data:
+            entity.name = data["name"]
+        if "website" in data:
+            entity.website = data["website"]
+        if "industry" in data:
+            entity.industry = data["industry"]
+        if "size" in data:
+            entity.size = data["size"]
+        if "type" in data:
+            entity.type = data["type"]
+        if "notes" in data:
+            entity.notes = data["notes"]
 
-    def create_company(self, data: dict[str, Any]) -> dict[str, Any]:
-        """Create a new company."""
-        session = get_session()
-        try:
-            # Create company object
-            company = Company(
-                name=data["name"],
-                website=data.get("website"),
-                industry=data.get("industry"),
-                size=data.get("size"),
-                notes=data.get("notes"),
+    def _entity_to_dict(self, company: Company, include_details: bool = True) -> dict[str, Any]:
+        """Convert a Company object to a dictionary."""
+        result = {
+            "id": company.id,
+            "name": company.name,
+        }
+
+        if include_details:
+            result.update(
+                {
+                    "website": company.website,
+                    "industry": company.industry,
+                    "size": company.size,
+                    "type": company.type,
+                    "notes": company.notes,
+                }
             )
 
-            # Add to session and commit
-            session.add(company)
-            session.commit()
-            session.refresh(company)
-
-            return self._company_to_dict(company)
-        except Exception as e:
-            session.rollback()
-            logger.error(f"Error creating company: {e}")
-            raise
-        finally:
-            session.close()
-
-    def update_company(self, _id: int, data: dict[str, Any]) -> dict[str, Any]:
-        """Update an existing company."""
-        session = get_session()
-        try:
-            # Get company
-            company = session.query(Company).filter(Company.id == _id).first()
-            if not company:
-                raise ValueError(f"Company with ID {_id} not found")
-
-            # Update fields
-            if "name" in data:
-                company.name = data["name"]
-            if "website" in data:
-                company.website = data["website"]
-            if "industry" in data:
-                company.industry = data["industry"]
-            if "size" in data:
-                company.size = data["size"]
-            if "notes" in data:
-                company.notes = data["notes"]
-
-            # Commit changes
-            session.commit()
-            session.refresh(company)
-
-            return self._company_to_dict(company)
-        except Exception as e:
-            session.rollback()
-            logger.error(f"Error updating company {_id}: {e}")
-            raise
-        finally:
-            session.close()
-
-    def delete_company(self, _id: int) -> bool:
-        """Delete a company."""
-        session = get_session()
-        try:
-            company = session.query(Company).filter(Company.id == _id).first()
-            if not company:
-                return False
-
-            # Check if company has applications
-            if company.applications:
-                raise ValueError(f"Cannot delete company with ID {_id} because it has associated applications")
-
-            session.delete(company)
-            session.commit()
-            return True
-        except Exception as e:
-            session.rollback()
-            logger.error(f"Error deleting company {_id}: {e}")
-            raise
-        finally:
-            session.close()
+        return result
 
     def get_company_types(self) -> list[str]:
         """Get all available company types."""
@@ -215,21 +160,24 @@ class CompanyService:
         finally:
             session.close()
 
-    def _company_to_dict(self, company: Company, include_details: bool = True) -> dict[str, Any]:
-        """Convert a Company object to a dictionary."""
-        result = {
-            "id": company.id,
-            "name": company.name,
-        }
+    def get_relationship(self, relationship_id: int) -> dict[str, Any] | None:
+        """Get a specific relationship by ID."""
+        session = get_session()
+        try:
+            relationship = session.query(CompanyRelationship).filter(CompanyRelationship.id == relationship_id).first()
 
-        if include_details:
-            result.update(
-                {
-                    "website": company.website,
-                    "industry": company.industry,
-                    "size": company.size,
-                    "notes": company.notes,
-                }
-            )
+            if not relationship:
+                return None
 
-        return result
+            return {
+                "id": relationship.id,
+                "source_id": relationship.source_company_id,
+                "target_id": relationship.target_company_id,
+                "relationship_type": relationship.relationship_type,
+                "notes": relationship.notes,
+            }
+        except Exception as e:
+            logger.error(f"Error getting relationship {relationship_id}: {e}")
+            raise
+        finally:
+            session.close()
