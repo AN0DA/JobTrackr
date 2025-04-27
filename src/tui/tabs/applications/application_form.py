@@ -137,10 +137,38 @@ class ApplicationForm(Screen):
         elif button_id == "close-form":
             self.app.pop_screen()
 
+    def store_current_field_values(self) -> None:
+        """Store the current form field values in application_data."""
+        try:
+            # Page 1: Essential Information
+            if self.current_page == 1:
+                self.application_data["job_title"] = self.query_one("#job-title", Input).value
+                self.application_data["company_id"] = self.query_one("#company-select", Select).value
+                self.application_data["position"] = self.query_one("#position", Input).value
+                self.application_data["status"] = self.query_one("#status", Select).value
+                self.application_data["applied_date"] = self.query_one("#applied-date", Input).value
+            
+            # Page 2: Additional Details
+            elif self.current_page == 2:
+                self.application_data["location"] = self.query_one("#location", Input).value
+                self.application_data["salary"] = self.query_one("#salary", Input).value
+                self.application_data["link"] = self.query_one("#link", Input).value
+            
+            # Page 3: Content
+            elif self.current_page == 3:
+                self.application_data["description"] = self.query_one("#description", TextArea).text
+                self.application_data["notes"] = self.query_one("#notes", TextArea).text
+        except Exception as e:
+            self.app.sub_title = f"Error storing field values: {str(e)}"
+
     def navigate_to_page(self, page_number):
         """Navigate to the specified page of the form."""
         if page_number < 1 or page_number > self.total_pages:
             return
+
+        # Store current field values if not in readonly mode
+        if not self.readonly:
+            self.store_current_field_values()
 
         # Hide all pages
         for i in range(1, self.total_pages + 1):
@@ -162,10 +190,6 @@ class ApplicationForm(Screen):
 
         prev_button.disabled = page_number == 1
         next_button.disabled = page_number == self.total_pages
-
-        # Store current field values if not in readonly mode
-        if not self.readonly:
-            self.store_current_field_values()
 
     def on_mount(self) -> None:
         """Load data when the form is mounted."""

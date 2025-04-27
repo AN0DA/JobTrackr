@@ -21,7 +21,6 @@ class ApplicationsList(Static):
         ("v", "view_application", "View"),
         ("s", "change_status", "Change Status"),
     ]
-    NO_APPLICATIONS_MESSAGE = "No applications found. Click here to create one."
 
     def __init__(self) -> None:
         super().__init__()
@@ -33,8 +32,6 @@ class ApplicationsList(Static):
         with Container(classes="list-view-container"):
             # Header section
             with Container(classes="list-header"):
-                yield Static("Applications", classes="list-title")
-
                 # Filter bar
                 with Horizontal(classes="filter-bar"):
                     with Vertical(classes="filter-section"):
@@ -135,7 +132,6 @@ class ApplicationsList(Static):
             if not apps_list:
                 # Handle empty state
                 table.add_column_span = len(table.columns)
-                table.add_row(self.NO_APPLICATIONS_MESSAGE)
                 self.update_status("No applications found")
 
                 # Make sure action buttons are disabled
@@ -226,13 +222,10 @@ class ApplicationsList(Static):
         # Use get_row with the RowKey provided by the event
         app_id = table.get_row(event.row_key)[0]
 
-        if app_id == self.NO_APPLICATIONS_MESSAGE:
-            self.app.push_screen(ApplicationForm())
-        else:
-            # Open application detail view
-            from src.tui.tabs.applications.application_detail import ApplicationDetail
+        # Open application detail view
+        from src.tui.tabs.applications.application_detail import ApplicationDetail
 
-            self.app.push_screen(ApplicationDetail(int(app_id)))
+        self.app.push_screen(ApplicationDetail(int(app_id)))
 
     def _sort_applications(self, applications):
         """Sort applications based on current sort settings."""

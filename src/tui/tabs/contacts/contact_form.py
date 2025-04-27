@@ -73,7 +73,7 @@ class ContactForm(Screen):
                     yield Label("Notes", classes="field-label")
                     yield TextArea(id="contact-notes", disabled=self.readonly)
 
-                with Horizontal(id="contact-form-actions", classes="modal-actions"):
+                with Horizontal(id="contact-form-actions", classes="form-actions"):
                     if not self.readonly:
                         yield Button("Save", variant="primary", id="save-contact")
                     yield Button("Cancel", id="cancel")

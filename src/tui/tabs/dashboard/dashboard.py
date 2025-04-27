@@ -3,6 +3,7 @@
 from textual.app import ComposeResult
 from textual.containers import Container, Grid, Horizontal, Vertical
 from textual.widgets import Button, Static
+from textual.widgets import TabbedContent
 
 from src.services.application_service import ApplicationService
 from src.tui.widgets.application_list import ApplicationList
@@ -21,8 +22,6 @@ class Dashboard(Static):
 
                 with Horizontal(id="quick-actions"):
                     yield Button("➕ New Application", variant="primary", id="new-app")
-                    yield Button("📅 Today's Tasks", id="view-today")
-                    yield Button("📊 Analytics", id="view-analytics")
 
             # Stats summary cards
             with Container(id="stats-section", classes="content-box"):
@@ -38,14 +37,14 @@ class Dashboard(Static):
             with Horizontal(id="dashboard-content"):
                 # Left column - Recent applications and activity
                 with Vertical(id="left-column"):
-                    with Container(classes="content-box"):
+                    with Container(classes="content-box-full"):
                         yield Static("Recent Applications", classes="section-heading")
                         yield ApplicationList(title="", _id="recent-apps-list")
                         yield Button("View All Applications", id="view-all-apps")
 
                 # Right column - Reminders and progress
                 with Vertical(id="right-column"):
-                    with Container(classes="content-box"):
+                    with Container(classes="content-box-full"):
                         yield Static("Recent Activity", classes="section-heading")
                         with Container(id="activity-feed"):
                             # Activity items will be added dynamically
@@ -95,3 +94,13 @@ class Dashboard(Static):
     def update_status(self, message: str) -> None:
         """Update status message in the footer."""
         self.app.sub_title = message
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        """Handle button presses."""
+        if event.button.id == "new-app":
+            from src.tui.tabs.applications.application_form import ApplicationForm
+
+            self.app.push_screen(ApplicationForm())
+        elif event.button.id == "view-all-apps":
+            self.app.query_one(TabbedContent).active = "applications"
+

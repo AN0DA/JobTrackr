@@ -32,8 +32,6 @@ class CompaniesList(Static):
         with Container(classes="list-view-container"):
             # Header section
             with Container(classes="list-header"):
-                yield Static("Companies", classes="list-title")
-
                 # Filter bar
                 with Horizontal(classes="filter-bar"):
                     with Vertical(classes="filter-section"):

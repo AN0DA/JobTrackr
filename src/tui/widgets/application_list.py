@@ -21,7 +21,6 @@ class ApplicationList(Static):
 
     def compose(self) -> ComposeResult:
         """Compose the widget."""
-        yield Static(self.title, classes="list-title")
         yield DataTable(id=f"{self.id}-table" if self.id else None)
 
     def on_mount(self) -> None:

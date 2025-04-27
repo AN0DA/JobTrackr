@@ -113,7 +113,7 @@ relative_files = true
 show_missing = true
 
 [project.scripts]
-printerm = "src.tui.app:app"
+jobtrackr = "src.tui.app:app"
 
 [build-system]
 requires = ["hatchling"]

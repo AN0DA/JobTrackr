@@ -17,7 +17,7 @@ from src.tui.tabs.dashboard.dashboard import Dashboard
 class JobTrackr(App):
     """Main Job Tracker application."""
 
-    CSS_PATH = "app.css"
+    CSS_PATH = "app.tcss"
     BINDINGS = [
         # Clear and simple keyboard shortcuts
         Binding("d", "switch_tab('dashboard')", "Dashboard"),
