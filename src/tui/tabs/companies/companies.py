@@ -19,7 +19,6 @@ class CompaniesList(Static):
         ("d", "delete_company", "Delete"),
         ("e", "edit_company", "Edit"),
         ("v", "view_company", "View"),
-        ("r", "refresh_companies", "Refresh"),
     ]
 
     def __init__(self):
@@ -113,7 +112,7 @@ class CompaniesList(Static):
                     str(company["id"]),
                     company["name"],
                     company.get("industry", ""),
-                    company.get("type", "DIRECT_EMPLOYER"),
+                    company.get("type", ""),
                     company.get("website", ""),
                     company.get("size", ""),
                 )
@@ -187,7 +186,7 @@ class CompaniesList(Static):
                     str(company["id"]),
                     company["name"],
                     company.get("industry", ""),
-                    company.get("type", "DIRECT_EMPLOYER"),
+                    company.get("type", ""),
                     company.get("website", ""),
                     company.get("size", ""),
                 )
@@ -259,10 +258,6 @@ class CompaniesList(Static):
         if table.cursor_row is not None:
             company_id = table.get_row_at(table.cursor_row)[0]
             self.app.push_screen(CompanyDetailScreen(int(company_id)))
-
-    def action_refresh_companies(self) -> None:
-        """Refresh the companies list."""
-        self.load_companies()
 
 
 class DeleteConfirmationModal(ModalScreen):

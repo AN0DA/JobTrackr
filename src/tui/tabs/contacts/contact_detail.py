@@ -43,24 +43,24 @@ class ContactDetailScreen(Screen):
 
             # Related applications
             yield Label("Associated Applications", classes="section-label")
-            yield DataTable(id="applications-table")
+            yield DataTable(id="contact-details-applications-table")
 
             # Related interactions
             yield Label("Recent Interactions", classes="section-label")
-            yield DataTable(id="interactions-table")
+            yield DataTable(id="contact-details-interactions-table")
 
-            with Horizontal(id="detail-actions"):
+            with Horizontal(id="contact-detail-actions"):
                 yield Button("Back", id="back-button", variant="default")
                 yield Button("Add to Application", id="add-to-application", variant="primary")
 
     def on_mount(self) -> None:
         """Load contact data when the screen is mounted."""
         # Set up tables
-        applications_table = self.query_one("#applications-table", DataTable)
+        applications_table = self.query_one("#contact-details-applications-table", DataTable)
         applications_table.add_columns("ID", "Job Title", "Position", "Status", "Applied Date")
         applications_table.cursor_type = "row"
 
-        interactions_table = self.query_one("#interactions-table", DataTable)
+        interactions_table = self.query_one("#contact-details-interactions-table", DataTable)
         interactions_table.add_columns("Date", "Type", "Application", "Details")
         interactions_table.cursor_type = "row"
 
@@ -79,23 +79,35 @@ class ContactDetailScreen(Screen):
                 return
 
             # Update header
-            self.query_one("#contact-name", Static).update(self.contact_data["name"])
+            self.query_one("#contact-name", Static).update(self.contact_data.get("name", "Unknown"))
 
-            if self.contact_data.get("title"):
-                self.query_one("#contact-title", Static).update(self.contact_data["title"])
-            else:
-                self.query_one("#contact-title", Static).update("No title")
+            # Make sure title is a string
+            title = self.contact_data.get("title", "")
+            if title is None:
+                title = "No title"
+            self.query_one("#contact-title", Static).update(title)
 
-            # Update fields
-            company_name = self.contact_data.get("company", {}).get("name", "Not associated with a company")
+            # Update fields - ensure we always use strings for display
+            company = self.contact_data.get("company", {})
+            company_name = company.get("name", "") if company else ""
+            if not company_name:
+                company_name = "Not associated with a company"
             self.query_one("#contact-company", Static).update(company_name)
 
-            self.query_one("#contact-email", Static).update(self.contact_data.get("email", "No email provided"))
+            email = self.contact_data.get("email", "")
+            if email is None or email == "":
+                email = "No email provided"
+            self.query_one("#contact-email", Static).update(email)
 
-            self.query_one("#contact-phone", Static).update(self.contact_data.get("phone", "No phone provided"))
+            phone = self.contact_data.get("phone", "")
+            if phone is None or phone == "":
+                phone = "No phone provided"
+            self.query_one("#contact-phone", Static).update(phone)
 
             # Update notes
-            notes = self.contact_data.get("notes", "No notes available.")
+            notes = self.contact_data.get("notes", "")
+            if notes is None or notes == "":
+                notes = "No notes available."
             self.query_one("#contact-notes", Static).update(notes)
 
             # Load applications (placeholder - would need to implement in service)
@@ -104,17 +116,17 @@ class ContactDetailScreen(Screen):
             # Load interactions (placeholder - would need to implement in service)
             self.load_interactions()
 
-            self.app.sub_title = f"Viewing contact: {self.contact_data['name']}"
+            self.app.sub_title = f"Viewing contact: {self.contact_data.get('name', 'Unknown')}"
 
         except Exception as e:
             self.app.sub_title = f"Error loading contact data: {str(e)}"
 
     def load_applications(self) -> None:
         """Load applications associated with this contact."""
-        table = self.query_one("#applications-table", DataTable)
+        table = self.query_one("#contact-details-applications-table", DataTable)
         table.clear()
 
-        if not self.contact_data or not hasattr(self.contact_data, "applications"):
+        if not self.contact_data or not self.contact_data.get("applications"):
             table.add_row("No applications found", "", "", "", "")
             return
 
@@ -135,7 +147,7 @@ class ContactDetailScreen(Screen):
 
     def load_interactions(self) -> None:
         """Load interactions associated with this contact."""
-        table = self.query_one("#interactions-table", DataTable)
+        table = self.query_one("#contact-details-interactions-table", DataTable)
         table.clear()
 
         # This would require an actual method in the service to get interactions by contact

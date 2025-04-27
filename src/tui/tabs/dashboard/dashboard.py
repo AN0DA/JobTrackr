@@ -2,8 +2,7 @@
 
 from textual.app import ComposeResult
 from textual.containers import Container, Grid, Horizontal, Vertical
-from textual.widgets import Button, Static
-from textual.widgets import TabbedContent
+from textual.widgets import Button, Static, TabbedContent
 
 from src.services.application_service import ApplicationService
 from src.tui.widgets.application_list import ApplicationList
@@ -103,4 +102,3 @@ class Dashboard(Static):
             self.app.push_screen(ApplicationForm())
         elif event.button.id == "view-all-apps":
             self.app.query_one(TabbedContent).active = "applications"
-

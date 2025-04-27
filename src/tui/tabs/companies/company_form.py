@@ -5,7 +5,7 @@ from collections.abc import Callable
 from textual.app import ComposeResult
 from textual.containers import Container, Horizontal, Vertical
 from textual.screen import Screen
-from textual.widgets import Button, Input, Label, Select, Static, TextArea
+from textual.widgets import Button, Input, Label, Select, TextArea
 
 from src.db.models import CompanyType
 from src.services.company_service import CompanyService
@@ -34,16 +34,14 @@ class CompanyForm(Screen):
 
     def compose(self) -> ComposeResult:
         """Compose the form layout."""
-        with Container(id="company-form-container", classes="modal-container"):
-            with Container(id="company-form", classes="modal-content"):
-                yield Static(
-                    "New Company" if not self.company_id else "Edit Company",
-                    id="company-form-title",
-                    classes="modal-title",
-                )
+        with Container(id="app-form"):
+            yield Label(
+                "New Company" if not self.company_id else "Edit Company",
+                id="form-title",
+            )
 
-                with Vertical(id="company-fields"):
-                    # Basic information
+            with Container(id="contact-fields", classes="form-page"):
+                with Vertical(id="contact-fields"):
                     yield Label("Company Name *", classes="field-label")
                     yield Input(id="company-name", disabled=self.readonly)
 
@@ -72,10 +70,10 @@ class CompanyForm(Screen):
                     yield Label("Notes", classes="field-label")
                     yield TextArea(id="notes", disabled=self.readonly)
 
-                with Horizontal(id="company-form-actions", classes="modal-actions"):
-                    if not self.readonly:
-                        yield Button("Save", variant="primary", id="save-company")
-                    yield Button("Cancel", id="cancel")
+            with Horizontal(id="form-actions"):
+                if not self.readonly:
+                    yield Button("Save", variant="primary", id="save-company")
+                yield Button("Close", id="close-form")
 
     def on_mount(self) -> None:
         """Load data when mounted."""
@@ -120,7 +118,7 @@ class CompanyForm(Screen):
         if button_id == "save-company":
             self.save_company()
 
-        elif button_id == "cancel":
+        elif button_id == "close-form":
             self.app.pop_screen()
 
     def save_company(self) -> None:

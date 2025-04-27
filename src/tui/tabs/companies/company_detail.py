@@ -89,18 +89,34 @@ class CompanyDetailScreen(Screen):
                 return
 
             # Update header
-            self.query_one("#company-name", Static).update(self.company_data["name"])
+            self.query_one("#company-name", Static).update(self.company_data.get("name", "Unknown"))
 
-            company_type = self.company_data.get("type", "DIRECT_EMPLOYER")
+            # Make sure company type is a string
+            company_type = self.company_data.get("company_type", "")
+            if company_type is None:
+                company_type = "DIRECT_EMPLOYER"
             self.query_one("#company-type", Static).update(f"Type: {company_type}")
 
-            # Update overview fields
-            self.query_one("#company-industry", Static).update(self.company_data.get("industry", "N/A"))
-            self.query_one("#company-website", Static).update(self.company_data.get("website", "N/A"))
-            self.query_one("#company-size", Static).update(self.company_data.get("size", "N/A"))
+            # Update overview fields - ensure we always use strings for display
+            industry = self.company_data.get("industry", "")
+            if industry is None or industry == "":
+                industry = "Not specified"
+            self.query_one("#company-industry", Static).update(industry)
+
+            website = self.company_data.get("website", "")
+            if website is None or website == "":
+                website = "No website provided"
+            self.query_one("#company-website", Static).update(website)
+
+            size = self.company_data.get("size", "")
+            if size is None or size == "":
+                size = "Not specified"
+            self.query_one("#company-size", Static).update(size)
 
             # Update notes
-            notes = self.company_data.get("notes", "No notes available.")
+            notes = self.company_data.get("notes", "")
+            if notes is None or notes == "":
+                notes = "No notes available."
             self.query_one("#company-notes", Static).update(notes)
 
             # Load relationships
@@ -109,7 +125,7 @@ class CompanyDetailScreen(Screen):
             # Load applications
             self.load_applications()
 
-            self.app.sub_title = f"Viewing company: {self.company_data['name']}"
+            self.app.sub_title = f"Viewing company: {self.company_data.get('name', 'Unknown')}"
 
         except Exception as e:
             self.app.sub_title = f"Error loading company data: {str(e)}"

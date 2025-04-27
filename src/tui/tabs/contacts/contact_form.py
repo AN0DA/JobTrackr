@@ -3,7 +3,7 @@ from collections.abc import Callable
 from textual.app import ComposeResult
 from textual.containers import Container, Horizontal, Vertical
 from textual.screen import Screen
-from textual.widgets import Button, Input, Label, Select, Static, TextArea
+from textual.widgets import Button, Input, Label, Select, TextArea
 
 from src.services.company_service import CompanyService
 from src.services.contact_service import ContactService
@@ -33,16 +33,14 @@ class ContactForm(Screen):
 
     def compose(self) -> ComposeResult:
         """Compose the form layout."""
-        with Container(id="contact-form-container", classes="modal-container"):
-            with Container(id="contact-form", classes="modal-content"):
-                yield Static(
-                    "New Contact" if not self.contact_id else "Edit Contact",
-                    id="contact-form-title",
-                    classes="modal-title",
-                )
+        with Container(id="app-form"):
+            yield Label(
+                "New Contact" if not self.contact_id else "Edit Contact",
+                id="form-title",
+            )
 
+            with Container(id="contact-fields", classes="form-page"):
                 with Vertical(id="contact-fields"):
-                    # Basic information
                     yield Label("Name *", classes="field-label")
                     yield Input(id="contact-name", disabled=self.readonly)
 
@@ -73,10 +71,10 @@ class ContactForm(Screen):
                     yield Label("Notes", classes="field-label")
                     yield TextArea(id="contact-notes", disabled=self.readonly)
 
-                with Horizontal(id="contact-form-actions", classes="form-actions"):
-                    if not self.readonly:
-                        yield Button("Save", variant="primary", id="save-contact")
-                    yield Button("Cancel", id="cancel")
+            with Horizontal(id="form-actions"):
+                if not self.readonly:
+                    yield Button("Save", variant="primary", id="save-contact")
+                yield Button("Close", id="close-form")
 
     def on_mount(self) -> None:
         """Load data when mounted."""
@@ -86,20 +84,16 @@ class ContactForm(Screen):
             self.load_contact()
 
     def load_companies(self) -> None:
-        """Load companies for dropdown."""
+        """Load companies for the dropdown."""
         try:
             service = CompanyService()
             self.companies = service.get_companies()
 
+            company_values = [(company["name"], str(company["id"])) for company in self.companies]
+            company_values.append(("No Company", ""))
+
             company_select = self.query_one("#company-select", Select)
-            company_select.clear()
-
-            # Add empty option
-            company_select.add_option("No Company", "")
-
-            # Add companies
-            for company in self.companies:
-                company_select.add_option(company["name"], str(company["id"]))
+            company_select.set_options(company_values)
 
         except Exception as e:
             self.app.sub_title = f"Error loading companies: {str(e)}"
@@ -130,8 +124,18 @@ class ContactForm(Screen):
                 self.query_one("#contact-notes", TextArea).text = contact_data["notes"]
 
             # Set company if available
-            if contact_data.get("company"):
-                self.query_one("#company-select", Select).value = str(contact_data["company"]["id"])
+            company_select = self.query_one("#company-select", Select)
+            if contact_data.get("company") and contact_data["company"].get("id"):
+                # Convert company ID to string to match options format
+                company_id_str = str(contact_data["company"]["id"])
+
+                # Check if this value exists in the options
+                valid_options = [option[1] for option in company_select.options]
+                if company_id_str in valid_options:
+                    company_select.value = company_id_str
+                else:
+                    # If company ID is not in options, just leave as default
+                    self.app.sub_title = f"Warning: Company ID {company_id_str} not found in options"
 
         except Exception as e:
             self.app.sub_title = f"Error loading contact: {str(e)}"
@@ -143,7 +147,7 @@ class ContactForm(Screen):
         if button_id == "save-contact":
             self.save_contact()
 
-        elif button_id == "cancel":
+        elif button_id == "close-form":
             self.app.pop_screen()
 
         elif button_id == "new-company":

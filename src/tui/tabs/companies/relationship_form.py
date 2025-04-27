@@ -110,9 +110,34 @@ class CompanyRelationshipForm(ModalScreen):
 
     def load_relationship(self) -> None:
         """Load relationship data if editing."""
-        # In a real implementation, you would fetch the relationship details
-        # and populate the form fields
-        pass
+        try:
+            service = CompanyService()
+            relationship = service.get_relationship(self.relationship_id)
+
+            if not relationship:
+                self.app.sub_title = f"Relationship {self.relationship_id} not found"
+                return
+
+            # Set relationship type
+            relationship_type = relationship.get("relationship_type")
+            if relationship_type:
+                self.query_one("#relationship-type", Select).value = relationship_type
+
+            # Set target company
+            target_id = relationship.get("target_id")
+            if target_id:
+                target_select = self.query_one("#target-company", Select)
+                target_select.value = str(target_id)
+
+            # Set notes
+            notes = relationship.get("notes")
+            if notes:
+                self.query_one("#relationship-notes", TextArea).text = notes
+
+            self.app.sub_title = "Loaded relationship data for editing"
+
+        except Exception as e:
+            self.app.sub_title = f"Error loading relationship: {str(e)}"
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button presses."""

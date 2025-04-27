@@ -147,13 +147,13 @@ class ApplicationForm(Screen):
                 self.application_data["position"] = self.query_one("#position", Input).value
                 self.application_data["status"] = self.query_one("#status", Select).value
                 self.application_data["applied_date"] = self.query_one("#applied-date", Input).value
-            
+
             # Page 2: Additional Details
             elif self.current_page == 2:
                 self.application_data["location"] = self.query_one("#location", Input).value
                 self.application_data["salary"] = self.query_one("#salary", Input).value
                 self.application_data["link"] = self.query_one("#link", Input).value
-            
+
             # Page 3: Content
             elif self.current_page == 3:
                 self.application_data["description"] = self.query_one("#description", TextArea).text
@@ -197,16 +197,6 @@ class ApplicationForm(Screen):
         if self.app_id:
             self.load_application()
 
-    # def on_resize(self) -> None:
-    #     """Handle resize events by adjusting the form container."""
-    #     form_container = self.query_one("#form-container", ScrollableContainer)
-    #     form_actions = self.query_one("#form-actions", Horizontal)
-    #
-    #     # Make sure the form container adjusts to leave space for actions
-    #     # This helps on smaller screens
-    #     action_height = form_actions.region.height
-    #     form_container.styles.height = f"100vh - {action_height}px"
-
     def load_companies(self) -> None:
         """Load companies for the dropdown."""
         try:
@@ -215,10 +205,6 @@ class ApplicationForm(Screen):
 
             company_select = self.query_one("#company-select", Select)
             company_select.set_options([(company["name"], str(company["id"])) for company in self.companies])
-
-            # Set default selection for new applications
-            if not self.app_id and self.companies:
-                company_select.value = str(self.companies[0]["id"])
 
         except Exception as e:
             self.app.sub_title = f"Error loading companies: {str(e)}"

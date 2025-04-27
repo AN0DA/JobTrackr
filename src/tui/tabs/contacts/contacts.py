@@ -19,7 +19,6 @@ class ContactsList(Static):
         ("d", "delete_contact", "Delete"),
         ("e", "edit_contact", "Edit"),
         ("v", "view_contact", "View"),
-        ("r", "refresh_contacts", "Refresh"),
     ]
 
     def __init__(self) -> None:
@@ -82,7 +81,12 @@ class ContactsList(Static):
         table.sort_column_click = True
 
         # Load companies for filtering first, before trying to load contacts
-        self.load_companies()
+        try:
+            self.load_companies()
+            # Explicitly load contacts even if companies aren't available
+            self.load_contacts()
+        except Exception as e:
+            self.update_status(f"Error during mount: {str(e)}")
 
     def load_companies(self) -> None:
         """Load companies for filtering."""
@@ -90,16 +94,11 @@ class ContactsList(Static):
             service = CompanyService()
             self.companies = service.get_companies()
 
+            company_values = [(company["name"], str(company["id"])) for company in self.companies]
+            company_values.append(("No Company", ""))
+
             company_select = self.query_one("#company-filter", Select)
-            company_select.clear()
-
-            # Add "All" option first
-            company_select.add_option("All Companies", "All")
-
-            # Add companies
-            for company in self.companies:
-                company_select.add_option(company["name"], str(company["id"]))
-
+            company_select.set_options(company_values)
             # Set default value after options are added
             company_select.value = "All"
 
@@ -234,8 +233,10 @@ class ContactsList(Static):
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
         """Open the contact detail view when a row is selected."""
         table = self.query_one("#contacts-table", DataTable)
-        contact_id = table.get_row(event.row_key)[0]
-        self.app.push_screen(ContactDetailScreen(int(contact_id)))
+        row = table.get_row_at(event.cursor_row)
+        if row:
+            contact_id = row[0]
+            self.app.push_screen(ContactDetailScreen(int(contact_id)))
 
     def _sort_contacts(self, contacts):
         """Sort contacts based on current sort settings."""
@@ -279,10 +280,6 @@ class ContactsList(Static):
         if table.cursor_row is not None:
             contact_id = table.get_row_at(table.cursor_row)[0]
             self.app.push_screen(ContactDetailScreen(int(contact_id)))
-
-    def action_refresh_contacts(self) -> None:
-        """Refresh the contacts list."""
-        self.load_contacts(self.company_filter)
 
 
 class DeleteConfirmationModal(ModalScreen):

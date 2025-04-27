@@ -407,8 +407,20 @@ DataTable {
     color: $text;
 }
 
+#contact-header {
+    height: 2fr;
+}
+
 .contact-subtitle {
     color: $text-muted;
+}
+
+#contact-details-applications-table #contact-details-interactions-table {
+    height: 2fr;
+}
+
+#contact-detail-actions {
+    height: auto;
 }
 
 #contact-info-grid {
