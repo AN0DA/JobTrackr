@@ -69,7 +69,11 @@ class ListView(Static):
     def on_mount(self) -> None:
         """Set up the screen when mounted."""
         table = self.query_one(DataTable)
-        table.add_columns(*self.columns)
+        
+        # Only add columns if they don't already exist to prevent duplication
+        if not table.columns:
+            table.add_columns(*self.columns)
+            
         table.cursor_type = "row"
         table.can_focus = True
         table.zebra_stripes = True
