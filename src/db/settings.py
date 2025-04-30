@@ -41,7 +41,7 @@ class Settings:
                 self.save()
 
             # Expand paths with ~ to user's home directory
-            for key in ["database_path", "export_directory"]:
+            for key in ["database_path"]:
                 if isinstance(self._config[key], str) and self._config[key].startswith("~"):
                     self._config[key] = os.path.expanduser(self._config[key])
                     logger.debug(f"Expanded path for {key}: {self._config[key]}")
@@ -84,15 +84,6 @@ class Settings:
 
         return db_path
 
-    def get_export_directory(self) -> str:
-        """Get the export directory, ensuring it exists."""
-        export_dir = self.get("export_directory")
-
-        # Ensure export directory exists
-        os.makedirs(export_dir, exist_ok=True)
-        logger.debug(f"Ensured export directory exists: {export_dir}")
-
-        return export_dir
 
     def database_exists(self) -> bool:
         """Check if the database file exists."""

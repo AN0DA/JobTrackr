@@ -70,9 +70,6 @@ class SettingsDialog(QDialog):
         self.updates_checkbox = QCheckBox()
         general_layout.addRow("Check for updates:", self.updates_checkbox)
 
-        self.window_size_checkbox = QCheckBox()
-        general_layout.addRow("Save window size:", self.window_size_checkbox)
-
         general_group.setLayout(general_layout)
         layout.addWidget(general_group)
 
@@ -125,7 +122,6 @@ class SettingsDialog(QDialog):
 
         # General settings
         self.updates_checkbox.setChecked(self.settings.get("check_updates", True))
-        self.window_size_checkbox.setChecked(self.settings.get("save_window_size", True))
 
         # Log settings
         from src.config import LOG_DIR, LOG_LEVEL
@@ -208,12 +204,10 @@ class SettingsDialog(QDialog):
             # Get values
             db_path = self.db_path_input.text()
             check_updates = self.updates_checkbox.isChecked()
-            save_window_size = self.window_size_checkbox.isChecked()
 
             # Save settings
             self.settings.set("database_path", db_path)
             self.settings.set("check_updates", check_updates)
-            self.settings.set("save_window_size", save_window_size)
 
             if self.main_window:
                 self.main_window.show_status_message("Settings saved")
