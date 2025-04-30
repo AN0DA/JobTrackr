@@ -16,7 +16,7 @@ class Settings:
         # Define settings file location from central config
         self.config_dir = CONFIG_DIR
         self.config_file = self.config_dir / "config.json"
-        self._config = {}
+        self._config: dict[str, Any] = {}  # Add proper type annotation
 
         # Load settings (or create default)
         self.load()

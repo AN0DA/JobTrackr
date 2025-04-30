@@ -51,7 +51,7 @@ class CompanyRelationship(Base):
         back_populates="incoming_relationships",
     )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<CompanyRelationship(source={self.source_company_id}, target={self.target_company_id}, type='{self.relationship_type}')>"
 
 
@@ -108,7 +108,7 @@ class Application(Base):
     interactions = relationship("Interaction", back_populates="application", cascade="all, delete-orphan")
     change_records = relationship("ChangeRecord", back_populates="application", cascade="all, delete-orphan")
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<Application(id={self.id}, job_title='{self.job_title}', company_id={self.company_id})>"
 
 
@@ -130,7 +130,7 @@ class Contact(Base):
     applications = relationship("Application", secondary=application_contact, back_populates="contacts")
     interactions = relationship("Interaction", secondary=interaction_contact, back_populates="contacts")
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<Contact(id={self.id}, name='{self.name}')>"
 
 
@@ -149,7 +149,7 @@ class Interaction(Base):
     application = relationship("Application", back_populates="interactions")
     contacts = relationship("Contact", secondary=interaction_contact, back_populates="interactions")
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<Interaction(id={self.id}, type='{self.type}')>"
 
 
@@ -167,5 +167,5 @@ class ChangeRecord(Base):
     # Relationships
     application = relationship("Application", back_populates="change_records")
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<ChangeRecord(id={self.id}, app_id={self.application_id}, type='{self.change_type}')>"

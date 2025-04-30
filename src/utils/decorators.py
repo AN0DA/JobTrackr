@@ -1,17 +1,21 @@
 import functools
 import traceback
+from collections.abc import Callable
+from typing import Any, TypeVar, cast
 
 from src.db.database import get_session
 from src.utils.logging import get_logger
 
 logger = get_logger(__name__)
 
+F = TypeVar("F", bound=Callable[..., Any])
 
-def db_operation(func):
+
+def db_operation(func: F) -> F:
     """Decorator for database operations with consistent error handling."""
 
     @functools.wraps(func)
-    def wrapper(*args, **kwargs):
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
         session = get_session()
         try:
             result = func(*args, **kwargs, session=session)
@@ -23,14 +27,14 @@ def db_operation(func):
         finally:
             session.close()
 
-    return wrapper
+    return cast(F, wrapper)
 
 
-def error_handler(func):
+def error_handler(func: F) -> F:
     """Decorator to handle and log errors in UI operations."""
 
     @functools.wraps(func)
-    def wrapper(self, *args, **kwargs):
+    def wrapper(self: Any, *args: Any, **kwargs: Any) -> Any:
         try:
             return func(self, *args, **kwargs)
         except Exception as e:
@@ -49,4 +53,4 @@ def error_handler(func):
             # Re-raise if needed (can be commented out to prevent crashes)
             # raise
 
-    return wrapper
+    return cast(F, wrapper)

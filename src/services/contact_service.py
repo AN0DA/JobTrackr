@@ -77,7 +77,7 @@ class ContactService(BaseService):
 
         return result
 
-    def get_contacts(self, company_id: int | None = None, **kwargs) -> list[dict[str, Any]]:
+    def get_contacts(self, company_id: int | None = None, **kwargs: Any) -> list[dict[str, Any]]:
         """Get contacts with optional filtering by company."""
         session = get_session()
         try:
@@ -152,6 +152,55 @@ class ContactService(BaseService):
         except Exception as e:
             session.rollback()
             logger.error(f"Error adding contact to application: {e}")
+            raise
+        finally:
+            session.close()
+
+    def get_contacts_for_application(self, application_id: int) -> list[dict[str, Any]]:
+        """Get contacts associated with an application."""
+        session = get_session()
+        try:
+            application = session.query(Application).filter(Application.id == application_id).first()
+
+            if not application:
+                return []
+
+            return [self._entity_to_dict(contact) for contact in application.contacts]
+        except Exception as e:
+            logger.error(f"Error getting contacts for application {application_id}: {e}")
+            raise
+        finally:
+            session.close()
+
+    def remove_contact_from_application(self, application_id: int, contact_id: int) -> bool:
+        """Remove a contact from an application."""
+        session = get_session()
+        try:
+            application = session.query(Application).filter(Application.id == application_id).first()
+            contact = session.query(Contact).filter(Contact.id == contact_id).first()
+
+            if not application or not contact:
+                return False
+
+            if contact in application.contacts:
+                application.contacts.remove(contact)
+                session.commit()
+
+                # Record the change
+                change_record_service = ChangeRecordService()
+                change_record_service.create(
+                    {
+                        "application_id": application_id,
+                        "change_type": ChangeType.CONTACT_ADDED.value,
+                        "old_value": contact.name,
+                        "notes": f"Removed contact: {contact.name}",
+                    }
+                )
+
+            return True
+        except Exception as e:
+            session.rollback()
+            logger.error(f"Error removing contact from application: {e}")
             raise
         finally:
             session.close()

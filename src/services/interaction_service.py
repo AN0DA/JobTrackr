@@ -45,7 +45,9 @@ class InteractionService(BaseService):
             entity.type = data["type"]
         if "date" in data:
             if isinstance(data["date"], str):
-                entity.date = datetime.fromisoformat(data["date"])
+                # Fix the datetime incompatible type assignment
+                new_date = datetime.fromisoformat(data["date"])
+                entity.date = new_date
             else:
                 entity.date = data["date"]
         if "notes" in data:

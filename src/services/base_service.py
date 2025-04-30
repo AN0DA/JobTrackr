@@ -1,26 +1,28 @@
-from typing import Any
+from typing import Any, Generic, TypeVar, cast
 
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
-from src.db.database import Base as ModelBase
-from src.db.database import get_session
+from src.db.database import Base, get_session
 from src.utils.logging import get_logger
+
+# Define type for models
+ModelType = TypeVar("ModelType", bound=Base)
 
 # Get module logger
 logger = get_logger(__name__)
 
 
-class BaseService:
+class BaseService(Generic[ModelType]):
     """Base service class for common database operations."""
 
     # The model this service manages (overridden in subclasses)
-    model_class: type[ModelBase] = None
+    model_class: type[ModelType] | None = None
 
     # Name of this entity type (for error messages)
     entity_name: str = "record"
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the service with a logger specific to the subclass."""
         self.logger = get_logger(self.__class__.__name__)
 
@@ -45,7 +47,7 @@ class BaseService:
         finally:
             session.close()
 
-    def get_all(self, **kwargs) -> list[dict[str, Any]]:
+    def get_all(self, **kwargs: Any) -> list[dict[str, Any]]:
         """Get all entities with optional filtering."""
         if not self.model_class:
             raise NotImplementedError("model_class must be defined in the subclass")
@@ -100,7 +102,7 @@ class BaseService:
             self.logger.debug(f"Creation data: {data}")
 
             # Create entity object - implementation varies by entity type
-            entity = self._create_entity_from_dict(data, session)
+            entity = self._create_entity_from_dict(data, cast(Session, session))
 
             # Add to session and commit
             session.add(entity)
@@ -135,7 +137,7 @@ class BaseService:
                 raise ValueError(error_msg)
 
             # Update fields - implementation varies by entity type
-            self._update_entity_from_dict(entity, data, session)
+            self._update_entity_from_dict(entity, data, cast(Session, session))
 
             # Commit changes
             session.commit()
@@ -177,14 +179,14 @@ class BaseService:
         finally:
             session.close()
 
-    def _create_entity_from_dict(self, data: dict[str, Any], session: Session) -> ModelBase:
+    def _create_entity_from_dict(self, data: dict[str, Any], session: Session) -> ModelType:
         """Create an entity from a dictionary of attributes."""
         raise NotImplementedError("Subclasses must implement _create_entity_from_dict")
 
-    def _update_entity_from_dict(self, entity: ModelBase, data: dict[str, Any], session: Session) -> None:
+    def _update_entity_from_dict(self, entity: ModelType, data: dict[str, Any], session: Session) -> None:
         """Update an entity from a dictionary of attributes."""
         raise NotImplementedError("Subclasses must implement _update_entity_from_dict")
 
-    def _entity_to_dict(self, entity: ModelBase, include_details: bool = True) -> dict[str, Any]:
+    def _entity_to_dict(self, entity: ModelType, include_details: bool = True) -> dict[str, Any]:
         """Convert an entity object to a dictionary."""
         raise NotImplementedError("Subclasses must implement _entity_to_dict")

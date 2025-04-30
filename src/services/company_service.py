@@ -68,7 +68,7 @@ class CompanyService(BaseService):
         return [ct.value for ct in CompanyType]
 
     def create_relationship(
-        self, source_id: int, target_id: int, relationship_type: str, notes: str = None
+        self, source_id: int, target_id: int, relationship_type: str, notes: str | None = None
     ) -> dict[str, Any]:
         """Create a new relationship between companies."""
         session = get_session()
@@ -101,6 +101,38 @@ class CompanyService(BaseService):
         except Exception as e:
             session.rollback()
             logger.error(f"Error creating company relationship: {e}")
+            raise
+        finally:
+            session.close()
+
+    def update_relationship(self, relationship_id: int, data: dict[str, Any]) -> dict[str, Any]:
+        """Update an existing company relationship."""
+        session = get_session()
+        try:
+            relationship = session.query(CompanyRelationship).filter(CompanyRelationship.id == relationship_id).first()
+
+            if not relationship:
+                raise ValueError(f"Relationship {relationship_id} not found")
+
+            # Update fields
+            if "relationship_type" in data:
+                relationship.relationship_type = data["relationship_type"]
+            if "notes" in data:
+                relationship.notes = data["notes"]
+
+            session.commit()
+            session.refresh(relationship)
+
+            return {
+                "id": relationship.id,
+                "source_company_id": relationship.source_company_id,
+                "target_company_id": relationship.target_company_id,
+                "relationship_type": relationship.relationship_type,
+                "notes": relationship.notes,
+            }
+        except Exception as e:
+            session.rollback()
+            logger.error(f"Error updating relationship: {e}")
             raise
         finally:
             session.close()
