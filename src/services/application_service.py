@@ -6,7 +6,6 @@ from sqlalchemy import desc, func, or_, update
 from sqlalchemy.orm import Session, joinedload
 
 from src.config import ApplicationStatus, ChangeType
-from src.db.database import get_session
 from src.db.models import Application, Company
 from src.services.base_service import BaseService
 from src.services.change_record_service import ChangeRecordService
@@ -106,9 +105,9 @@ class ApplicationService(BaseService):
 
         return result
 
-    def get_applications(self, status: str | None = None, **kwargs) -> list[dict[str, Any]]:
+    @db_operation
+    def get_applications(self, session: Session, status: str | None = None, **kwargs) -> list[dict[str, Any]]:
         """Get applications with optional filtering and sorting."""
-        session = get_session()
         try:
             query = session.query(Application).options(joinedload(Application.company))
 
@@ -141,39 +140,34 @@ class ApplicationService(BaseService):
         except Exception as e:
             logger.error(f"Error fetching applications: {e}")
             raise
-        finally:
-            session.close()
 
-    def search_applications(self, search_term: str) -> list[dict[str, Any]]:
+    @db_operation
+    def search_applications(self, search_term: str, session: Session) -> list[dict[str, Any]]:
         """Search for applications by keyword."""
-        session = get_session()
-        try:
-            search_pattern = f"%{search_term}%"
+        search_pattern = f"%{search_term}%"
 
-            # Create base query
-            query = session.query(Application).join(Company, isouter=True)
+        # Create base query
+        query = session.query(Application).join(Company, isouter=True)
 
-            # Add search conditions
-            search_fields = [
-                Application.job_title,
-                Application.position,
-                Application.description,
-                Application.notes,
-                Application.location,
-                Company.name,
-            ]
+        # Add search conditions
+        search_fields = [
+            Application.job_title,
+            Application.position,
+            Application.description,
+            Application.notes,
+            Application.location,
+            Company.name,
+        ]
 
-            conditions = [field.ilike(search_pattern) for field in search_fields]
-            query = query.filter(or_(*conditions)).order_by(Application.applied_date.desc())
+        conditions = [field.ilike(search_pattern) for field in search_fields]
+        query = query.filter(or_(*conditions)).order_by(Application.applied_date.desc())
 
-            applications = query.all()
-            return [self._entity_to_dict(app, include_details=False) for app in applications]
-        finally:
-            session.close()
+        applications = query.all()
+        return [self._entity_to_dict(app, include_details=False) for app in applications]
 
-    def get_applications_by_company(self, company_id: int) -> list[dict[str, Any]]:
+    @db_operation
+    def get_applications_by_company(self, company_id: int, session: Session) -> list[dict[str, Any]]:
         """Get applications for a specific company."""
-        session = get_session()
         try:
             query = session.query(Application).filter(Application.company_id == company_id)
             applications = query.order_by(Application.applied_date.desc()).all()
@@ -181,14 +175,12 @@ class ApplicationService(BaseService):
         except Exception as e:
             logger.error(f"Error fetching applications for company {company_id}: {e}")
             raise
-        finally:
-            session.close()
 
+    @db_operation
     def get_applications_for_export(
-        self, include_notes=True, include_interactions=True, include_reminders=True
+        self, session: Session, include_notes=True, include_interactions=True, include_reminders=True
     ) -> list[dict[str, Any]]:
         """Get all applications with optional details for export."""
-        session = get_session()
         try:
             # Base query for applications with company info
             query = (
@@ -240,12 +232,10 @@ class ApplicationService(BaseService):
         except Exception as e:
             logger.error(f"Error getting applications for export: {e}")
             raise
-        finally:
-            session.close()
 
-    def get_dashboard_stats(self) -> dict[str, Any]:
+    @db_operation
+    def get_dashboard_stats(self, session: Session) -> dict[str, Any]:
         """Get dashboard statistics."""
-        session = get_session()
         try:
             # Get total applications count
             total_count = session.query(func.count(Application.id)).scalar() or 0
@@ -270,8 +260,6 @@ class ApplicationService(BaseService):
         except Exception as e:
             logger.error(f"Error fetching dashboard stats: {e}")
             raise
-        finally:
-            session.close()
 
     def add_interaction(self, data: dict[str, Any]) -> dict[str, Any]:
         """Add an interaction to an application."""

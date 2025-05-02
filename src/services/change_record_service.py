@@ -4,9 +4,9 @@ from typing import Any
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
-from src.db.database import get_session
 from src.db.models import ChangeRecord
 from src.services.base_service import BaseService
+from src.utils.decorators import db_operation
 
 logger = logging.getLogger(__name__)
 
@@ -50,9 +50,9 @@ class ChangeRecordService(BaseService):
             "notes": record.notes,
         }
 
-    def get_change_records(self, application_id: int) -> list[dict[str, Any]]:
+    @db_operation
+    def get_change_records(self, application_id: int, session: Session) -> list[dict[str, Any]]:
         """Get change records for an application."""
-        session = get_session()
         try:
             records = (
                 session.query(ChangeRecord)
@@ -65,5 +65,3 @@ class ChangeRecordService(BaseService):
         except Exception as e:
             logger.error(f"Error fetching change records: {e}")
             raise
-        finally:
-            session.close()

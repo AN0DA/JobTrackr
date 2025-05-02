@@ -1,9 +1,10 @@
-from typing import Any, Generic, TypeVar, cast
+from typing import Any, Generic, TypeVar
 
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
-from src.db.database import Base, get_session
+from src.db.database import Base
+from src.utils.decorators import db_operation
 from src.utils.logging import get_logger
 
 # Define type for models
@@ -26,12 +27,12 @@ class BaseService(Generic[ModelType]):
         """Initialize the service with a logger specific to the subclass."""
         self.logger = get_logger(self.__class__.__name__)
 
-    def get(self, _id: int) -> dict[str, Any] | None:
+    @db_operation
+    def get(self, _id: int, session: Session) -> dict[str, Any] | None:
         """Get a specific entity by ID."""
         if not self.model_class:
             raise NotImplementedError("model_class must be defined in the subclass")
 
-        session = get_session()
         try:
             self.logger.debug(f"Fetching {self.entity_name} with ID {_id}")
             entity = session.query(self.model_class).filter(self.model_class.id == _id).first()
@@ -44,15 +45,13 @@ class BaseService(Generic[ModelType]):
         except Exception as e:
             self.logger.error(f"Error fetching {self.entity_name} {_id}: {e}", exc_info=True)
             raise
-        finally:
-            session.close()
 
-    def get_all(self, **kwargs: Any) -> list[dict[str, Any]]:
+    @db_operation
+    def get_all(self, session: Session, **kwargs: Any) -> list[dict[str, Any]]:
         """Get all entities with optional filtering."""
         if not self.model_class:
             raise NotImplementedError("model_class must be defined in the subclass")
 
-        session = get_session()
         try:
             # Build query with filtering
             sort_by = kwargs.get("sort_by")
@@ -88,21 +87,19 @@ class BaseService(Generic[ModelType]):
         except Exception as e:
             self.logger.error(f"Error fetching {self.entity_name}s: {e}", exc_info=True)
             raise
-        finally:
-            session.close()
 
-    def create(self, data: dict[str, Any]) -> dict[str, Any]:
+    @db_operation
+    def create(self, data: dict[str, Any], session: Session) -> dict[str, Any]:
         """Create a new entity."""
         if not self.model_class:
             raise NotImplementedError("model_class must be defined in the subclass")
 
-        session = get_session()
         try:
             self.logger.info(f"Creating new {self.entity_name}")
             self.logger.debug(f"Creation data: {data}")
 
             # Create entity object - implementation varies by entity type
-            entity = self._create_entity_from_dict(data, cast(Session, session))
+            entity = self._create_entity_from_dict(data, session)
 
             # Add to session and commit
             session.add(entity)
@@ -113,18 +110,15 @@ class BaseService(Generic[ModelType]):
 
             return self._entity_to_dict(entity)
         except Exception as e:
-            session.rollback()
             self.logger.error(f"Error creating {self.entity_name}: {e}", exc_info=True)
             raise
-        finally:
-            session.close()
 
-    def update(self, _id: int, data: dict[str, Any]) -> dict[str, Any]:
+    @db_operation
+    def update(self, _id: int, data: dict[str, Any], session: Session) -> dict[str, Any]:
         """Update an existing entity."""
         if not self.model_class:
             raise NotImplementedError("model_class must be defined in the subclass")
 
-        session = get_session()
         try:
             # Get entity
             self.logger.info(f"Updating {self.entity_name} with ID {_id}")
@@ -137,7 +131,7 @@ class BaseService(Generic[ModelType]):
                 raise ValueError(error_msg)
 
             # Update fields - implementation varies by entity type
-            self._update_entity_from_dict(entity, data, cast(Session, session))
+            self._update_entity_from_dict(entity, data, session)
 
             # Commit changes
             session.commit()
@@ -146,18 +140,15 @@ class BaseService(Generic[ModelType]):
             self.logger.info(f"{self.entity_name.capitalize()} {_id} updated successfully")
             return self._entity_to_dict(entity)
         except Exception as e:
-            session.rollback()
             self.logger.error(f"Error updating {self.entity_name} {_id}: {e}", exc_info=True)
             raise
-        finally:
-            session.close()
 
-    def delete(self, _id: int) -> bool:
+    @db_operation
+    def delete(self, _id: int, session: Session) -> bool:
         """Delete an entity."""
         if not self.model_class:
             raise NotImplementedError("model_class must be defined in the subclass")
 
-        session = get_session()
         try:
             self.logger.info(f"Deleting {self.entity_name} with ID {_id}")
 
@@ -173,11 +164,8 @@ class BaseService(Generic[ModelType]):
             self.logger.info(f"{self.entity_name.capitalize()} {_id} deleted successfully")
             return True
         except Exception as e:
-            session.rollback()
             self.logger.error(f"Error deleting {self.entity_name} {_id}: {e}", exc_info=True)
             raise
-        finally:
-            session.close()
 
     def _create_entity_from_dict(self, data: dict[str, Any], session: Session) -> ModelType:
         """Create an entity from a dictionary of attributes."""

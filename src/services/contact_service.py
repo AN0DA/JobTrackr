@@ -5,10 +5,10 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from src.config import ChangeType
-from src.db.database import get_session
 from src.db.models import Application, Company, Contact
 from src.services.base_service import BaseService
 from src.services.change_record_service import ChangeRecordService
+from src.utils.decorators import db_operation
 
 logger = logging.getLogger(__name__)
 
@@ -77,9 +77,9 @@ class ContactService(BaseService):
 
         return result
 
-    def get_contacts(self, company_id: int | None = None, **kwargs: Any) -> list[dict[str, Any]]:
+    @db_operation
+    def get_contacts(self, session: Session, company_id: int | None = None, **kwargs: Any) -> list[dict[str, Any]]:
         """Get contacts with optional filtering by company."""
-        session = get_session()
         try:
             query = session.query(Contact)
 
@@ -96,12 +96,10 @@ class ContactService(BaseService):
         except Exception as e:
             logger.error(f"Error fetching contacts: {e}")
             raise
-        finally:
-            session.close()
 
-    def search_contacts(self, search_term: str) -> list[dict[str, Any]]:
+    @db_operation
+    def search_contacts(self, search_term: str, session: Session) -> list[dict[str, Any]]:
         """Search for contacts by name, email, or title."""
-        session = get_session()
         try:
             search_pattern = f"%{search_term}%"
             query = session.query(Contact).join(Company, isouter=True)
@@ -120,12 +118,10 @@ class ContactService(BaseService):
         except Exception as e:
             logger.error(f"Error searching contacts: {e}")
             raise
-        finally:
-            session.close()
 
-    def add_contact_to_application(self, application_id: int, contact_id: int) -> bool:
+    @db_operation
+    def add_contact_to_application(self, application_id: int, contact_id: int, session: Session) -> bool:
         """Associate a contact with an application."""
-        session = get_session()
         try:
             application = session.query(Application).filter(Application.id == application_id).first()
             contact = session.query(Contact).filter(Contact.id == contact_id).first()
@@ -153,12 +149,10 @@ class ContactService(BaseService):
             session.rollback()
             logger.error(f"Error adding contact to application: {e}")
             raise
-        finally:
-            session.close()
 
-    def get_contacts_for_application(self, application_id: int) -> list[dict[str, Any]]:
+    @db_operation
+    def get_contacts_for_application(self, application_id: int, session: Session) -> list[dict[str, Any]]:
         """Get contacts associated with an application."""
-        session = get_session()
         try:
             application = session.query(Application).filter(Application.id == application_id).first()
 
@@ -169,12 +163,10 @@ class ContactService(BaseService):
         except Exception as e:
             logger.error(f"Error getting contacts for application {application_id}: {e}")
             raise
-        finally:
-            session.close()
 
-    def remove_contact_from_application(self, application_id: int, contact_id: int) -> bool:
+    @db_operation
+    def remove_contact_from_application(self, application_id: int, contact_id: int, session: Session) -> bool:
         """Remove a contact from an application."""
-        session = get_session()
         try:
             application = session.query(Application).filter(Application.id == application_id).first()
             contact = session.query(Contact).filter(Contact.id == contact_id).first()
@@ -202,5 +194,3 @@ class ContactService(BaseService):
             session.rollback()
             logger.error(f"Error removing contact from application: {e}")
             raise
-        finally:
-            session.close()

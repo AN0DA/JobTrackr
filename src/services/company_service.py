@@ -4,9 +4,9 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from src.config import CompanyType
-from src.db.database import get_session
 from src.db.models import Company, CompanyRelationship
 from src.services.base_service import BaseService
+from src.utils.decorators import db_operation
 
 logger = logging.getLogger(__name__)
 
@@ -67,11 +67,11 @@ class CompanyService(BaseService):
         """Get all available company types."""
         return [ct.value for ct in CompanyType]
 
+    @db_operation
     def create_relationship(
-        self, source_id: int, target_id: int, relationship_type: str, notes: str | None = None
+        self, source_id: int, target_id: int, relationship_type: str, session: Session, notes: str | None = None
     ) -> dict[str, Any]:
         """Create a new relationship between companies."""
-        session = get_session()
         try:
             # Verify both companies exist
             source = session.query(Company).filter(Company.id == source_id).first()
@@ -102,12 +102,10 @@ class CompanyService(BaseService):
             session.rollback()
             logger.error(f"Error creating company relationship: {e}")
             raise
-        finally:
-            session.close()
 
-    def update_relationship(self, relationship_id: int, data: dict[str, Any]) -> dict[str, Any]:
+    @db_operation
+    def update_relationship(self, relationship_id: int, data: dict[str, Any], session: Session) -> dict[str, Any]:
         """Update an existing company relationship."""
-        session = get_session()
         try:
             relationship = session.query(CompanyRelationship).filter(CompanyRelationship.id == relationship_id).first()
 
@@ -134,12 +132,10 @@ class CompanyService(BaseService):
             session.rollback()
             logger.error(f"Error updating relationship: {e}")
             raise
-        finally:
-            session.close()
 
-    def get_related_companies(self, company_id: int) -> list[dict[str, Any]]:
+    @db_operation
+    def get_related_companies(self, company_id: int, session: Session) -> list[dict[str, Any]]:
         """Get companies related to the given company."""
-        session = get_session()
         try:
             # Get outgoing relationships
             outgoing = (
@@ -189,12 +185,10 @@ class CompanyService(BaseService):
         except Exception as e:
             logger.error(f"Error getting related companies: {e}")
             raise
-        finally:
-            session.close()
 
-    def get_relationship(self, relationship_id: int) -> dict[str, Any] | None:
+    @db_operation
+    def get_relationship(self, relationship_id: int, session: Session) -> dict[str, Any] | None:
         """Get a specific relationship by ID."""
-        session = get_session()
         try:
             relationship = session.query(CompanyRelationship).filter(CompanyRelationship.id == relationship_id).first()
 
@@ -211,5 +205,3 @@ class CompanyService(BaseService):
         except Exception as e:
             logger.error(f"Error getting relationship {relationship_id}: {e}")
             raise
-        finally:
-            session.close()
