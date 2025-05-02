@@ -5,7 +5,6 @@ from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import (
     QDialog,
     QFormLayout,
-    QFrame,
     QHBoxLayout,
     QHeaderView,
     QLabel,
@@ -20,6 +19,9 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from src.config import FONT_SIZES, UI_COLORS
+from src.gui.components.status_badge import StatusBadge
+from src.gui.components.styled_button import StyledButton
 from src.gui.dialogs.contact_selector import ContactSelectorDialog
 from src.gui.dialogs.interaction_form import InteractionForm
 from src.gui.dialogs.status_transition import StatusTransitionDialog
@@ -51,21 +53,28 @@ class ApplicationDetailDialog(QDialog):
             self.load_application_data()
 
     def _init_ui(self) -> None:
-        """Initialize the dialog UI."""
+        """Initialize the dialog UI with improved styling."""
         layout = QVBoxLayout(self)
 
         # Header section with application info and status
-        header_layout = QHBoxLayout()
+        header = QWidget()
+        header.setStyleSheet(f"background-color: {UI_COLORS['card']}; border-radius: 8px;")
+        header_layout = QHBoxLayout(header)
 
         # Application identity section
         self.identity_layout = QVBoxLayout()
+
         self.app_job_title = QLabel("")
         title_font = QFont()
-        title_font.setPointSize(14)
+        title_font.setPointSize(FONT_SIZES["2xl"])
         title_font.setBold(True)
         self.app_job_title.setFont(title_font)
 
         self.app_company = QLabel("")
+        company_font = QFont()
+        company_font.setPointSize(FONT_SIZES["lg"])
+        self.app_company.setFont(company_font)
+
         self.app_position_location = QLabel("")
 
         self.identity_layout.addWidget(self.app_job_title)
@@ -74,41 +83,26 @@ class ApplicationDetailDialog(QDialog):
 
         # Status section
         status_layout = QVBoxLayout()
-        status_container = QFrame()
-        status_container.setFrameShape(QFrame.Shape.StyledPanel)
-        status_container.setMinimumWidth(150)
-        status_interior = QVBoxLayout(status_container)
-
-        status_label = QLabel("STATUS")
-        status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        self.app_status = QLabel("")
-        status_font = QFont()
-        status_font.setPointSize(12)
-        status_font.setBold(True)
-        self.app_status.setFont(status_font)
-        self.app_status.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
+        self.app_status = StatusBadge("")  # Using our new component
         self.app_applied_date = QLabel("")
         self.app_applied_date.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        status_interior.addWidget(status_label)
-        status_interior.addWidget(self.app_status)
-        status_interior.addWidget(self.app_applied_date)
-
-        status_layout.addWidget(status_container)
-        status_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        status_layout.addWidget(QLabel("STATUS"))
+        status_layout.addWidget(self.app_status)
+        status_layout.addWidget(self.app_applied_date)
+        status_layout.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignRight)
 
         header_layout.addLayout(self.identity_layout, 2)
         header_layout.addLayout(status_layout, 1)
-        layout.addLayout(header_layout)
 
-        # Quick action buttons
+        layout.addWidget(header)
+
+        # Quick action buttons - using our new styled buttons
         action_layout = QHBoxLayout()
-        self.edit_button = QPushButton("📝 Edit")
-        self.status_button = QPushButton("📊 Status")
-        self.add_interaction_button = QPushButton("💬 Add Interaction")
-        self.add_contact_button = QPushButton("👤 Add Contact")
+        self.edit_button = StyledButton("📝 Edit", "secondary")
+        self.status_button = StyledButton("📊 Change Status", "primary")
+        self.add_interaction_button = StyledButton("💬 Add Interaction", "secondary")
+        self.add_contact_button = StyledButton("👤 Add Contact", "secondary")
 
         self.edit_button.clicked.connect(self.on_edit_application)
         self.status_button.clicked.connect(self.on_change_status)

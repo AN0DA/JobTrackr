@@ -12,6 +12,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from src.config import FONT_SIZES, UI_COLORS
 from src.gui.dialogs.application_form import ApplicationForm
 from src.services.application_service import ApplicationService
 from src.utils.logging import get_logger
@@ -22,29 +23,59 @@ logger = get_logger(__name__)
 class StatsCard(QWidget):
     """Widget displaying a statistic with title and value."""
 
-    def __init__(self, title, value="0", parent=None):
+    def __init__(self, title, value="0", icon=None, color=UI_COLORS["primary"], parent=None):
         super().__init__(parent)
+
+        # Set up styling
+        self.setStyleSheet(f"""
+            QWidget {{
+                background-color: #FFFFFF;
+                border: 1px solid #E5E7EB;
+                border-radius: 8px;
+            }}
+            QLabel[class="title"] {{
+                color: #6B7280;
+                font-size: {FONT_SIZES["md"]}px;
+            }}
+            QLabel[class="value"] {{
+                color: {color};
+                font-size: {FONT_SIZES["3xl"]}px;
+                font-weight: bold;
+            }}
+        """)
+
+        # Create layout
         self.layout = QVBoxLayout(self)
+        self.layout.setContentsMargins(16, 16, 16, 16)
+
+        # Header with icon and title
+        header_layout = QHBoxLayout()
 
         # Title label
         self.title_label = QLabel(title)
-        self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.title_label.setProperty("class", "title")
+        header_layout.addWidget(self.title_label)
+        header_layout.addStretch()
+
+        # Add icon if provided
+        if icon:
+            icon_label = QLabel()
+            icon_label.setPixmap(icon.pixmap(24, 24))
+            header_layout.addWidget(icon_label)
 
         # Value label with larger font
         self.value_label = QLabel(value)
-        self.value_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        font = QFont()
-        font.setPointSize(16)
-        font.setBold(True)
-        self.value_label.setFont(font)
+        self.value_label.setProperty("class", "value")
+        self.value_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
 
         # Add widgets to layout
-        self.layout.addWidget(self.title_label)
+        self.layout.addLayout(header_layout)
         self.layout.addWidget(self.value_label)
-        self.setLayout(self.layout)
+        self.layout.addStretch()
 
         # Set fixed size
-        self.setMinimumHeight(100)
+        self.setMinimumHeight(120)
+        self.setMaximumHeight(120)
 
     def update_value(self, value):
         """Update the displayed value."""

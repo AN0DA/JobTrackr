@@ -2,7 +2,7 @@ import logging
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import desc, func, or_
+from sqlalchemy import desc, func, or_, update
 from sqlalchemy.orm import Session, joinedload
 
 from src.config import ApplicationStatus, ChangeType
@@ -10,6 +10,7 @@ from src.db.database import get_session
 from src.db.models import Application, Company
 from src.services.base_service import BaseService
 from src.services.change_record_service import ChangeRecordService
+from src.utils.decorators import db_operation
 
 logger = logging.getLogger(__name__)
 
@@ -278,3 +279,26 @@ class ApplicationService(BaseService):
 
         interaction_service = InteractionService()
         return interaction_service.create(data)
+
+    @db_operation
+    def update_status(self, application_id, new_status, session):
+        """
+        Update the status of an application directly using its ID.
+        This avoids the entity refresh issue in the base update method.
+
+        Args:
+            application_id: The ID of the application to update
+            new_status: The new status to set
+        """
+        try:
+            # Używamy bezpośredniego zapytania UPDATE, które nie wymaga odświeżania encji
+            update_stmt = update(Application).where(Application.id == application_id).values(status=new_status)
+            session.execute(update_stmt)
+            session.commit()
+            logger.info(f"Updated application status for ID {application_id} to {new_status}")
+        except Exception as e:
+            session.rollback()
+            logger.error(f"Error updating application status for ID {application_id}: {e}", exc_info=True)
+            raise
+        finally:
+            session.close()

@@ -99,9 +99,10 @@ class StatusTransitionDialog(QDialog):
                 self.accept()
                 return
 
-            # Update application status
+            # Używamy bardziej bezpośredniej metody aktualizacji statusu
             service = ApplicationService()
-            service.update(self.application_id, {"status": new_status})
+            # Korzystamy z metody update_status zamiast update
+            service.update_status(self.application_id, new_status)
 
             # Create interaction record for the status change
             if note:

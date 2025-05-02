@@ -14,6 +14,7 @@ from PyQt6.QtWidgets import (
 )
 
 from src.config import ApplicationStatus
+from src.gui.components.data_table import DataTable
 from src.gui.dialogs.application_detail import ApplicationDetailDialog
 from src.gui.dialogs.application_form import ApplicationForm
 from src.services.application_service import ApplicationService
@@ -72,8 +73,9 @@ class ApplicationsTab(QWidget):
         layout.addLayout(header_layout)
 
         # Table for applications
-        self.table = QTableWidget(0, 6)  # 0 rows, 6 columns
-        self.table.setHorizontalHeaderLabels(["ID", "Job Title", "Company", "Position", "Status", "Applied Date"])
+        self.table = DataTable(
+            0, ["ID", "Job Title", "Company", "Position", "Status", "Applied Date"]
+        )  # 0 rows, 6 columns
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.itemDoubleClicked.connect(self.on_row_double_clicked)

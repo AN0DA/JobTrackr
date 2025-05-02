@@ -16,12 +16,7 @@ DEFAULT_DB_PATH = DEFAULT_DATA_DIR / "jobtrackr.db"
 DEFAULT_EXPORT_DIR = DEFAULT_DATA_DIR / "exports"
 
 # Application settings defaults
-DEFAULT_SETTINGS = {
-    "database_path": str(DEFAULT_DB_PATH),
-    "export_directory": str(DEFAULT_EXPORT_DIR),
-    "check_updates": True,
-    "save_window_size": True,
-}
+DEFAULT_SETTINGS = {"database_path": str(DEFAULT_DB_PATH), "check_updates": True}
 
 # Ensure required directories exist
 CONFIG_DIR.mkdir(exist_ok=True)
@@ -86,3 +81,51 @@ COMPANY_RELATIONSHIP_TYPES = [
     "partner",
     "other",
 ]
+
+# UI colors
+UI_COLORS = {
+    "primary": "#2C7BE5",  # Primary brand color
+    "secondary": "#6B7280",  # Secondary text/elements
+    "success": "#00B860",  # Success states
+    "warning": "#F59E0B",  # Warning states
+    "danger": "#E11D48",  # Error states
+    "info": "#0EA5E9",  # Info states
+    "light": "#F3F4F6",  # Light backgrounds
+    "dark": "#1F2937",  # Dark text/elements
+    "background": "#FFFFFF",  # Main background
+    "card": "#F9FAFB",  # Card background
+}
+
+# Status colors for application states
+STATUS_COLORS = {
+    "SAVED": "#6B7280",  # Gray
+    "APPLIED": "#0EA5E9",  # Blue
+    "PHONE_SCREEN": "#F59E0B",  # Orange
+    "INTERVIEW": "#F59E0B",  # Orange
+    "TECHNICAL_INTERVIEW": "#F59E0B",  # Orange
+    "OFFER": "#00B860",  # Green
+    "ACCEPTED": "#059669",  # Darker Green
+    "REJECTED": "#E11D48",  # Red
+    "WITHDRAWN": "#6B7280",  # Gray
+}
+
+# Font sizes
+FONT_SIZES = {
+    "xs": 8,
+    "sm": 10,
+    "md": 12,
+    "lg": 14,
+    "xl": 16,
+    "2xl": 20,
+    "3xl": 24,
+}
+
+# Spacing constants
+SPACING = {
+    "xs": 4,
+    "sm": 8,
+    "md": 12,
+    "lg": 16,
+    "xl": 24,
+    "2xl": 32,
+}

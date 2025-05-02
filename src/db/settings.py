@@ -84,7 +84,6 @@ class Settings:
 
         return db_path
 
-
     def database_exists(self) -> bool:
         """Check if the database file exists."""
         exists = os.path.exists(self.get_database_path())
