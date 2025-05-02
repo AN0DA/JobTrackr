@@ -134,6 +134,22 @@ class CompanyService(BaseService):
             raise
 
     @db_operation
+    def delete_relationship(self, relationship_id: int, session: Session) -> None:
+        """Delete a company relationship."""
+        try:
+            relationship = session.query(CompanyRelationship).filter(CompanyRelationship.id == relationship_id).first()
+
+            if not relationship:
+                raise ValueError(f"Relationship {relationship_id} not found")
+
+            session.delete(relationship)
+            session.commit()
+        except Exception as e:
+            session.rollback()
+            logger.error(f"Error deleting relationship {relationship_id}: {e}")
+            raise
+
+    @db_operation
     def get_related_companies(self, company_id: int, session: Session) -> list[dict[str, Any]]:
         """Get companies related to the given company."""
         try:
