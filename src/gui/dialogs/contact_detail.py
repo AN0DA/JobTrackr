@@ -15,6 +15,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from src.gui.components.data_table import DataTable
 from src.services.contact_service import ContactService
 from src.utils.logging import get_logger
 
@@ -97,8 +98,7 @@ class ContactDetailDialog(QDialog):
         applications_layout.addWidget(QLabel("Associated Applications"))
 
         # Applications table
-        self.applications_table = QTableWidget(0, 5)
-        self.applications_table.setHorizontalHeaderLabels(["ID", "Job Title", "Position", "Status", "Applied Date"])
+        self.applications_table = DataTable(0, ["ID", "Job Title", "Position", "Status", "Applied Date"])
         self.applications_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.applications_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.applications_table.doubleClicked.connect(self.on_application_double_clicked)
@@ -111,8 +111,7 @@ class ContactDetailDialog(QDialog):
         interactions_layout.addWidget(QLabel("Recent Interactions"))
 
         # Interactions table
-        self.interactions_table = QTableWidget(0, 4)
-        self.interactions_table.setHorizontalHeaderLabels(["Date", "Type", "Application", "Details"])
+        self.interactions_table = DataTable(0, ["Date", "Type", "Application", "Details"])
         self.interactions_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.interactions_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         interactions_layout.addWidget(self.interactions_table)

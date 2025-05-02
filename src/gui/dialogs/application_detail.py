@@ -11,7 +11,6 @@ from PyQt6.QtWidgets import (
     QMessageBox,
     QPushButton,
     QScrollArea,
-    QTableWidget,
     QTableWidgetItem,
     QTabWidget,
     QTextEdit,
@@ -20,6 +19,7 @@ from PyQt6.QtWidgets import (
 )
 
 from src.config import FONT_SIZES, UI_COLORS
+from src.gui.components.data_table import DataTable
 from src.gui.components.status_badge import StatusBadge
 from src.gui.components.styled_button import StyledButton
 from src.gui.dialogs.contact_selector import ContactSelectorDialog
@@ -143,8 +143,7 @@ class ApplicationDetailDialog(QDialog):
 
         # Status history section
         overview_layout.addWidget(QLabel("Status History:"))
-        self.status_history_table = QTableWidget(0, 3)
-        self.status_history_table.setHorizontalHeaderLabels(["Date", "Status", "Notes"])
+        self.status_history_table = DataTable(0, ["Date", "Status", "Notes"])
         self.status_history_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.status_history_table.setMinimumHeight(150)
         overview_layout.addWidget(self.status_history_table)
@@ -161,8 +160,7 @@ class ApplicationDetailDialog(QDialog):
         timeline_content = QWidget()
         timeline_layout = QVBoxLayout(timeline_content)
 
-        self.timeline_table = QTableWidget(0, 3)
-        self.timeline_table.setHorizontalHeaderLabels(["Date", "Event Type", "Details"])
+        self.timeline_table = DataTable(0, ["Date", "Event Type", "Details"])
         self.timeline_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         timeline_layout.addWidget(self.timeline_table)
 
@@ -179,8 +177,7 @@ class ApplicationDetailDialog(QDialog):
         interactions_header.addWidget(self.new_interaction_button)
         interactions_layout.addLayout(interactions_header)
 
-        self.interactions_table = QTableWidget(0, 5)
-        self.interactions_table.setHorizontalHeaderLabels(["Date", "Type", "Details", "Contacts", "Actions"])
+        self.interactions_table = DataTable(0, ["Date", "Type", "Details", "Contacts", "Actions"])
         self.interactions_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         interactions_layout.addWidget(self.interactions_table)
 
@@ -195,8 +192,7 @@ class ApplicationDetailDialog(QDialog):
         contacts_header.addWidget(self.add_contact_btn)
         contacts_layout.addLayout(contacts_header)
 
-        self.contacts_table = QTableWidget(0, 5)
-        self.contacts_table.setHorizontalHeaderLabels(["Name", "Title", "Email", "Phone", "Actions"])
+        self.contacts_table = DataTable(0, ["Name", "Title", "Email", "Phone", "Actions"])
         self.contacts_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         contacts_layout.addWidget(self.contacts_table)
 

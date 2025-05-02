@@ -11,6 +11,7 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
 )
 
+from src.gui.components.data_table import DataTable
 from src.gui.dialogs.application_detail import ApplicationDetailDialog
 from src.services.application_service import ApplicationService
 from src.utils.logging import get_logger
@@ -52,8 +53,7 @@ class SearchDialog(QDialog):
         layout.addLayout(search_layout)
 
         # Results table
-        self.results_table = QTableWidget(0, 5)
-        self.results_table.setHorizontalHeaderLabels(["ID", "Job Title", "Company", "Position", "Status"])
+        self.results_table = DataTable(0, ["ID", "Job Title", "Company", "Position", "Status"])
         self.results_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.results_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.results_table.doubleClicked.connect(self.on_row_double_clicked)

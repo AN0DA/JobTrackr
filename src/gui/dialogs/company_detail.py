@@ -15,6 +15,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from src.gui.components.data_table import DataTable
 from src.gui.dialogs.application_detail import ApplicationDetailDialog
 from src.gui.dialogs.company_relationship_form import CompanyRelationshipForm
 from src.services.application_service import ApplicationService
@@ -109,8 +110,7 @@ class CompanyDetailDialog(QDialog):
         relationships_layout.addWidget(QLabel("Company Relationships"))
 
         # Relationships table
-        self.relationships_table = QTableWidget(0, 5)
-        self.relationships_table.setHorizontalHeaderLabels(["Company", "Type", "Relationship", "Direction", "Actions"])
+        self.relationships_table = DataTable(0, ["Company", "Type", "Relationship", "Direction", "Actions"])
         self.relationships_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.relationships_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         relationships_layout.addWidget(self.relationships_table)
@@ -126,8 +126,7 @@ class CompanyDetailDialog(QDialog):
         applications_layout.addWidget(QLabel("Job Applications with this Company"))
 
         # Applications table
-        self.applications_table = QTableWidget(0, 5)
-        self.applications_table.setHorizontalHeaderLabels(["ID", "Job Title", "Position", "Status", "Applied Date"])
+        self.applications_table = DataTable(0, ["ID", "Job Title", "Position", "Status", "Applied Date"])
         self.applications_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.applications_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.applications_table.doubleClicked.connect(self.on_application_double_clicked)

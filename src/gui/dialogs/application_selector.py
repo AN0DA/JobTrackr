@@ -9,6 +9,7 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
 )
 
+from src.gui.components.data_table import DataTable
 from src.services.application_service import ApplicationService
 
 
@@ -34,8 +35,7 @@ class ApplicationSelectorDialog(QDialog):
         layout.addWidget(QLabel("Select an application to associate with this contact:"))
 
         # Applications table
-        self.table = QTableWidget(0, 4)  # 0 rows, 4 columns
-        self.table.setHorizontalHeaderLabels(["ID", "Job Title", "Company", "Status"])
+        self.table = DataTable(0, ["ID", "Job Title", "Company", "Status"])  # 0 rows, 4 columns
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.doubleClicked.connect(self.on_select)

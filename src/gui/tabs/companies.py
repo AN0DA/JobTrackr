@@ -14,6 +14,7 @@ from PyQt6.QtWidgets import (
 )
 
 from src.config import CompanyType
+from src.gui.components.data_table import DataTable
 from src.gui.dialogs.company_detail import CompanyDetailDialog
 from src.gui.dialogs.company_form import CompanyForm
 from src.services.company_service import CompanyService
@@ -72,8 +73,7 @@ class CompaniesTab(QWidget):
         layout.addLayout(header_layout)
 
         # Table for companies
-        self.table = QTableWidget(0, 6)  # 0 rows, 6 columns
-        self.table.setHorizontalHeaderLabels(["ID", "Name", "Industry", "Type", "Website", "Size"])
+        self.table = DataTable(0, ["ID", "Name", "Industry", "Type", "Website", "Size"])  # 0 rows, 6 columns
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.itemDoubleClicked.connect(self.on_row_double_clicked)

@@ -15,6 +15,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from src.gui.components.data_table import DataTable
 from src.gui.dialogs.contact_detail import ContactDetailDialog
 from src.gui.dialogs.contact_form import ContactForm
 from src.services.company_service import CompanyService
@@ -72,8 +73,7 @@ class ContactsTab(QWidget):
         layout.addLayout(header_layout)
 
         # Table for contacts
-        self.table = QTableWidget(0, 6)  # 0 rows, 6 columns
-        self.table.setHorizontalHeaderLabels(["ID", "Name", "Title", "Company", "Email", "Phone"])
+        self.table = DataTable(0, ["ID", "Name", "Title", "Company", "Email", "Phone"])
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.itemDoubleClicked.connect(self.on_row_double_clicked)

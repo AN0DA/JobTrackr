@@ -9,6 +9,7 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
 )
 
+from src.gui.components.data_table import DataTable
 from src.services.contact_service import ContactService
 
 
@@ -34,8 +35,7 @@ class ContactSelectorDialog(QDialog):
         layout.addWidget(QLabel("Select a contact to associate with this application:"))
 
         # Contacts table
-        self.table = QTableWidget(0, 4)  # 0 rows, 4 columns
-        self.table.setHorizontalHeaderLabels(["ID", "Name", "Company", "Email"])
+        self.table = DataTable(0, ["ID", "Name", "Company", "Email"])  # 0 rows, 4 columns
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.doubleClicked.connect(self.on_select)

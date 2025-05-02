@@ -13,6 +13,7 @@ from PyQt6.QtWidgets import (
 )
 
 from src.config import FONT_SIZES, UI_COLORS
+from src.gui.components.data_table import DataTable
 from src.gui.dialogs.application_form import ApplicationForm
 from src.services.application_service import ApplicationService
 from src.utils.logging import get_logger
@@ -82,14 +83,13 @@ class StatsCard(QWidget):
         self.value_label.setText(str(value))
 
 
-class ApplicationList(QTableWidget):
+class ApplicationList(DataTable):
     """Table widget showing a list of applications."""
 
     def __init__(self, parent=None):
-        super().__init__(0, 4, parent)  # 0 rows, 4 columns
+        super().__init__(0, ["Job Title", "Company", "Status", "Applied Date"], parent)  # 0 rows, 4 columns
 
         # Set up the table
-        self.setHorizontalHeaderLabels(["Job Title", "Company", "Status", "Applied Date"])
         self.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
 
