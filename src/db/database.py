@@ -15,21 +15,18 @@ engine = create_engine(f"sqlite:///{settings.get('database_path')}")
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
-def get_session() -> Generator[Session]:
-    """Provide a transactional scope around a series of operations.
-
-    Yields:
-        Session: SQLAlchemy session
+def get_session() -> Session:
+    """Get a database session.
+    
+    Returns:
+        Session: A SQLAlchemy session object
     """
     session = SessionLocal()
     try:
-        yield session
-        session.commit()
+        return session
     except Exception:
         session.rollback()
         raise
-    finally:
-        session.close()
 
 
 def change_database(db_path: str) -> None:

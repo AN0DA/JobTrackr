@@ -11,23 +11,33 @@ logger = get_logger(__name__)
 F = TypeVar("F", bound=Callable[..., Any])
 
 
-def db_operation(func: F) -> F:
-    """Decorator for database operations with consistent error handling."""
+def db_operation(func: Callable[..., F]) -> Callable[..., F]:
+    """Decorator to handle database session management for service methods.
 
+    This decorator creates a database session, passes it to the decorated function,
+    and handles commit/rollback as appropriate.
+
+    Args:
+        func: The function to decorate.
+
+    Returns:
+        The decorated function.
+    """
     @functools.wraps(func)
     def wrapper(*args: Any, **kwargs: Any) -> Any:
         session = get_session()
         try:
             result = func(*args, **kwargs, session=session)
+            session.commit()
             return result
         except Exception as e:
+            logger.error(f"Error in {func.__name__}: {e}", exc_info=True)
             session.rollback()
-            logger.error(f"Database error in {func.__name__}: {e}", exc_info=True)
             raise
         finally:
             session.close()
 
-    return cast(F, wrapper)
+    return wrapper
 
 
 def error_handler(func: F) -> F:
