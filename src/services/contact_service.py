@@ -2,7 +2,7 @@ import logging
 from typing import Any
 
 from sqlalchemy import or_
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from src.config import ChangeType
 from src.db.models import Application, Company, Contact
@@ -129,20 +129,27 @@ class ContactService(BaseService):
             if not application or not contact:
                 return False
 
-            if contact not in application.contacts:
-                application.contacts.append(contact)
-                session.commit()
-
-                # Record the change
-                change_record_service = ChangeRecordService()
-                change_record_service.create(
-                    {
-                        "application_id": application_id,
-                        "change_type": ChangeType.CONTACT_ADDED.value,
-                        "new_value": contact.name,
-                        "notes": f"Added contact: {contact.name}",
-                    }
+            # Check if the association already exists
+            if contact in application.contacts:
+                logger.debug(
+                    f"Association already exists between contact {contact_id} and application {application_id}"
                 )
+                return True
+
+            # Create the association
+            application.contacts.append(contact)
+            session.commit()
+
+            # Record the change
+            change_record_service = ChangeRecordService()
+            change_record_service.create(
+                {
+                    "application_id": application_id,
+                    "change_type": ChangeType.CONTACT_ADDED.value,
+                    "new_value": contact.name,
+                    "notes": f"Added contact: {contact.name}",
+                }
+            )
 
             return True
         except Exception as e:
@@ -171,26 +178,126 @@ class ContactService(BaseService):
             application = session.query(Application).filter(Application.id == application_id).first()
             contact = session.query(Contact).filter(Contact.id == contact_id).first()
 
-            if not application or not contact:
+            if not application or not contact or contact not in application.contacts:
+                logger.debug(f"No association found between contact {contact_id} and application {application_id}")
                 return False
 
-            if contact in application.contacts:
-                application.contacts.remove(contact)
-                session.commit()
+            # Remove the association
+            application.contacts.remove(contact)
+            session.commit()
 
-                # Record the change
-                change_record_service = ChangeRecordService()
-                change_record_service.create(
-                    {
-                        "application_id": application_id,
-                        "change_type": ChangeType.CONTACT_ADDED.value,
-                        "old_value": contact.name,
-                        "notes": f"Removed contact: {contact.name}",
-                    }
-                )
+            # Record the change
+            change_record_service = ChangeRecordService()
+            change_record_service.create(
+                {
+                    "application_id": application_id,
+                    "change_type": ChangeType.CONTACT_REMOVED.value,
+                    "old_value": contact.name,
+                    "notes": f"Removed contact: {contact.name}",
+                }
+            )
 
             return True
         except Exception as e:
             session.rollback()
             logger.error(f"Error removing contact from application: {e}")
+            raise
+
+    @db_operation
+    def get_associated_applications(self, contact_id: int, session: Session) -> list[dict[str, Any]]:
+        """Get all applications associated with a contact."""
+        try:
+            logger.debug(f"Getting applications for contact {contact_id}")
+
+            # Get contact with applications
+            contact = (
+                session.query(Contact)
+                .options(joinedload(Contact.applications).joinedload(Application.company))
+                .filter(Contact.id == contact_id)
+                .first()
+            )
+
+            if not contact or not contact.applications:
+                logger.debug(f"No applications found for contact {contact_id}")
+                return []
+
+            # Convert to dictionaries
+            result = []
+            for app in contact.applications:
+                app_dict = app.to_dict()
+
+                # Add company info if available
+                if app.company:
+                    app_dict["company"] = app.company.to_dict()
+
+                result.append(app_dict)
+
+            logger.debug(f"Found {len(result)} applications for contact {contact_id}")
+            return result
+
+        except Exception as e:
+            logger.error(f"Error getting associated applications for contact {contact_id}: {e}", exc_info=True)
+            raise
+
+    @db_operation
+    def associate_with_application(self, contact_id: int, application_id: int, session: Session) -> bool:
+        """Associate a contact with an application."""
+        try:
+            logger.debug(f"Associating contact {contact_id} with application {application_id}")
+
+            # Check if the contact exists
+            contact = session.query(Contact).filter(Contact.id == contact_id).first()
+            if not contact:
+                logger.error(f"Contact {contact_id} not found")
+                return False
+
+            # Check if the application exists
+            application = session.query(Application).filter(Application.id == application_id).first()
+            if not application:
+                logger.error(f"Application {application_id} not found")
+                return False
+
+            # Check if the association already exists
+            if contact in application.contacts:
+                logger.debug(
+                    f"Association already exists between contact {contact_id} and application {application_id}"
+                )
+                return True
+
+            # Create the association
+            application.contacts.append(contact)
+            session.commit()
+
+            logger.debug(f"Created association between contact {contact_id} and application {application_id}")
+            return True
+
+        except Exception as e:
+            session.rollback()
+            logger.error(f"Error associating contact with application: {e}", exc_info=True)
+            raise
+
+    @db_operation
+    def disassociate_from_application(self, contact_id: int, application_id: int, session: Session) -> bool:
+        """Remove association between a contact and an application."""
+        try:
+            logger.debug(f"Removing association between contact {contact_id} and application {application_id}")
+
+            # Get the application and contact
+            application = session.query(Application).filter(Application.id == application_id).first()
+            contact = session.query(Contact).filter(Contact.id == contact_id).first()
+
+            if not application or not contact or contact not in application.contacts:
+                logger.debug(f"No association found between contact {contact_id} and application {application_id}")
+                return False
+
+            # Delete the association
+            application.contacts.remove(contact)
+            session.commit()
+
+            logger.debug(f"Removed association between contact {contact_id} and application {application_id}")
+            return True
+
+        except Exception as e:
+            session.rollback()
+            logger.error(f"Error removing association between contact and application: {e}", exc_info=True)
             raise

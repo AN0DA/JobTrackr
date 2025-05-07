@@ -1,8 +1,9 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 
-from PyQt6.QtCore import pyqtSlot
+from PyQt6.QtCore import Qt, pyqtSlot
 from PyQt6.QtWidgets import (
     QComboBox,
+    QDateTimeEdit,
     QDialog,
     QFormLayout,
     QHBoxLayout,
@@ -14,7 +15,10 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
 )
 
-from src.config import InteractionType
+from src.gui.dialogs.application_selector import ApplicationSelectorDialog
+from src.gui.dialogs.contact_selector import ContactSelectorDialog
+from src.services.application_service import ApplicationService
+from src.services.contact_service import ContactService
 from src.services.interaction_service import InteractionService
 from src.utils.logging import get_logger
 
@@ -22,167 +26,278 @@ logger = get_logger(__name__)
 
 
 class InteractionForm(QDialog):
-    """Dialog for creating or editing an interaction."""
+    """Form for adding and editing interactions with contacts."""
 
-    def __init__(self, parent=None, interaction_id=None, application_id=None) -> None:
+    INTERACTION_TYPES = [
+        "PHONE_CALL",
+        "EMAIL",
+        "MEETING",
+        "INTERVIEW",
+        "LINKEDIN_MESSAGE",
+        "COFFEE_CHAT",
+        "NETWORKING_EVENT",
+        "OTHER",
+    ]
+
+    def __init__(self, parent=None, contact_id=None, application_id=None, interaction_id=None):
+        """
+        Initialize the interaction form.
+
+        Args:
+            parent: Parent widget
+            contact_id: ID of the contact associated with this interaction (optional)
+            application_id: ID of the application associated with this interaction (optional)
+            interaction_id: ID of the interaction to edit (if editing an existing interaction)
+        """
         super().__init__(parent)
         self.main_window = parent.main_window if parent else None
-        self.interaction_id = interaction_id
+        self.contact_id = contact_id
         self.application_id = application_id
+        self.interaction_id = interaction_id
+        self.interaction_data = None
 
-        title = "Edit Interaction" if interaction_id else "New Interaction"
-        self.setWindowTitle(title)
+        self.setWindowTitle("Interaction Form")
         self.resize(500, 400)
 
         self._init_ui()
 
         # Load data if editing
         if self.interaction_id:
-            self.load_interaction()
+            self.load_interaction_data()
+        else:
+            # Set defaults for new interaction
+            self.datetime_input.setDateTime(datetime.now())
 
-    def _init_ui(self) -> None:
+            # Pre-select contact and application if provided
+            self._update_contact_display()
+            self._update_application_display()
+
+    def _init_ui(self):
         """Initialize the form UI."""
         layout = QVBoxLayout(self)
 
-        # Form layout for interaction fields
         form_layout = QFormLayout()
 
-        # Interaction type
-        self.type_select = QComboBox()
-        for itype in InteractionType:
-            self.type_select.addItem(itype.value)
-        form_layout.addRow("Interaction Type:", self.type_select)
+        # Interaction type dropdown
+        self.type_combo = QComboBox()
+        self.type_combo.addItems(self.INTERACTION_TYPES)
+        form_layout.addRow("Type:", self.type_combo)
 
-        # Date field
-        self.date_input = QLineEdit()
-        self.date_input.setText(datetime.now().strftime("%Y-%m-%d"))
-        form_layout.addRow("Date:", self.date_input)
+        # Date and time picker
+        self.datetime_input = QDateTimeEdit()
+        self.datetime_input.setCalendarPopup(True)
+        self.datetime_input.setDisplayFormat("yyyy-MM-dd HH:mm")
+        form_layout.addRow("Date & Time:", self.datetime_input)
 
-        # Quick date buttons
-        quick_date_layout = QHBoxLayout()
-        self.today_btn = QPushButton("Today")
-        self.yesterday_btn = QPushButton("Yesterday")
-        self.two_days_ago_btn = QPushButton("-2 Days")
-        self.week_ago_btn = QPushButton("-1 Week")
+        # Subject field
+        self.subject_input = QLineEdit()
+        form_layout.addRow("Subject:", self.subject_input)
 
-        self.today_btn.clicked.connect(lambda: self.set_quick_date(0))
-        self.yesterday_btn.clicked.connect(lambda: self.set_quick_date(1))
-        self.two_days_ago_btn.clicked.connect(lambda: self.set_quick_date(2))
-        self.week_ago_btn.clicked.connect(lambda: self.set_quick_date(7))
+        # Contact selection
+        contact_layout = QHBoxLayout()
+        self.contact_label = QLabel("No contact selected")
+        contact_layout.addWidget(self.contact_label)
 
-        quick_date_layout.addWidget(self.today_btn)
-        quick_date_layout.addWidget(self.yesterday_btn)
-        quick_date_layout.addWidget(self.two_days_ago_btn)
-        quick_date_layout.addWidget(self.week_ago_btn)
+        self.select_contact_button = QPushButton("Select Contact")
+        self.select_contact_button.clicked.connect(self.on_select_contact)
+        contact_layout.addWidget(self.select_contact_button)
 
-        form_layout.addRow("Quick Date:", quick_date_layout)
+        self.clear_contact_button = QPushButton("Clear")
+        self.clear_contact_button.clicked.connect(self.on_clear_contact)
+        contact_layout.addWidget(self.clear_contact_button)
+
+        form_layout.addRow("Contact:", contact_layout)
+
+        # Application selection
+        app_layout = QHBoxLayout()
+        self.application_label = QLabel("No application selected")
+        app_layout.addWidget(self.application_label)
+
+        self.select_app_button = QPushButton("Select Application")
+        self.select_app_button.clicked.connect(self.on_select_application)
+        app_layout.addWidget(self.select_app_button)
+
+        self.clear_app_button = QPushButton("Clear")
+        self.clear_app_button.clicked.connect(self.on_clear_application)
+        app_layout.addWidget(self.clear_app_button)
+
+        form_layout.addRow("Application:", app_layout)
 
         # Notes field
-        form_layout.addRow("Notes:", QLabel())
         self.notes_input = QTextEdit()
-        form_layout.addWidget(self.notes_input)
+        form_layout.addRow("Notes:", self.notes_input)
 
         layout.addLayout(form_layout)
 
-        # Button row
-        btn_layout = QHBoxLayout()
-        btn_layout.addStretch()
+        # Bottom buttons
+        button_layout = QHBoxLayout()
 
-        self.cancel_btn = QPushButton("Cancel")
-        self.cancel_btn.clicked.connect(self.reject)
-        btn_layout.addWidget(self.cancel_btn)
+        self.save_button = QPushButton("Save")
+        self.save_button.clicked.connect(self.on_save)
 
-        self.save_btn = QPushButton("Save")
-        self.save_btn.clicked.connect(self.save_interaction)
-        btn_layout.addWidget(self.save_btn)
+        self.cancel_button = QPushButton("Cancel")
+        self.cancel_button.clicked.connect(self.reject)
 
-        layout.addLayout(btn_layout)
-        self.setLayout(layout)
+        button_layout.addStretch()
+        button_layout.addWidget(self.save_button)
+        button_layout.addWidget(self.cancel_button)
 
-    def load_interaction(self) -> None:
-        """Load interaction data if editing."""
+        layout.addLayout(button_layout)
+
+    def load_interaction_data(self):
+        """Load interaction data for editing."""
         try:
             service = InteractionService()
-            interaction = service.get(self.interaction_id)
+            self.interaction_data = service.get(self.interaction_id)
 
-            if not interaction:
-                if self.main_window:
-                    self.main_window.show_status_message(f"Interaction {self.interaction_id} not found")
+            if not self.interaction_data:
+                QMessageBox.warning(self, "Error", f"Interaction {self.interaction_id} not found")
                 return
 
-            # Set interaction type
-            index = self.type_select.findText(interaction["type"])
+            # Set values
+            interaction_type = self.interaction_data.get("interaction_type", "")
+            index = self.type_combo.findText(interaction_type)
             if index >= 0:
-                self.type_select.setCurrentIndex(index)
+                self.type_combo.setCurrentIndex(index)
 
-            # Format the date
-            date = datetime.fromisoformat(interaction["date"]).strftime("%Y-%m-%d")
-            self.date_input.setText(date)
+            # Set date and time
+            if self.interaction_data.get("date"):
+                try:
+                    date_obj = datetime.fromisoformat(self.interaction_data["date"].replace("Z", "+00:00"))
+                    self.datetime_input.setDateTime(date_obj)
+                except (ValueError, TypeError):
+                    self.datetime_input.setDateTime(datetime.now())
+
+            # Set subject
+            self.subject_input.setText(self.interaction_data.get("subject", ""))
 
             # Set notes
-            if interaction.get("notes"):
-                self.notes_input.setPlainText(interaction["notes"])
+            self.notes_input.setText(self.interaction_data.get("notes", ""))
 
-            # Store the application ID if it exists
-            self.application_id = interaction.get("application_id")
+            # Set contact ID
+            self.contact_id = self.interaction_data.get("contact_id")
+            self._update_contact_display()
+
+            # Set application ID
+            self.application_id = self.interaction_data.get("application_id")
+            self._update_application_display()
 
         except Exception as e:
-            logger.error(f"Error loading interaction: {e}", exc_info=True)
-            if self.main_window:
-                self.main_window.show_status_message(f"Error loading interaction: {str(e)}")
+            logger.error(f"Error loading interaction data: {e}", exc_info=True)
+            QMessageBox.warning(self, "Error", f"Failed to load interaction data: {str(e)}")
 
-    def set_quick_date(self, days_ago) -> None:
-        """Set date to a quick option."""
-        date = datetime.now() - timedelta(days=days_ago)
-        self.date_input.setText(date.strftime("%Y-%m-%d"))
+    def _update_contact_display(self):
+        """Update the contact label with the current contact info."""
+        if not self.contact_id:
+            self.contact_label.setText("No contact selected")
+            return
+
+        try:
+            service = ContactService()
+            contact = service.get(self.contact_id)
+
+            if contact:
+                self.contact_label.setText(f"{contact.get('name', '')} (ID: {self.contact_id})")
+            else:
+                self.contact_label.setText(f"Unknown Contact (ID: {self.contact_id})")
+
+        except Exception as e:
+            logger.error(f"Error getting contact info: {e}", exc_info=True)
+            self.contact_label.setText(f"Error getting contact (ID: {self.contact_id})")
+
+    def _update_application_display(self):
+        """Update the application label with the current application info."""
+        if not self.application_id:
+            self.application_label.setText("No application selected")
+            return
+
+        try:
+            service = ApplicationService()
+            application = service.get(self.application_id)
+
+            if application:
+                job_title = application.get("job_title", "")
+                company_name = application.get("company", {}).get("name", "")
+                self.application_label.setText(f"{job_title} at {company_name} (ID: {self.application_id})")
+            else:
+                self.application_label.setText(f"Unknown Application (ID: {self.application_id})")
+
+        except Exception as e:
+            logger.error(f"Error getting application info: {e}", exc_info=True)
+            self.application_label.setText(f"Error getting application (ID: {self.application_id})")
 
     @pyqtSlot()
-    def save_interaction(self) -> None:
+    def on_select_contact(self):
+        """Open dialog to select a contact."""
+        dialog = ContactSelectorDialog(self)
+        if dialog.exec():
+            self.contact_id = dialog.selected_contact_id
+            self._update_contact_display()
+
+    @pyqtSlot()
+    def on_clear_contact(self):
+        """Clear the selected contact."""
+        self.contact_id = None
+        self.contact_label.setText("No contact selected")
+
+    @pyqtSlot()
+    def on_select_application(self):
+        """Open dialog to select an application."""
+        dialog = ApplicationSelectorDialog(self)
+        if dialog.exec():
+            self.application_id = dialog.selected_application_id
+            self._update_application_display()
+
+    @pyqtSlot()
+    def on_clear_application(self):
+        """Clear the selected application."""
+        self.application_id = None
+        self.application_label.setText("No application selected")
+
+    @pyqtSlot()
+    def on_save(self):
         """Save the interaction data."""
+        # Check for required fields
+        if not self.contact_id:
+            QMessageBox.warning(self, "Missing Data", "Please select a contact for this interaction")
+            return
+
+        # Gather data
+        interaction_data = {
+            "interaction_type": self.type_combo.currentText(),
+            "date": self.datetime_input.dateTime().toString(Qt.DateFormat.ISODate),
+            "subject": self.subject_input.text(),
+            "notes": self.notes_input.toPlainText(),
+            "contact_id": self.contact_id,
+        }
+
+        # Add application ID if available
+        if self.application_id:
+            interaction_data["application_id"] = self.application_id
+
         try:
-            # Get form values
-            interaction_type = self.type_select.currentText()
-            date = self.date_input.text().strip()
-            notes = self.notes_input.toPlainText().strip()
-
-            # Validate required fields
-            if not interaction_type:
-                QMessageBox.warning(self, "Validation Error", "Interaction type is required")
-                self.type_select.setFocus()
-                return
-
-            if not date:
-                QMessageBox.warning(self, "Validation Error", "Date is required")
-                self.date_input.setFocus()
-                return
-
-            if not self.application_id:
-                QMessageBox.warning(self, "Validation Error", "Application ID is required")
-                return
-
-            # Prepare data
-            interaction_data = {
-                "type": interaction_type,
-                "date": date,
-                "notes": notes or None,
-                "application_id": self.application_id,
-            }
-
-            # Save interaction
             service = InteractionService()
 
             if self.interaction_id:
-                service.update(self.interaction_id, interaction_data)
-                message = "Interaction updated successfully"
+                # Update existing interaction
+                result = service.update(self.interaction_id, interaction_data)
+                if result:
+                    if self.main_window:
+                        self.main_window.show_status_message("Interaction updated successfully")
+                    self.accept()
+                else:
+                    QMessageBox.warning(self, "Error", "Failed to update interaction")
             else:
-                service.create(interaction_data)
-                message = "Interaction created successfully"
-
-            if self.main_window:
-                self.main_window.show_status_message(message)
-
-            self.accept()
+                # Create new interaction
+                new_id = service.create(interaction_data)
+                if new_id:
+                    if self.main_window:
+                        self.main_window.show_status_message("Interaction created successfully")
+                    self.interaction_id = new_id
+                    self.accept()
+                else:
+                    QMessageBox.warning(self, "Error", "Failed to create interaction")
 
         except Exception as e:
             logger.error(f"Error saving interaction: {e}", exc_info=True)
-            QMessageBox.critical(self, "Error", f"Error saving interaction: {str(e)}")
+            QMessageBox.warning(self, "Error", f"Error saving interaction: {str(e)}")

@@ -11,161 +11,217 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 
-from src.config import CompanyType
 from src.db.database import Base
 
-# Association tables for many-to-many relationships
-application_contact = Table(
-    "application_contact",
+# Association table for contacts and applications
+contact_applications = Table(
+    "contact_applications",
     Base.metadata,
-    Column("application_id", ForeignKey("applications.id"), primary_key=True),
-    Column("contact_id", ForeignKey("contacts.id"), primary_key=True),
+    Column("id", Integer, primary_key=True),
+    Column("contact_id", ForeignKey("contacts.id"), nullable=False),
+    Column("application_id", ForeignKey("applications.id"), nullable=False),
+    Column("created_at", DateTime, default=datetime.utcnow),
 )
-
-interaction_contact = Table(
-    "interaction_contact",
-    Base.metadata,
-    Column("interaction_id", ForeignKey("interactions.id"), primary_key=True),
-    Column("contact_id", ForeignKey("contacts.id"), primary_key=True),
-)
-
-
-class CompanyRelationship(Base):
-    __tablename__ = "company_relationships"
-
-    id = Column(Integer, primary_key=True)
-    source_company_id = Column(Integer, ForeignKey("companies.id"), nullable=False)
-    target_company_id = Column(Integer, ForeignKey("companies.id"), nullable=False)
-    relationship_type = Column(String, nullable=False)  # e.g., "recruits_for", "parent_company", etc.
-    notes = Column(Text)
-
-    # Relationships
-    source_company = relationship(
-        "Company",
-        foreign_keys=[source_company_id],
-        back_populates="outgoing_relationships",
-    )
-    target_company = relationship(
-        "Company",
-        foreign_keys=[target_company_id],
-        back_populates="incoming_relationships",
-    )
-
-    def __repr__(self) -> str:
-        return f"<CompanyRelationship(source={self.source_company_id}, target={self.target_company_id}, type='{self.relationship_type}')>"
 
 
 class Company(Base):
+    """Company model."""
+
     __tablename__ = "companies"
 
     id = Column(Integer, primary_key=True)
-    name = Column(String, nullable=False, index=True)
-    website = Column(String)
-    industry = Column(String, index=True)
-    size = Column(String)
-    type = Column(String, default=CompanyType.DIRECT_EMPLOYER.value)  # Default to direct employer
+    name = Column(String(255), nullable=False)
+    industry = Column(String(255))
+    website = Column(String(255))
+    type = Column(String(50))  # DIRECT_EMPLOYER, STAFFING_AGENCY, etc
+    size = Column(String(50))  # S, M, L, XL etc
     notes = Column(Text)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
     applications = relationship("Application", back_populates="company")
     contacts = relationship("Contact", back_populates="company")
-    outgoing_relationships = relationship(
-        "CompanyRelationship",
-        foreign_keys=[CompanyRelationship.source_company_id],
-        back_populates="source_company",
-        cascade="all, delete-orphan",
-    )
-    incoming_relationships = relationship(
-        "CompanyRelationship",
-        foreign_keys=[CompanyRelationship.target_company_id],
-        back_populates="target_company",
-        cascade="all, delete-orphan",
-    )
+
+    def to_dict(self):
+        """Convert to dictionary."""
+        return {
+            "id": self.id,
+            "name": self.name,
+            "industry": self.industry,
+            "website": self.website,
+            "type": self.type,
+            "size": self.size,
+            "notes": self.notes,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
 
 
 class Application(Base):
+    """Application model."""
+
     __tablename__ = "applications"
 
     id = Column(Integer, primary_key=True)
-    job_title = Column(String, nullable=False, index=True)
-    position = Column(String, nullable=False, index=True)
-    location = Column(String)
-    salary = Column(String)
-    status = Column(String, nullable=False, index=True)
-    applied_date = Column(DateTime, nullable=False, index=True)
-    link = Column(String)
-    description = Column(Text)
-    notes = Column(Text)
-    created_at = Column(DateTime, default=datetime.utcnow, index=True)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, index=True)
-
-    # Foreign keys
+    job_title = Column(String(255), nullable=False)
     company_id = Column(Integer, ForeignKey("companies.id"))
+    position = Column(String(255))
+    description = Column(Text)
+    salary_min = Column(Integer)
+    salary_max = Column(Integer)
+    location = Column(String(255))
+    remote = Column(String(50))  # REMOTE, HYBRID, ONSITE
+    application_method = Column(String(50))  # WEBSITE, EMAIL, REFERRAL, etc
+    job_url = Column(String(255))
+    status = Column(String(50))  # APPLIED, INTERVIEWING, REJECTED, OFFER, etc
+    status_details = Column(Text)
+    applied_date = Column(DateTime)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
     company = relationship("Company", back_populates="applications")
-    contacts = relationship("Contact", secondary=application_contact, back_populates="applications")
-    interactions = relationship("Interaction", back_populates="application", cascade="all, delete-orphan")
-    change_records = relationship("ChangeRecord", back_populates="application", cascade="all, delete-orphan")
+    change_records = relationship("ChangeRecord", back_populates="application")
+    contacts = relationship("Contact", secondary=contact_applications, back_populates="applications")
 
-    def __repr__(self) -> str:
-        return f"<Application(id={self.id}, job_title='{self.job_title}', company_id={self.company_id})>"
+    def to_dict(self):
+        """Convert to dictionary."""
+        return {
+            "id": self.id,
+            "job_title": self.job_title,
+            "company_id": self.company_id,
+            "position": self.position,
+            "description": self.description,
+            "salary_min": self.salary_min,
+            "salary_max": self.salary_max,
+            "location": self.location,
+            "remote": self.remote,
+            "application_method": self.application_method,
+            "job_url": self.job_url,
+            "status": self.status,
+            "status_details": self.status_details,
+            "applied_date": self.applied_date.isoformat() if self.applied_date else None,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
 
 
 class Contact(Base):
+    """Contact model."""
+
     __tablename__ = "contacts"
 
     id = Column(Integer, primary_key=True)
-    name = Column(String, nullable=False, index=True)
-    title = Column(String)
-    email = Column(String, index=True)
-    phone = Column(String)
-    notes = Column(Text)
-
-    # Foreign keys
+    name = Column(String(255), nullable=False)
+    title = Column(String(255))
+    email = Column(String(255))
+    phone = Column(String(50))
     company_id = Column(Integer, ForeignKey("companies.id"))
+    notes = Column(Text)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
     company = relationship("Company", back_populates="contacts")
-    applications = relationship("Application", secondary=application_contact, back_populates="contacts")
-    interactions = relationship("Interaction", secondary=interaction_contact, back_populates="contacts")
+    applications = relationship("Application", secondary=contact_applications, back_populates="contacts")
+    interactions = relationship("Interaction", back_populates="contact")
 
-    def __repr__(self) -> str:
-        return f"<Contact(id={self.id}, name='{self.name}')>"
+    def to_dict(self):
+        """Convert to dictionary."""
+        return {
+            "id": self.id,
+            "name": self.name,
+            "title": self.title,
+            "email": self.email,
+            "phone": self.phone,
+            "company_id": self.company_id,
+            "notes": self.notes,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
 
 
 class Interaction(Base):
+    """Interaction model for tracking communication with contacts."""
+
     __tablename__ = "interactions"
 
     id = Column(Integer, primary_key=True)
-    type = Column(String, nullable=False, index=True)
-    date = Column(DateTime, nullable=False, index=True)
-    notes = Column(Text)
-
-    # Foreign keys
+    contact_id = Column(Integer, ForeignKey("contacts.id"), nullable=False)
     application_id = Column(Integer, ForeignKey("applications.id"))
+    interaction_type = Column(String(50))  # EMAIL, CALL, MEETING, etc
+    date = Column(DateTime, nullable=False)
+    notes = Column(Text)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
-    application = relationship("Application", back_populates="interactions")
-    contacts = relationship("Contact", secondary=interaction_contact, back_populates="interactions")
+    contact = relationship("Contact", back_populates="interactions")
+    application = relationship("Application")
 
-    def __repr__(self) -> str:
-        return f"<Interaction(id={self.id}, type='{self.type}')>"
+    def to_dict(self):
+        """Convert to dictionary."""
+        return {
+            "id": self.id,
+            "contact_id": self.contact_id,
+            "application_id": self.application_id,
+            "interaction_type": self.interaction_type,
+            "date": self.date.isoformat() if self.date else None,
+            "notes": self.notes,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
 
 
 class ChangeRecord(Base):
+    """Change record for tracking application status changes."""
+
     __tablename__ = "change_records"
 
     id = Column(Integer, primary_key=True)
     application_id = Column(Integer, ForeignKey("applications.id"), nullable=False)
-    timestamp = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
-    change_type = Column(String, nullable=False, index=True)
-    old_value = Column(String)
-    new_value = Column(String)
+    change_type = Column(String(50))  # STATUS_CHANGE, NOTE_ADDED, CONTACT_ADDED, etc
+    old_value = Column(String(255))
+    new_value = Column(String(255))
     notes = Column(Text)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationships
     application = relationship("Application", back_populates="change_records")
 
-    def __repr__(self) -> str:
-        return f"<ChangeRecord(id={self.id}, app_id={self.application_id}, type='{self.change_type}')>"
+    def to_dict(self):
+        """Convert to dictionary."""
+        return {
+            "id": self.id,
+            "application_id": self.application_id,
+            "change_type": self.change_type,
+            "old_value": self.old_value,
+            "new_value": self.new_value,
+            "notes": self.notes,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+class CompanyRelationship(Base):
+    """Company relationship model."""
+
+    __tablename__ = "company_relationships"
+
+    id = Column(Integer, primary_key=True)
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=False)
+    related_company_id = Column(Integer, ForeignKey("companies.id"), nullable=False)
+    relationship_type = Column(String(50))  # PARENT, SUBSIDIARY, PARTNER, etc
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def to_dict(self):
+        """Convert to dictionary."""
+        return {
+            "id": self.id,
+            "company_id": self.company_id,
+            "related_company_id": self.related_company_id,
+            "relationship_type": self.relationship_type,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }

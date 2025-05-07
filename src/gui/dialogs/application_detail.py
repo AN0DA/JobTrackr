@@ -22,6 +22,7 @@ from src.config import FONT_SIZES, UI_COLORS
 from src.gui.components.data_table import DataTable
 from src.gui.components.status_badge import StatusBadge
 from src.gui.components.styled_button import StyledButton
+from src.gui.dialogs.application_form import ApplicationForm
 from src.gui.dialogs.contact_selector import ContactSelectorDialog
 from src.gui.dialogs.interaction_form import InteractionForm
 from src.gui.dialogs.status_transition import StatusTransitionDialog
@@ -166,51 +167,66 @@ class ApplicationDetailDialog(QDialog):
 
         timeline_tab.setWidget(timeline_content)
 
-        # Tab 3: Interactions
-        interactions_tab = QWidget()
-        interactions_layout = QVBoxLayout(interactions_tab)
-
-        interactions_header = QHBoxLayout()
-        interactions_header.addWidget(QLabel("Application Interactions"))
-        self.new_interaction_button = QPushButton("+ New Interaction")
-        self.new_interaction_button.clicked.connect(self.on_add_interaction)
-        interactions_header.addWidget(self.new_interaction_button)
-        interactions_layout.addLayout(interactions_header)
-
-        self.interactions_table = DataTable(0, ["Date", "Type", "Details", "Contacts", "Actions"])
-        self.interactions_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        interactions_layout.addWidget(self.interactions_table)
-
-        # Tab 4: Contacts
+        # Tab 3: Contacts
         contacts_tab = QWidget()
         contacts_layout = QVBoxLayout(contacts_tab)
 
-        contacts_header = QHBoxLayout()
-        contacts_header.addWidget(QLabel("Associated Contacts"))
-        self.add_contact_btn = QPushButton("+ Add Contact")
-        self.add_contact_btn.clicked.connect(self.on_add_contact)
-        contacts_header.addWidget(self.add_contact_btn)
-        contacts_layout.addLayout(contacts_header)
+        contacts_layout.addWidget(QLabel("Associated Contacts"))
 
-        self.contacts_table = DataTable(0, ["Name", "Title", "Email", "Phone", "Actions"])
+        # Contacts table
+        self.contacts_table = DataTable(0, ["ID", "Name", "Title", "Email", "Phone"])
         self.contacts_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.contacts_table.setSelectionBehavior(DataTable.SelectionBehavior.SelectRows)
+        self.contacts_table.doubleClicked.connect(self.on_contact_double_clicked)
         contacts_layout.addWidget(self.contacts_table)
 
-        # Tab 5: Job Details
-        job_details_tab = QWidget()
-        job_details_layout = QVBoxLayout(job_details_tab)
+        # Contacts actions buttons
+        contacts_actions = QHBoxLayout()
+        self.add_contact_button = QPushButton("Add Contact")
+        self.add_contact_button.clicked.connect(self.on_add_contact)
 
-        job_details_layout.addWidget(QLabel("Job Description:"))
-        self.job_description = QTextEdit()
-        self.job_description.setReadOnly(True)
-        job_details_layout.addWidget(self.job_description)
+        self.remove_contact_button = QPushButton("Remove Contact")
+        self.remove_contact_button.clicked.connect(self.on_remove_contact)
+
+        self.new_interaction_button = QPushButton("Add Interaction")
+        self.new_interaction_button.clicked.connect(self.on_add_interaction)
+
+        contacts_actions.addWidget(self.add_contact_button)
+        contacts_actions.addWidget(self.remove_contact_button)
+        contacts_actions.addWidget(self.new_interaction_button)
+        contacts_actions.addStretch()
+        contacts_layout.addLayout(contacts_actions)
+
+        # Tab 4: Interactions
+        interactions_tab = QWidget()
+        interactions_layout = QVBoxLayout(interactions_tab)
+
+        interactions_layout.addWidget(QLabel("Interactions"))
+
+        # Interactions table
+        self.interactions_table = DataTable(0, ["Date/Time", "Type", "Contact", "Details"])
+        self.interactions_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.interactions_table.setSelectionBehavior(DataTable.SelectionBehavior.SelectRows)
+        interactions_layout.addWidget(self.interactions_table)
+
+        # Interactions actions
+        interactions_actions = QHBoxLayout()
+        self.edit_interaction_button = QPushButton("Edit")
+        self.edit_interaction_button.clicked.connect(self.on_edit_interaction)
+
+        self.delete_interaction_button = QPushButton("Delete")
+        self.delete_interaction_button.clicked.connect(self.on_delete_interaction)
+
+        interactions_actions.addWidget(self.edit_interaction_button)
+        interactions_actions.addWidget(self.delete_interaction_button)
+        interactions_actions.addStretch()
+        interactions_layout.addLayout(interactions_actions)
 
         # Add tabs to widget
         self.tabs.addTab(overview_scroll, "Overview")
         self.tabs.addTab(timeline_tab, "Timeline")
-        self.tabs.addTab(interactions_tab, "Interactions")
         self.tabs.addTab(contacts_tab, "Contacts")
-        self.tabs.addTab(job_details_tab, "Job Details")
+        self.tabs.addTab(interactions_tab, "Interactions")
 
         layout.addWidget(self.tabs)
 
@@ -466,57 +482,47 @@ class ApplicationDetailDialog(QDialog):
         return icons.get(event_type, "📌")
 
     def load_interactions(self) -> None:
-        """Load and display interactions."""
+        """Load interactions associated with this application."""
         try:
-            interaction_service = InteractionService()
-            interactions = interaction_service.get_interactions(self.app_id)
-
             self.interactions_table.setRowCount(0)
+
+            if not self.app_id:
+                return
+
+            # Get interactions for this application
+            service = InteractionService()
+            interactions = service.get_interactions(self.app_id)
 
             if not interactions:
                 self.interactions_table.insertRow(0)
-                self.interactions_table.setItem(0, 0, QTableWidgetItem("No interactions recorded"))
+                self.interactions_table.setItem(0, 0, QTableWidgetItem("No interactions found"))
                 self.interactions_table.setItem(0, 1, QTableWidgetItem(""))
                 self.interactions_table.setItem(0, 2, QTableWidgetItem(""))
                 self.interactions_table.setItem(0, 3, QTableWidgetItem(""))
-                self.interactions_table.setItem(0, 4, QTableWidgetItem(""))
                 return
 
             for i, interaction in enumerate(interactions):
                 self.interactions_table.insertRow(i)
 
-                # Format date for better readability
-                date_str = datetime.fromisoformat(interaction["date"]).strftime("%Y-%m-%d")
-                self.interactions_table.setItem(i, 0, QTableWidgetItem(date_str))
-                self.interactions_table.setItem(i, 1, QTableWidgetItem(interaction["type"]))
-                self.interactions_table.setItem(i, 2, QTableWidgetItem(interaction["notes"] or ""))
+                # Format date
+                date_str = interaction["date"].split("T")[0] if interaction.get("date") else ""
+                time_str = interaction["date"].split("T")[1][:5] if interaction.get("date") else ""
+                datetime_str = f"{date_str} {time_str}" if date_str else ""
 
-                # Format contacts if available
-                contacts_str = ""
+                # Store the interaction ID for later retrieval
+                id_item = QTableWidgetItem(datetime_str)
+                id_item.setData(Qt.ItemDataRole.UserRole, interaction.get("id"))
+                self.interactions_table.setItem(i, 0, id_item)
+
+                self.interactions_table.setItem(i, 1, QTableWidgetItem(interaction.get("type", "")))
+
+                # Get contact info if available
+                contact_info = ""
                 if interaction.get("contacts"):
-                    contacts_str = ", ".join([c["name"] for c in interaction["contacts"]])
-                self.interactions_table.setItem(i, 3, QTableWidgetItem(contacts_str))
+                    contact_info = ", ".join([c["name"] for c in interaction["contacts"]])
+                self.interactions_table.setItem(i, 2, QTableWidgetItem(contact_info))
 
-                # Add action buttons
-                actions_widget = QWidget()
-                actions_layout = QHBoxLayout(actions_widget)
-                actions_layout.setContentsMargins(2, 2, 2, 2)
-
-                edit_btn = QPushButton("✏️")
-                edit_btn.setToolTip("Edit")
-                edit_btn.setMaximumWidth(40)
-                edit_btn.clicked.connect(lambda checked, x=interaction["id"]: self.on_edit_interaction(x))
-
-                delete_btn = QPushButton("🗑️")
-                delete_btn.setToolTip("Delete")
-                delete_btn.setMaximumWidth(40)
-                delete_btn.clicked.connect(lambda checked, x=interaction["id"]: self.on_delete_interaction(x))
-
-                actions_layout.addWidget(edit_btn)
-                actions_layout.addWidget(delete_btn)
-                actions_layout.addStretch()
-
-                self.interactions_table.setCellWidget(i, 4, actions_widget)
+                self.interactions_table.setItem(i, 3, QTableWidgetItem(interaction.get("notes", "")))
 
         except Exception as e:
             logger.error(f"Error loading interactions: {e}", exc_info=True)
@@ -524,17 +530,20 @@ class ApplicationDetailDialog(QDialog):
                 self.main_window.show_status_message(f"Error loading interactions: {str(e)}")
 
     def load_contacts(self) -> None:
-        """Load and display associated contacts."""
+        """Load contacts associated with this application."""
         try:
+            self.contacts_table.setRowCount(0)
+
+            if not self.app_id:
+                return
+
             # Get contacts associated with this application
             service = ContactService()
             contacts = service.get_contacts_for_application(self.app_id)
 
-            self.contacts_table.setRowCount(0)
-
             if not contacts:
                 self.contacts_table.insertRow(0)
-                self.contacts_table.setItem(0, 0, QTableWidgetItem("No contacts associated"))
+                self.contacts_table.setItem(0, 0, QTableWidgetItem("No contacts found"))
                 self.contacts_table.setItem(0, 1, QTableWidgetItem(""))
                 self.contacts_table.setItem(0, 2, QTableWidgetItem(""))
                 self.contacts_table.setItem(0, 3, QTableWidgetItem(""))
@@ -543,31 +552,16 @@ class ApplicationDetailDialog(QDialog):
 
             for i, contact in enumerate(contacts):
                 self.contacts_table.insertRow(i)
-                self.contacts_table.setItem(i, 0, QTableWidgetItem(contact["name"]))
-                self.contacts_table.setItem(i, 1, QTableWidgetItem(contact.get("title", "")))
-                self.contacts_table.setItem(i, 2, QTableWidgetItem(contact.get("email", "")))
-                self.contacts_table.setItem(i, 3, QTableWidgetItem(contact.get("phone", "")))
 
-                # Add action buttons
-                actions_widget = QWidget()
-                actions_layout = QHBoxLayout(actions_widget)
-                actions_layout.setContentsMargins(2, 2, 2, 2)
+                # Store the contact ID for later retrieval
+                id_item = QTableWidgetItem(str(contact.get("id", "")))
+                id_item.setData(Qt.ItemDataRole.UserRole, contact.get("id"))
+                self.contacts_table.setItem(i, 0, id_item)
 
-                view_btn = QPushButton("👁️")
-                view_btn.setToolTip("View")
-                view_btn.setMaximumWidth(40)
-                view_btn.clicked.connect(lambda checked, x=contact["id"]: self.on_view_contact(x))
-
-                remove_btn = QPushButton("❌")
-                remove_btn.setToolTip("Remove")
-                remove_btn.setMaximumWidth(40)
-                remove_btn.clicked.connect(lambda checked, x=contact["id"]: self.on_remove_contact(x))
-
-                actions_layout.addWidget(view_btn)
-                actions_layout.addWidget(remove_btn)
-                actions_layout.addStretch()
-
-                self.contacts_table.setCellWidget(i, 4, actions_widget)
+                self.contacts_table.setItem(i, 1, QTableWidgetItem(contact.get("name", "")))
+                self.contacts_table.setItem(i, 2, QTableWidgetItem(contact.get("title", "")))
+                self.contacts_table.setItem(i, 3, QTableWidgetItem(contact.get("email", "")))
+                self.contacts_table.setItem(i, 4, QTableWidgetItem(contact.get("phone", "")))
 
         except Exception as e:
             logger.error(f"Error loading contacts: {e}", exc_info=True)
@@ -577,8 +571,6 @@ class ApplicationDetailDialog(QDialog):
     @pyqtSlot()
     def on_edit_application(self) -> None:
         """Open dialog to edit the application."""
-        from src.gui.dialogs.application_form import ApplicationForm
-
         dialog = ApplicationForm(self, self.app_id)
         if dialog.exec():
             self.load_application_data()
@@ -592,32 +584,159 @@ class ApplicationDetailDialog(QDialog):
 
     @pyqtSlot()
     def on_add_interaction(self) -> None:
-        """Open dialog to add a new interaction."""
-        dialog = InteractionForm(self, application_id=self.app_id)
+        """Open dialog to add a new interaction for this application."""
+        # Get the selected contact ID if a contact is selected
+        selected_rows = self.contacts_table.selectedItems()
+        contact_id = None
+
+        if selected_rows:
+            contact_id_item = self.contacts_table.item(selected_rows[0].row(), 0)
+            if contact_id_item and contact_id_item.text() != "No contacts found":
+                contact_id = contact_id_item.data(Qt.ItemDataRole.UserRole)
+
+        # If no contact is selected, we can still create an interaction with the application
+        # but we need to select a contact in the form
+        dialog = InteractionForm(self, contact_id, self.app_id)
         if dialog.exec():
-            self.load_application_data()
+            self.load_interactions()
+            if self.main_window:
+                self.main_window.show_status_message("Interaction added successfully")
 
     @pyqtSlot()
     def on_add_contact(self) -> None:
         """Open dialog to add a contact to this application."""
-
         dialog = ContactSelectorDialog(self)
-        if dialog.exec() and dialog.selected_contact_id:
+        if dialog.exec():
+            contact_id = dialog.selected_contact_id
+
+            if not contact_id:
+                if self.main_window:
+                    self.main_window.show_status_message("No contact selected")
+                return
+
+            # Associate the contact with this application
             try:
                 service = ContactService()
-                success = service.add_contact_to_application(self.app_id, dialog.selected_contact_id)
+                result = service.add_contact_to_application(self.app_id, contact_id)
 
-                if success:
+                if result:
                     if self.main_window:
                         self.main_window.show_status_message("Contact added to application")
                     self.load_contacts()
                 else:
                     if self.main_window:
-                        self.main_window.show_status_message("Failed to add contact")
+                        self.main_window.show_status_message("Failed to add contact to application")
             except Exception as e:
-                logger.error(f"Error adding contact: {e}", exc_info=True)
+                logger.error(f"Error adding contact to application: {e}", exc_info=True)
                 if self.main_window:
                     self.main_window.show_status_message(f"Error: {str(e)}")
+
+    @pyqtSlot()
+    def on_remove_contact(self) -> None:
+        """Remove the selected contact from this application."""
+        selected_rows = self.contacts_table.selectedItems()
+        if not selected_rows:
+            if self.main_window:
+                self.main_window.show_status_message("No contact selected")
+            return
+
+        contact_id = self.contacts_table.item(selected_rows[0].row(), 0).data(Qt.ItemDataRole.UserRole)
+        if not contact_id:
+            return
+
+        # Confirm with user
+        reply = QMessageBox.question(
+            self,
+            "Remove Contact",
+            "Are you sure you want to remove this contact from the application?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+
+        if reply == QMessageBox.StandardButton.Yes:
+            try:
+                service = ContactService()
+                result = service.remove_contact_from_application(self.app_id, contact_id)
+
+                if result:
+                    if self.main_window:
+                        self.main_window.show_status_message("Contact removed from application")
+                    self.load_contacts()
+                else:
+                    if self.main_window:
+                        self.main_window.show_status_message("Failed to remove contact from application")
+            except Exception as e:
+                logger.error(f"Error removing contact from application: {e}", exc_info=True)
+                if self.main_window:
+                    self.main_window.show_status_message(f"Error: {str(e)}")
+
+    @pyqtSlot()
+    def on_contact_double_clicked(self, index) -> None:
+        """Open contact details when double clicked."""
+        from src.gui.dialogs.contact_detail import ContactDetailDialog
+
+        if self.contacts_table.item(index.row(), 0).text() == "No contacts found":
+            return
+
+        contact_id = self.contacts_table.item(index.row(), 0).data(Qt.ItemDataRole.UserRole)
+        dialog = ContactDetailDialog(self, contact_id)
+        dialog.exec()
+
+        # Refresh contacts in case there were changes
+        self.load_contacts()
+
+    @pyqtSlot()
+    def on_edit_interaction(self) -> None:
+        """Open dialog to edit the selected interaction."""
+        selected_rows = self.interactions_table.selectedItems()
+        if not selected_rows:
+            if self.main_window:
+                self.main_window.show_status_message("No interaction selected")
+            return
+
+        interaction_id = self.interactions_table.item(selected_rows[0].row(), 0).data(Qt.ItemDataRole.UserRole)
+        if not interaction_id:
+            return
+
+        dialog = InteractionForm(self, None, self.app_id, interaction_id)
+        if dialog.exec():
+            self.load_interactions()
+            if self.main_window:
+                self.main_window.show_status_message("Interaction updated successfully")
+
+    @pyqtSlot()
+    def on_delete_interaction(self) -> None:
+        """Delete the selected interaction."""
+        selected_rows = self.interactions_table.selectedItems()
+        if not selected_rows:
+            if self.main_window:
+                self.main_window.show_status_message("No interaction selected")
+            return
+
+        interaction_id = self.interactions_table.item(selected_rows[0].row(), 0).data(Qt.ItemDataRole.UserRole)
+        if not interaction_id:
+            return
+
+        # Confirm deletion
+        reply = QMessageBox.question(
+            self,
+            "Delete Interaction",
+            "Are you sure you want to delete this interaction?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+
+        if reply == QMessageBox.StandardButton.Yes:
+            service = InteractionService()
+            success = service.delete_interaction(interaction_id)
+
+            if success:
+                self.load_interactions()
+                if self.main_window:
+                    self.main_window.show_status_message("Interaction deleted successfully")
+            else:
+                if self.main_window:
+                    self.main_window.show_status_message("Failed to delete interaction")
 
     @pyqtSlot()
     def on_copy_link(self) -> None:
@@ -661,77 +780,5 @@ class ApplicationDetailDialog(QDialog):
                         self.main_window.show_status_message("Failed to delete application")
             except Exception as e:
                 logger.error(f"Error deleting application: {e}", exc_info=True)
-                if self.main_window:
-                    self.main_window.show_status_message(f"Error: {str(e)}")
-
-        # Add methods for handling interaction actions
-        @pyqtSlot()
-        def on_edit_interaction(self, interaction_id) -> None:
-            """Edit an interaction."""
-            dialog = InteractionForm(self, interaction_id=interaction_id, application_id=self.app_id)
-            if dialog.exec():
-                self.load_interactions()
-
-        @pyqtSlot()
-        def on_delete_interaction(self, interaction_id) -> None:
-            """Delete an interaction."""
-            reply = QMessageBox.question(
-                self,
-                "Confirm Deletion",
-                "Are you sure you want to delete this interaction?",
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                QMessageBox.StandardButton.No,
-            )
-
-            if reply == QMessageBox.StandardButton.Yes:
-                try:
-                    service = InteractionService()
-                    success = service.delete(interaction_id)
-
-                    if success:
-                        if self.main_window:
-                            self.main_window.show_status_message("Interaction deleted")
-                        self.load_interactions()
-                    else:
-                        if self.main_window:
-                            self.main_window.show_status_message("Failed to delete interaction")
-                except Exception as e:
-                    logger.error(f"Error deleting interaction: {e}", exc_info=True)
-                    if self.main_window:
-                        self.main_window.show_status_message(f"Error: {str(e)}")
-
-    @pyqtSlot()
-    def on_view_contact(self, contact_id) -> None:
-        """View contact details."""
-        from src.gui.dialogs.contact_detail import ContactDetailDialog
-
-        dialog = ContactDetailDialog(self, contact_id)
-        dialog.exec()
-
-    @pyqtSlot()
-    def on_remove_contact(self, contact_id) -> None:
-        """Remove contact from this application."""
-        reply = QMessageBox.question(
-            self,
-            "Confirm Removal",
-            "Remove this contact from the application?",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No,
-        )
-
-        if reply == QMessageBox.StandardButton.Yes:
-            try:
-                service = ContactService()
-                success = service.remove_contact_from_application(self.app_id, contact_id)
-
-                if success:
-                    if self.main_window:
-                        self.main_window.show_status_message("Contact removed")
-                    self.load_contacts()
-                else:
-                    if self.main_window:
-                        self.main_window.show_status_message("Failed to remove contact")
-            except Exception as e:
-                logger.error(f"Error removing contact: {e}", exc_info=True)
                 if self.main_window:
                     self.main_window.show_status_message(f"Error: {str(e)}")
