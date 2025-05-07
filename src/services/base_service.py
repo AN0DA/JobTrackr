@@ -3,7 +3,7 @@ from typing import Any, Generic, TypeVar
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
-from src.db.database import Base
+from src.db.models import Base
 from src.utils.decorators import db_operation
 from src.utils.logging import get_logger
 

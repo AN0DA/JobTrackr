@@ -9,9 +9,9 @@ from sqlalchemy import (
     Table,
     Text,
 )
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import declarative_base, relationship
 
-from src.db.database import Base
+Base = declarative_base()
 
 # Association table for contacts and applications
 contact_applications = Table(

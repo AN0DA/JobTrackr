@@ -1,4 +1,4 @@
-.PHONY: lint mypy test sync
+.PHONY: lint mypy test sync migrate revision
 
 all: lint mypy test
 
@@ -17,3 +17,12 @@ sync:
 
 dump:
 	./dump.sh src src.dump
+
+# Create a new migration revision
+revision:
+	@read -p "Enter migration message: " message; \
+	python -m scripts.migration_manager --revision "$$message"
+
+# Run database migrations
+migrate:
+	python -m scripts.migration_manager
