@@ -6,8 +6,7 @@ import sys
 
 from PyQt6.QtWidgets import QApplication
 
-from scripts.migration_manager import check_and_run_migrations
-from src.db.settings import Settings
+from src.db.manager import check_and_run_migrations
 from src.gui.main_window import MainWindow
 from src.utils.logging import get_logger
 
@@ -17,15 +16,10 @@ logger = get_logger(__name__)
 def main() -> None:
     """Run the GUI application."""
     try:
-        # Check and run migrations first
-        should_continue = check_and_run_migrations()
-
-        if not should_continue:
-            logger.warning("Exiting application: Database migrations not applied.")
+        # Check and run migrations if needed
+        if not check_and_run_migrations():
+            logger.error("Database migration failed or was rejected. Exiting...")
             sys.exit(1)
-
-        # Initialize settings
-        Settings()
 
         # Create Qt application
         app = QApplication(sys.argv)

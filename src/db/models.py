@@ -18,8 +18,8 @@ contact_applications = Table(
     "contact_applications",
     Base.metadata,
     Column("id", Integer, primary_key=True),
-    Column("contact_id", ForeignKey("contacts.id"), nullable=False),
-    Column("application_id", ForeignKey("applications.id"), nullable=False),
+    Column("contact_id", ForeignKey("contacts.id", name="fk_contact_applications_contact_id_contacts"), nullable=False),
+    Column("application_id", ForeignKey("applications.id", name="fk_contact_applications_application_id_applications"), nullable=False),
     Column("created_at", DateTime, default=datetime.utcnow),
 )
 
@@ -42,6 +42,8 @@ class Company(Base):
     # Relationships
     applications = relationship("Application", back_populates="company")
     contacts = relationship("Contact", back_populates="company")
+    outgoing_relationships = relationship("CompanyRelationship", foreign_keys="CompanyRelationship.source_company_id", back_populates="source_company")
+    incoming_relationships = relationship("CompanyRelationship", foreign_keys="CompanyRelationship.related_company_id", back_populates="related_company")
 
     def to_dict(self):
         """Convert to dictionary."""
@@ -65,7 +67,7 @@ class Application(Base):
 
     id = Column(Integer, primary_key=True)
     job_title = Column(String(255), nullable=False)
-    company_id = Column(Integer, ForeignKey("companies.id"))
+    company_id = Column(Integer, ForeignKey("companies.id", name="fk_applications_company_id_companies"))
     position = Column(String(255))
     description = Column(Text)
     salary_min = Column(Integer)
@@ -117,7 +119,7 @@ class Contact(Base):
     title = Column(String(255))
     email = Column(String(255))
     phone = Column(String(50))
-    company_id = Column(Integer, ForeignKey("companies.id"))
+    company_id = Column(Integer, ForeignKey("companies.id", name="fk_contacts_company_id_companies"))
     notes = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -148,8 +150,8 @@ class Interaction(Base):
     __tablename__ = "interactions"
 
     id = Column(Integer, primary_key=True)
-    contact_id = Column(Integer, ForeignKey("contacts.id"), nullable=False)
-    application_id = Column(Integer, ForeignKey("applications.id"))
+    contact_id = Column(Integer, ForeignKey("contacts.id", name="fk_interactions_contact_id_contacts"), nullable=False)
+    application_id = Column(Integer, ForeignKey("applications.id", name="fk_interactions_application_id_applications"))
     interaction_type = Column(String(50))  # EMAIL, CALL, MEETING, etc
     date = Column(DateTime, nullable=False)
     notes = Column(Text)
@@ -180,7 +182,7 @@ class ChangeRecord(Base):
     __tablename__ = "change_records"
 
     id = Column(Integer, primary_key=True)
-    application_id = Column(Integer, ForeignKey("applications.id"), nullable=False)
+    application_id = Column(Integer, ForeignKey("applications.id", name="fk_change_records_application_id_applications"), nullable=False)
     change_type = Column(String(50))  # STATUS_CHANGE, NOTE_ADDED, CONTACT_ADDED, etc
     old_value = Column(String(255))
     new_value = Column(String(255))
@@ -209,19 +211,25 @@ class CompanyRelationship(Base):
     __tablename__ = "company_relationships"
 
     id = Column(Integer, primary_key=True)
-    company_id = Column(Integer, ForeignKey("companies.id"), nullable=False)
-    related_company_id = Column(Integer, ForeignKey("companies.id"), nullable=False)
-    relationship_type = Column(String(50))  # PARENT, SUBSIDIARY, PARTNER, etc
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    source_company_id = Column(Integer, ForeignKey("companies.id", name="fk_company_relationships_source_company_id_companies"), nullable=False)
+    related_company_id = Column(Integer, ForeignKey("companies.id", name="fk_company_relationships_related_company_id_companies"), nullable=False)
+    relationship_type = Column(String, nullable=False)
+    notes = Column(Text)
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+    # Relationship definitions
+    source_company = relationship("Company", foreign_keys=[source_company_id], back_populates="outgoing_relationships")
+    related_company = relationship("Company", foreign_keys=[related_company_id], back_populates="incoming_relationships")
 
     def to_dict(self):
         """Convert to dictionary."""
         return {
             "id": self.id,
-            "company_id": self.company_id,
+            "source_company_id": self.source_company_id,
             "related_company_id": self.related_company_id,
             "relationship_type": self.relationship_type,
+            "notes": self.notes,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
