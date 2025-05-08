@@ -10,7 +10,7 @@ mypy:
 	uv run mypy src/
 
 test:
-	PYTHONPATH=$(PWD) uv run pytest --cov --cov-report term-missing:skip-covered
+	PYTHONPATH=$(PWD) uv run pytest --cov --cov-report term-missing:skip-covered --tb=short
 
 sync:
 	uv sync --all-groups

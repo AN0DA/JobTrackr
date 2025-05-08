@@ -18,7 +18,9 @@ dependencies = [
 dev = [
     "mypy>=1.15.0",
     "pytest>=8.3.5",
-    "ruff>=0.11.7"
+    "pytest-cov>=6.1.1",
+    "pytest-qt>=4.4.0",
+    "ruff>=0.11.7",
 ]
 
 [tool.ruff]
@@ -79,9 +81,19 @@ skip-magic-trailing-comma = false
 
 
 [tool.pytest]
-python_files = "tests.py test_*.py *_tests.py"
-norecursedirs = ".git .env venv"
-
+testpaths = "test"
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+addopts = "-v --tb=short"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::UserWarning"
+    ]
+markers = [
+    "gui: marks tests that require GUI interaction",
+    "slow: marks tests that are slow to run"
+    ]
 
 [tool.mypy]
 python_version = "3.13"
