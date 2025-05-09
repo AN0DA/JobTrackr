@@ -15,6 +15,7 @@ from PyQt6.QtWidgets import (
 
 from src.config import ApplicationStatus
 from src.services.application_service import ApplicationService
+from src.services.change_record_service import ChangeRecordService
 from src.utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -99,10 +100,21 @@ class StatusTransitionDialog(QDialog):
                 self.accept()
                 return
 
-            # Używamy bardziej bezpośredniej metody aktualizacji statusu
+            # Update the status
             service = ApplicationService()
-            # Korzystamy z metody update_status zamiast update
             service.update_status(self.application_id, new_status)
+
+            # Create change record for the status change
+            change_service = ChangeRecordService()
+            change_service.create(
+                {
+                    "application_id": self.application_id,
+                    "change_type": "STATUS_CHANGE",
+                    "old_value": self.current_status,
+                    "new_value": new_status,
+                    "notes": note if note else f"Status changed from {self.current_status} to {new_status}",
+                }
+            )
 
             # Create interaction record for the status change
             if note:

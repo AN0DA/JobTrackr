@@ -1,7 +1,5 @@
 """Database connection and session management."""
 
-from collections.abc import Generator
-
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -17,7 +15,7 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def get_session() -> Session:
     """Get a database session.
-    
+
     Returns:
         Session: A SQLAlchemy session object
     """

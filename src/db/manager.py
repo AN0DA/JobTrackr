@@ -4,15 +4,16 @@
 
 import os
 import tkinter as tk
-from tkinter import messagebox
 from pathlib import Path
+from tkinter import messagebox
 
 from sqlalchemy import create_engine, inspect
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.sql import text
+
 from alembic import command
 from alembic.config import Config
-
-from src.db.models import Base
+from alembic.script import ScriptDirectory
 from src.db.settings import Settings
 from src.utils.logging import get_logger
 
@@ -28,42 +29,42 @@ def ensure_db_directory(db_path: str) -> None:
 
 def show_migration_dialog() -> bool:
     """Show a dialog asking the user if they want to run migrations.
-    
+
     Returns:
         bool: True if the user chooses to run migrations, False otherwise.
     """
     root = tk.Tk()
     root.withdraw()  # Hide the main window
-    
+
     response = messagebox.askyesno(
         "Database Update",
         "Database schema updates are available. Do you want to update the database now?\n\n"
         "Choosing 'No' may cause the application to malfunction.",
-        icon=messagebox.WARNING
+        icon=messagebox.WARNING,
     )
-    
+
     root.destroy()
     return response
 
 
 def run_migrations() -> bool:
     """Run database migrations.
-    
+
     Returns:
         bool: True if migrations were successful, False otherwise.
     """
     try:
         # Get the path to alembic.ini
-        alembic_ini_path = os.path.join(os.path.dirname(__file__), '..', '..', 'alembic.ini')
-        
+        alembic_ini_path = os.path.join(os.path.dirname(__file__), "..", "..", "alembic.ini")
+
         # Create Alembic configuration
         alembic_cfg = Config(alembic_ini_path)
-        
+
         # Run migrations
         command.upgrade(alembic_cfg, "head")
         logger.info("Database migrations completed successfully")
         return True
-        
+
     except Exception as e:
         logger.error(f"Failed to run migrations: {e}")
         return False
@@ -71,7 +72,7 @@ def run_migrations() -> bool:
 
 def check_and_run_migrations() -> bool:
     """Check if migrations are needed and run them if necessary.
-    
+
     Returns:
         bool: True if the application should continue, False if it should exit.
     """
@@ -79,34 +80,53 @@ def check_and_run_migrations() -> bool:
         # Get database path from settings
         settings = Settings()
         db_path = settings.get("database_path")
-        
+
         # Ensure database directory exists
         ensure_db_directory(db_path)
-        
+
         # Create database engine
         engine = create_engine(f"sqlite:///{db_path}")
-        
+
         # Check if database exists and has tables
         inspector = inspect(engine)
         tables = inspector.get_table_names()
-        
+
         if not tables:
             # Database is empty, run migrations to create schema
             logger.info("Database is empty. Running initial migration...")
             return run_migrations()
-        
+
         # Database exists, check if it needs updates
-        # For now, we'll always prompt for updates
-        # In the future, we could check the current migration version
-        if show_migration_dialog():
-            return run_migrations()
-        
-        logger.warning("User chose not to run migrations")
-        return False
-        
+        # Get the path to alembic.ini
+        alembic_ini_path = os.path.join(os.path.dirname(__file__), "..", "..", "alembic.ini")
+
+        # Create Alembic configuration
+        alembic_cfg = Config(alembic_ini_path)
+
+        # Get current database revision
+        with engine.connect() as conn:
+            try:
+                current_rev = conn.execute(text("SELECT version_num FROM alembic_version")).scalar()
+            except Exception:
+                # If alembic_version table doesn't exist, we need to run migrations
+                current_rev = None
+
+        # Get latest revision from migrations
+        script = ScriptDirectory.from_config(alembic_cfg)
+        head_revision = script.get_current_head()
+
+        # Only show dialog if migrations are needed
+        if current_rev != head_revision:
+            if show_migration_dialog():
+                return run_migrations()
+            logger.warning("User chose not to run migrations")
+            return False
+
+        return True
+
     except SQLAlchemyError as e:
         logger.error(f"Database error: {e}")
         return False
     except Exception as e:
         logger.error(f"Unexpected error: {e}")
-        return False 
+        return False

@@ -184,25 +184,10 @@ class CompanyDetailDialog(QDialog):
         self.applications_table.doubleClicked.connect(self.on_application_double_clicked)
         applications_layout.addWidget(self.applications_table)
 
-        # Tab 4: Network Visualization
-        network_tab = QWidget()
-        self.network_layout = QVBoxLayout(network_tab)
-
-        self.network_layout.addWidget(QLabel("Company Relationship Network"))
-
-        # Add refresh button
-        refresh_layout = QHBoxLayout()
-        self.refresh_network_button = QPushButton("Refresh Network")
-        self.refresh_network_button.clicked.connect(self.load_relationships_network)
-        refresh_layout.addWidget(self.refresh_network_button)
-        refresh_layout.addStretch()
-        self.network_layout.addLayout(refresh_layout)
-
         # Add tabs to widget
         self.tabs.addTab(overview_tab, "Overview")
         self.tabs.addTab(relationships_tab, "Relationships")
         self.tabs.addTab(applications_tab, "Applications")
-        self.tabs.addTab(network_tab, "Network Visualization")
 
         layout.addWidget(self.tabs)
 

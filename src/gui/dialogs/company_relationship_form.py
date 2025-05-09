@@ -155,7 +155,7 @@ class CompanyRelationshipForm(QDialog):
             service = CompanyService()
 
             relationship_type = self.relationship_type.currentText()
-            target_company_id = self.target_company.currentData()
+            related_company_id = self.target_company.currentData()
             notes = self.notes_input.toPlainText().strip()
 
             # Validate inputs
@@ -164,7 +164,7 @@ class CompanyRelationshipForm(QDialog):
                 self.relationship_type.setFocus()
                 return
 
-            if not target_company_id:
+            if not related_company_id:
                 QMessageBox.warning(self, "Validation Error", "Please select a target company")
                 self.target_company.setFocus()
                 return
@@ -177,7 +177,7 @@ class CompanyRelationshipForm(QDialog):
             else:
                 service.create_relationship(
                     source_id=self.source_company_id,
-                    target_id=target_company_id,
+                    target_id=related_company_id,
                     relationship_type=relationship_type,
                     notes=notes or None,
                 )

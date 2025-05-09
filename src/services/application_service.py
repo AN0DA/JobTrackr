@@ -31,7 +31,8 @@ class ApplicationService(BaseService):
             job_title=data["job_title"],
             position=data["position"],
             location=data.get("location"),
-            salary=data.get("salary"),
+            salary_min=data.get("salary_min"),
+            salary_max=data.get("salary_max"),
             status=data["status"],
             applied_date=applied_date,
             link=data.get("link"),
@@ -95,7 +96,8 @@ class ApplicationService(BaseService):
             result.update(
                 {
                     "location": app.location,
-                    "salary": app.salary,
+                    "salary_min": app.salary_min,
+                    "salary_max": app.salary_max,
                     "link": app.link,
                     "description": app.description,
                     "notes": app.notes,
@@ -178,7 +180,7 @@ class ApplicationService(BaseService):
 
     @db_operation
     def get_applications_for_export(
-        self, session: Session, include_notes=True, include_interactions=True, include_reminders=True
+        self, session: Session, include_notes=True, include_interactions=True
     ) -> list[dict[str, Any]]:
         """Get all applications with optional details for export."""
         try:
@@ -201,7 +203,7 @@ class ApplicationService(BaseService):
                     "company_website": app.company.website if app.company else "",
                     "position": app.position,
                     "location": app.location or "",
-                    "salary": app.salary or "",
+                    "salary": app.salary_min or "" if app.salary_min else app.salary_max or "",
                     "status": app.status,
                     "applied_date": app.applied_date.isoformat(),
                     "link": app.link or "",

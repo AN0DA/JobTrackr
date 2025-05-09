@@ -51,7 +51,7 @@ class ContactSelectorDialog(QDialog):
         self.contacts_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.contacts_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.contacts_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        self.contacts_table.doubleClicked.connect(self.on_table_double_clicked)
+        self.contacts_table.itemDoubleClicked.connect(self.on_table_double_clicked)
         layout.addWidget(self.contacts_table)
 
         # Bottom buttons with "Add New Contact" option
@@ -141,15 +141,18 @@ class ContactSelectorDialog(QDialog):
         self.selected_contact_id = contact_id_item.data(Qt.ItemDataRole.UserRole)
         self.accept()
 
-    @pyqtSlot()
-    def on_table_double_clicked(self, index):
-        """Handle double-click on table row."""
-        if self.contacts_table.item(index.row(), 0).text() == "No contacts found":
+    @pyqtSlot(QTableWidgetItem)
+    def on_table_double_clicked(self, item: QTableWidgetItem) -> None:
+        """Handle double click on a contact in the table."""
+        if not item:
             return
 
-        contact_id_item = self.contacts_table.item(index.row(), 0)
-        self.selected_contact_id = contact_id_item.data(Qt.ItemDataRole.UserRole)
-        self.accept()
+        row = item.row()
+        contact_id = self.contacts_table.item(row, 0).data(Qt.ItemDataRole.UserRole)
+
+        if contact_id:
+            self.selected_contact_id = contact_id
+            self.accept()
 
     @pyqtSlot()
     def on_add_new_contact(self):

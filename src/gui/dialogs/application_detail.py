@@ -142,6 +142,12 @@ class ApplicationDetailDialog(QDialog):
 
         overview_layout.addLayout(overview_form)
 
+        # Job description section
+        overview_layout.addWidget(QLabel("Job Description:"))
+        self.job_description = QTextEdit()
+        self.job_description.setReadOnly(True)
+        overview_layout.addWidget(self.job_description)
+
         # Status history section
         overview_layout.addWidget(QLabel("Status History:"))
         self.status_history_table = DataTable(0, ["Date", "Status", "Notes"])
@@ -177,7 +183,8 @@ class ApplicationDetailDialog(QDialog):
         self.contacts_table = DataTable(0, ["ID", "Name", "Title", "Email", "Phone"])
         self.contacts_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.contacts_table.setSelectionBehavior(DataTable.SelectionBehavior.SelectRows)
-        self.contacts_table.doubleClicked.connect(self.on_contact_double_clicked)
+        self.contacts_table.itemDoubleClicked.connect(self.on_contact_double_clicked)
+        self.contacts_table.itemSelectionChanged.connect(self._on_contact_selected)
         contacts_layout.addWidget(self.contacts_table)
 
         # Contacts actions buttons
@@ -204,9 +211,10 @@ class ApplicationDetailDialog(QDialog):
         interactions_layout.addWidget(QLabel("Interactions"))
 
         # Interactions table
-        self.interactions_table = DataTable(0, ["Date/Time", "Type", "Contact", "Details"])
+        self.interactions_table = DataTable(0, ["Date", "Type", "Contact", "Subject", "Notes"])
         self.interactions_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.interactions_table.setSelectionBehavior(DataTable.SelectionBehavior.SelectRows)
+        self.interactions_table.itemSelectionChanged.connect(self._on_interaction_selected)
         interactions_layout.addWidget(self.interactions_table)
 
         # Interactions actions
@@ -370,15 +378,16 @@ class ApplicationDetailDialog(QDialog):
                 self.status_history_table.setItem(0, 2, QTableWidgetItem("Initial application status"))
                 return
 
-            # Sort by timestamp descending
-            status_changes.sort(key=lambda x: x["timestamp"], reverse=True)
+            # Sort by created_at descending
+            status_changes.sort(key=lambda x: x.get("created_at", ""), reverse=True)
 
             for i, change in enumerate(status_changes):
                 self.status_history_table.insertRow(i)
 
-                date = change["timestamp"].split("T")[0]
+                # Format date
+                date = change.get("created_at", "").split("T")[0] if change.get("created_at") else "Unknown"
                 self.status_history_table.setItem(i, 0, QTableWidgetItem(date))
-                self.status_history_table.setItem(i, 1, QTableWidgetItem(change["new_value"]))
+                self.status_history_table.setItem(i, 1, QTableWidgetItem(change.get("new_value", "")))
                 self.status_history_table.setItem(i, 2, QTableWidgetItem(change.get("notes", "")))
 
         except Exception as e:
@@ -402,7 +411,9 @@ class ApplicationDetailDialog(QDialog):
 
             # Add change records
             for change in changes:
-                event_date = datetime.fromisoformat(change["timestamp"])
+                event_date = (
+                    datetime.fromisoformat(change["created_at"]) if change.get("created_at") else datetime.now()
+                )
                 event_type = change["change_type"]
 
                 # Format details
@@ -430,9 +441,9 @@ class ApplicationDetailDialog(QDialog):
 
             # Add interactions
             for interaction in interactions:
-                event_date = datetime.fromisoformat(interaction["date"])
+                event_date = datetime.fromisoformat(interaction["date"]) if interaction.get("date") else datetime.now()
                 details = (
-                    f"{interaction['type']}: "
+                    f"{interaction['interaction_type']}: "
                     f"{interaction['notes'][:50] + '...' if interaction['notes'] and len(interaction['notes']) > 50 else interaction['notes'] or ''}"
                 )
 
@@ -440,7 +451,11 @@ class ApplicationDetailDialog(QDialog):
 
             # Add application creation as first event
             if "created_at" in self.application_data:
-                creation_date = datetime.fromisoformat(self.application_data.get("created_at", ""))
+                creation_date = (
+                    datetime.fromisoformat(self.application_data["created_at"])
+                    if self.application_data.get("created_at")
+                    else datetime.now()
+                )
                 timeline_events.append(
                     {
                         "date": creation_date,
@@ -499,30 +514,40 @@ class ApplicationDetailDialog(QDialog):
                 self.interactions_table.setItem(0, 1, QTableWidgetItem(""))
                 self.interactions_table.setItem(0, 2, QTableWidgetItem(""))
                 self.interactions_table.setItem(0, 3, QTableWidgetItem(""))
+                self.interactions_table.setItem(0, 4, QTableWidgetItem(""))
                 return
 
             for i, interaction in enumerate(interactions):
                 self.interactions_table.insertRow(i)
 
-                # Format date
-                date_str = interaction["date"].split("T")[0] if interaction.get("date") else ""
-                time_str = interaction["date"].split("T")[1][:5] if interaction.get("date") else ""
-                datetime_str = f"{date_str} {time_str}" if date_str else ""
-
                 # Store the interaction ID for later retrieval
-                id_item = QTableWidgetItem(datetime_str)
+                id_item = QTableWidgetItem(str(interaction.get("id", "")))
                 id_item.setData(Qt.ItemDataRole.UserRole, interaction.get("id"))
                 self.interactions_table.setItem(i, 0, id_item)
 
-                self.interactions_table.setItem(i, 1, QTableWidgetItem(interaction.get("type", "")))
+                # Add interaction details
+                self.interactions_table.setItem(i, 1, QTableWidgetItem(interaction.get("interaction_type", "")))
 
                 # Get contact info if available
                 contact_info = ""
-                if interaction.get("contacts"):
-                    contact_info = ", ".join([c["name"] for c in interaction["contacts"]])
+                if interaction.get("contact"):
+                    contact_info = (
+                        f"{interaction['contact'].get('name', '')} ({interaction['contact'].get('title', '')})"
+                    )
                 self.interactions_table.setItem(i, 2, QTableWidgetItem(contact_info))
 
-                self.interactions_table.setItem(i, 3, QTableWidgetItem(interaction.get("notes", "")))
+                # Add subject and notes
+                self.interactions_table.setItem(i, 3, QTableWidgetItem(interaction.get("subject", "")))
+
+                # Truncate notes if too long
+                notes = interaction.get("notes", "")
+                if notes and len(notes) > 100:
+                    notes = notes[:97] + "..."
+                self.interactions_table.setItem(i, 4, QTableWidgetItem(notes))
+
+            # Enable/disable interaction buttons based on selection
+            self.edit_interaction_button.setEnabled(False)
+            self.delete_interaction_button.setEnabled(False)
 
         except Exception as e:
             logger.error(f"Error loading interactions: {e}", exc_info=True)
@@ -558,10 +583,14 @@ class ApplicationDetailDialog(QDialog):
                 id_item.setData(Qt.ItemDataRole.UserRole, contact.get("id"))
                 self.contacts_table.setItem(i, 0, id_item)
 
+                # Add contact details
                 self.contacts_table.setItem(i, 1, QTableWidgetItem(contact.get("name", "")))
                 self.contacts_table.setItem(i, 2, QTableWidgetItem(contact.get("title", "")))
                 self.contacts_table.setItem(i, 3, QTableWidgetItem(contact.get("email", "")))
                 self.contacts_table.setItem(i, 4, QTableWidgetItem(contact.get("phone", "")))
+
+            # Enable/disable remove contact button based on selection
+            self.remove_contact_button.setEnabled(False)
 
         except Exception as e:
             logger.error(f"Error loading contacts: {e}", exc_info=True)
@@ -782,3 +811,16 @@ class ApplicationDetailDialog(QDialog):
                 logger.error(f"Error deleting application: {e}", exc_info=True)
                 if self.main_window:
                     self.main_window.show_status_message(f"Error: {str(e)}")
+
+    def _on_interaction_selected(self) -> None:
+        """Handle interaction selection."""
+        selected_rows = self.interactions_table.selectedItems()
+        has_selection = bool(selected_rows)
+        self.edit_interaction_button.setEnabled(has_selection)
+        self.delete_interaction_button.setEnabled(has_selection)
+
+    def _on_contact_selected(self) -> None:
+        """Handle contact selection."""
+        selected_rows = self.contacts_table.selectedItems()
+        has_selection = bool(selected_rows)
+        self.remove_contact_button.setEnabled(has_selection)

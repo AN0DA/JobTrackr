@@ -82,7 +82,7 @@ class CompanyService(BaseService):
 
             relationship = CompanyRelationship(
                 source_company_id=source_id,
-                target_company_id=target_id,
+                related_company_id=target_id,
                 relationship_type=relationship_type,
                 notes=notes,
             )
@@ -94,7 +94,7 @@ class CompanyService(BaseService):
             return {
                 "id": relationship.id,
                 "source_company_id": relationship.source_company_id,
-                "target_company_id": relationship.target_company_id,
+                "related_company_id": relationship.related_company_id,
                 "relationship_type": relationship.relationship_type,
                 "notes": relationship.notes,
             }
@@ -160,14 +160,14 @@ class CompanyService(BaseService):
 
             # Get incoming relationships
             incoming = (
-                session.query(CompanyRelationship).filter(CompanyRelationship.target_company_id == company_id).all()
+                session.query(CompanyRelationship).filter(CompanyRelationship.related_company_id == company_id).all()
             )
 
             results = []
 
             # Process outgoing relationships
             for rel in outgoing:
-                target = session.query(Company).filter(Company.id == rel.target_company_id).first()
+                target = session.query(Company).filter(Company.id == rel.related_company_id).first()
                 if target:
                     results.append(
                         {
@@ -214,7 +214,7 @@ class CompanyService(BaseService):
             return {
                 "id": relationship.id,
                 "source_id": relationship.source_company_id,
-                "target_id": relationship.target_company_id,
+                "target_id": relationship.related_company_id,
                 "relationship_type": relationship.relationship_type,
                 "notes": relationship.notes,
             }

@@ -23,6 +23,7 @@ def db_operation(func: Callable[..., F]) -> Callable[..., F]:
     Returns:
         The decorated function.
     """
+
     @functools.wraps(func)
     def wrapper(*args: Any, **kwargs: Any) -> Any:
         session = get_session()

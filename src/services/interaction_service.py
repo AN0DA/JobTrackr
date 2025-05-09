@@ -181,3 +181,19 @@ class InteractionService(BaseService):
             logger.error(f"Error deleting interaction {interaction_id}: {e}", exc_info=True)
             session.rollback()
             raise
+
+    @db_operation
+    def get_interactions(self, application_id: int, session: Session) -> list[dict]:
+        """Get all interactions for an application."""
+        try:
+            interactions = (
+                session.query(Interaction)
+                .options(joinedload(Interaction.contact))
+                .filter(Interaction.application_id == application_id)
+                .order_by(Interaction.date.desc())
+                .all()
+            )
+            return [self._entity_to_dict(interaction) for interaction in interactions]
+        except Exception as e:
+            logger.error(f"Error getting interactions: {e}", exc_info=True)
+            return []

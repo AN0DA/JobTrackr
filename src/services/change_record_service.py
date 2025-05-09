@@ -57,11 +57,10 @@ class ChangeRecordService(BaseService):
             records = (
                 session.query(ChangeRecord)
                 .filter(ChangeRecord.application_id == application_id)
-                .order_by(desc(ChangeRecord.timestamp))
+                .order_by(desc(ChangeRecord.created_at))
                 .all()
             )
-
-            return [self._entity_to_dict(record) for record in records]
+            return [record.to_dict() for record in records]
         except Exception as e:
-            logger.error(f"Error fetching change records: {e}")
+            logger.error(f"Error fetching change records: {e}", exc_info=True)
             raise

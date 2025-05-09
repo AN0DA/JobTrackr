@@ -19,7 +19,11 @@ contact_applications = Table(
     Base.metadata,
     Column("id", Integer, primary_key=True),
     Column("contact_id", ForeignKey("contacts.id", name="fk_contact_applications_contact_id_contacts"), nullable=False),
-    Column("application_id", ForeignKey("applications.id", name="fk_contact_applications_application_id_applications"), nullable=False),
+    Column(
+        "application_id",
+        ForeignKey("applications.id", name="fk_contact_applications_application_id_applications"),
+        nullable=False,
+    ),
     Column("created_at", DateTime, default=datetime.utcnow),
 )
 
@@ -42,8 +46,12 @@ class Company(Base):
     # Relationships
     applications = relationship("Application", back_populates="company")
     contacts = relationship("Contact", back_populates="company")
-    outgoing_relationships = relationship("CompanyRelationship", foreign_keys="CompanyRelationship.source_company_id", back_populates="source_company")
-    incoming_relationships = relationship("CompanyRelationship", foreign_keys="CompanyRelationship.related_company_id", back_populates="related_company")
+    outgoing_relationships = relationship(
+        "CompanyRelationship", foreign_keys="CompanyRelationship.source_company_id", back_populates="source_company"
+    )
+    incoming_relationships = relationship(
+        "CompanyRelationship", foreign_keys="CompanyRelationship.related_company_id", back_populates="related_company"
+    )
 
     def to_dict(self):
         """Convert to dictionary."""
@@ -67,24 +75,23 @@ class Application(Base):
 
     id = Column(Integer, primary_key=True)
     job_title = Column(String(255), nullable=False)
-    company_id = Column(Integer, ForeignKey("companies.id", name="fk_applications_company_id_companies"))
-    position = Column(String(255))
-    description = Column(Text)
+    position = Column(String(255), nullable=False)
+    location = Column(String(255))
     salary_min = Column(Integer)
     salary_max = Column(Integer)
-    location = Column(String(255))
-    remote = Column(String(50))  # REMOTE, HYBRID, ONSITE
-    application_method = Column(String(50))  # WEBSITE, EMAIL, REFERRAL, etc
-    job_url = Column(String(255))
-    status = Column(String(50))  # APPLIED, INTERVIEWING, REJECTED, OFFER, etc
-    status_details = Column(Text)
-    applied_date = Column(DateTime)
+    status = Column(String(50), nullable=False)
+    applied_date = Column(DateTime, nullable=False)
+    link = Column(String(255))
+    description = Column(Text)
+    notes = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(DateTime, onupdate=datetime.utcnow)
 
-    # Relationships
+    # Foreign keys
+    company_id = Column(Integer, ForeignKey("companies.id"))
     company = relationship("Company", back_populates="applications")
-    change_records = relationship("ChangeRecord", back_populates="application")
+    interactions = relationship("Interaction", back_populates="application", cascade="all, delete-orphan")
+    change_records = relationship("ChangeRecord", back_populates="application", cascade="all, delete-orphan")
     contacts = relationship("Contact", secondary=contact_applications, back_populates="applications")
 
     def to_dict(self):
@@ -92,18 +99,15 @@ class Application(Base):
         return {
             "id": self.id,
             "job_title": self.job_title,
-            "company_id": self.company_id,
             "position": self.position,
-            "description": self.description,
+            "location": self.location,
             "salary_min": self.salary_min,
             "salary_max": self.salary_max,
-            "location": self.location,
-            "remote": self.remote,
-            "application_method": self.application_method,
-            "job_url": self.job_url,
             "status": self.status,
-            "status_details": self.status_details,
             "applied_date": self.applied_date.isoformat() if self.applied_date else None,
+            "link": self.link,
+            "description": self.description,
+            "notes": self.notes,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
@@ -154,6 +158,7 @@ class Interaction(Base):
     application_id = Column(Integer, ForeignKey("applications.id", name="fk_interactions_application_id_applications"))
     interaction_type = Column(String(50))  # EMAIL, CALL, MEETING, etc
     date = Column(DateTime, nullable=False)
+    subject = Column(String(255))  # Subject line for the interaction
     notes = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -170,6 +175,7 @@ class Interaction(Base):
             "application_id": self.application_id,
             "interaction_type": self.interaction_type,
             "date": self.date.isoformat() if self.date else None,
+            "subject": self.subject,
             "notes": self.notes,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
@@ -177,13 +183,13 @@ class Interaction(Base):
 
 
 class ChangeRecord(Base):
-    """Change record for tracking application status changes."""
+    """Model for tracking changes to applications."""
 
     __tablename__ = "change_records"
 
     id = Column(Integer, primary_key=True)
-    application_id = Column(Integer, ForeignKey("applications.id", name="fk_change_records_application_id_applications"), nullable=False)
-    change_type = Column(String(50))  # STATUS_CHANGE, NOTE_ADDED, CONTACT_ADDED, etc
+    application_id = Column(Integer, ForeignKey("applications.id", ondelete="CASCADE"), nullable=False)
+    change_type = Column(String(50), nullable=False)  # e.g., STATUS_CHANGE, CONTACT_ADDED, etc.
     old_value = Column(String(255))
     new_value = Column(String(255))
     notes = Column(Text)
@@ -193,7 +199,7 @@ class ChangeRecord(Base):
     application = relationship("Application", back_populates="change_records")
 
     def to_dict(self):
-        """Convert to dictionary."""
+        """Convert the change record to a dictionary."""
         return {
             "id": self.id,
             "application_id": self.application_id,
@@ -211,8 +217,14 @@ class CompanyRelationship(Base):
     __tablename__ = "company_relationships"
 
     id = Column(Integer, primary_key=True)
-    source_company_id = Column(Integer, ForeignKey("companies.id", name="fk_company_relationships_source_company_id_companies"), nullable=False)
-    related_company_id = Column(Integer, ForeignKey("companies.id", name="fk_company_relationships_related_company_id_companies"), nullable=False)
+    source_company_id = Column(
+        Integer, ForeignKey("companies.id", name="fk_company_relationships_source_company_id_companies"), nullable=False
+    )
+    related_company_id = Column(
+        Integer,
+        ForeignKey("companies.id", name="fk_company_relationships_related_company_id_companies"),
+        nullable=False,
+    )
     relationship_type = Column(String, nullable=False)
     notes = Column(Text)
     created_at = Column(DateTime, default=datetime.now)
@@ -220,7 +232,9 @@ class CompanyRelationship(Base):
 
     # Relationship definitions
     source_company = relationship("Company", foreign_keys=[source_company_id], back_populates="outgoing_relationships")
-    related_company = relationship("Company", foreign_keys=[related_company_id], back_populates="incoming_relationships")
+    related_company = relationship(
+        "Company", foreign_keys=[related_company_id], back_populates="incoming_relationships"
+    )
 
     def to_dict(self):
         """Convert to dictionary."""
