@@ -133,8 +133,11 @@ class ApplicationService(BaseService):
 
             # Apply pagination
             offset = kwargs.get("offset", 0)
-            limit = kwargs.get("limit", 10)
-            applications = query.offset(offset).limit(limit).all()
+            limit = kwargs.get("limit", None)
+            if limit is not None:
+                applications = query.offset(offset).limit(limit).all()
+            else:
+                applications = query.offset(offset).all()
 
             # Convert to dictionaries
             return [self._entity_to_dict(app, include_details=False) for app in applications]

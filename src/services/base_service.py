@@ -57,7 +57,7 @@ class BaseService(Generic[ModelType]):
             sort_by = kwargs.get("sort_by")
             sort_desc = kwargs.get("sort_desc", False)
             offset = kwargs.get("offset", 0)
-            limit = kwargs.get("limit")
+            limit = kwargs.get("limit", None)
 
             self.logger.debug(
                 f"Getting {self.entity_name}s with sort_by={sort_by}, "
@@ -76,13 +76,13 @@ class BaseService(Generic[ModelType]):
             # Apply offset/limit if provided
             if offset:
                 query = query.offset(offset)
-            if limit:
+            if limit is not None:
                 query = query.limit(limit)
 
             entities = query.all()
             self.logger.debug(f"Found {len(entities)} {self.entity_name}(s)")
 
-            return [self._entity_to_dict(entity, include_details=False) for entity in entities]
+            return [self._entity_to_dict(entity, include_details=True) for entity in entities]
 
         except Exception as e:
             self.logger.error(f"Error fetching {self.entity_name}s: {e}", exc_info=True)
