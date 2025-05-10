@@ -3,6 +3,7 @@
 """Database management for JobTrackr."""
 
 import os
+import sys  # Added for sys.frozen and sys._MEIPASS
 from pathlib import Path
 
 from PyQt6.QtWidgets import QApplication, QMessageBox
@@ -17,6 +18,19 @@ from src.db.settings import Settings
 from src.utils.logging import get_logger
 
 logger = get_logger(__name__)
+
+
+def get_resource_path(relative_path):
+    """Get absolute path to resource, works for dev and for PyInstaller"""
+    if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    else:
+        # Not bundled, use the script's directory or a known project root
+        # In this case, for alembic.ini, the project root is two levels up from src/db/
+        base_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+
+    return os.path.join(base_path, relative_path)
 
 
 def ensure_db_directory(db_path: str) -> None:
@@ -65,10 +79,21 @@ def run_migrations() -> bool:
     """
     try:
         # Get the path to alembic.ini
-        alembic_ini_path = os.path.join(os.path.dirname(__file__), "..", "..", "alembic.ini")
+        alembic_ini_path = get_resource_path("alembic.ini")
 
         # Create Alembic configuration
         alembic_cfg = Config(alembic_ini_path)
+
+        if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+            # In a PyInstaller bundle, script_location needs to point to where the 'alembic' dir is.
+            # Our spec file bundles the 'alembic' directory preserving its name.
+            bundled_script_location = os.path.join(sys._MEIPASS, "alembic")
+            alembic_cfg.set_main_option("script_location", bundled_script_location)
+            # If 'src' or other modules needed by alembic/env.py are not found:
+            # if sys._MEIPASS not in sys.path:
+            # sys.path.insert(0, sys._MEIPASS) # sys._MEIPASS is the root of bundled files
+            # To make 'from src.db.models import Base' in env.py work if src is also at root:
+            # sys.path.insert(0, os.path.join(sys._MEIPASS, "src")) # If 'src' is a top-level dir in bundle
 
         # Run migrations
         command.upgrade(alembic_cfg, "head")
@@ -108,10 +133,19 @@ def check_and_run_migrations() -> bool:
 
         # Database exists, check if it needs updates
         # Get the path to alembic.ini
-        alembic_ini_path = os.path.join(os.path.dirname(__file__), "..", "..", "alembic.ini")
+        alembic_ini_path = get_resource_path("alembic.ini")
 
         # Create Alembic configuration
         alembic_cfg = Config(alembic_ini_path)
+
+        if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+            # In a PyInstaller bundle, script_location needs to point to where the 'alembic' dir is.
+            bundled_script_location = os.path.join(sys._MEIPASS, "alembic")
+            alembic_cfg.set_main_option("script_location", bundled_script_location)
+            # If 'src' or other modules needed by alembic/env.py are not found:
+            # if sys._MEIPASS not in sys.path:
+            #    sys.path.insert(0, sys._MEIPASS)
+            # sys.path.insert(0, os.path.join(sys._MEIPASS, "src"))
 
         # Get current database revision
         with engine.connect() as conn:

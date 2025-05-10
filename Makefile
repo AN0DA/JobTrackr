@@ -1,4 +1,4 @@
-.PHONY: lint mypy test sync migrate revision
+.PHONY: lint mypy test sync migrate revision pyinstaller clean-pyinstaller
 
 all: lint mypy test
 
@@ -26,3 +26,9 @@ revision:
 # Run database migrations
 migrate:
 	python -m scripts.migration_manager
+
+pyinstaller:
+	pyinstaller ./JobTrackr.spec
+clean-pyinstaller:
+	rm -rf build dist
+
