@@ -5,6 +5,7 @@
 import os
 from pathlib import Path
 
+from PyQt6.QtWidgets import QApplication, QMessageBox
 from sqlalchemy import create_engine, inspect
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.sql import text
@@ -14,8 +15,6 @@ from alembic.config import Config
 from alembic.script import ScriptDirectory
 from src.db.settings import Settings
 from src.utils.logging import get_logger
-
-from PyQt6.QtWidgets import QApplication, QMessageBox
 
 logger = get_logger(__name__)
 

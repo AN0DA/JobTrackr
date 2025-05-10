@@ -43,7 +43,7 @@ class ChangeRecordService(BaseService):
         return {
             "id": record.id,
             "application_id": record.application_id,
-            "timestamp": record.timestamp.isoformat(),
+            "created_at": record.created_at.isoformat(),
             "change_type": record.change_type,
             "old_value": record.old_value,
             "new_value": record.new_value,
