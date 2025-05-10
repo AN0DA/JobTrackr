@@ -3,9 +3,7 @@
 """Database management for JobTrackr."""
 
 import os
-import tkinter as tk
 from pathlib import Path
-from tkinter import messagebox
 
 from sqlalchemy import create_engine, inspect
 from sqlalchemy.exc import SQLAlchemyError
@@ -16,6 +14,8 @@ from alembic.config import Config
 from alembic.script import ScriptDirectory
 from src.db.settings import Settings
 from src.utils.logging import get_logger
+
+from PyQt6.QtWidgets import QApplication, QMessageBox
 
 logger = get_logger(__name__)
 
@@ -33,18 +33,29 @@ def show_migration_dialog() -> bool:
     Returns:
         bool: True if the user chooses to run migrations, False otherwise.
     """
-    root = tk.Tk()
-    root.withdraw()  # Hide the main window
+    # Ensure a QApplication exists
+    app = QApplication.instance()
+    if app is None:
+        app = QApplication([])
+        created_app = True
+    else:
+        created_app = False
 
-    response = messagebox.askyesno(
-        "Database Update",
+    msg_box = QMessageBox()
+    msg_box.setIcon(QMessageBox.Icon.Warning)
+    msg_box.setWindowTitle("Database Update")
+    msg_box.setText(
         "Database schema updates are available. Do you want to update the database now?\n\n"
-        "Choosing 'No' may cause the application to malfunction.",
-        icon=messagebox.WARNING,
+        "Choosing 'No' may cause the application to malfunction."
     )
+    msg_box.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+    msg_box.setDefaultButton(QMessageBox.StandardButton.Yes)
+    result = msg_box.exec()
 
-    root.destroy()
-    return response
+    if created_app:
+        app.quit()
+
+    return result == QMessageBox.StandardButton.Yes
 
 
 def run_migrations() -> bool:
