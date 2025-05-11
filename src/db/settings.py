@@ -1,101 +1,123 @@
 import json
 import os
+from pathlib import Path
 from typing import Any
 
-from src.config import CONFIG_DIR, DEFAULT_SETTINGS
 from src.utils.logging import get_logger
 
-# Set up module logger
 logger = get_logger(__name__)
 
 
 class Settings:
-    """Class to handle application settings."""
+    """
+    Handle application settings including database configuration.
 
-    def __init__(self) -> None:
-        # Define settings file location from central config
-        self.config_dir = CONFIG_DIR
-        self.config_file = self.config_dir / "config.json"
-        self._config = {}
+    This class manages reading, writing, and accessing application settings
+    that are stored in a JSON file.
+    """
 
-        # Load settings (or create default)
-        self.load()
+    def __init__(self, settings_file: str | None = None):
+        """
+        Initialize settings from the settings file.
 
-    def load(self) -> None:
-        """Load settings from config file or create default if not exists."""
+        Args:
+            settings_file: Optional path to settings file. If None, uses default location.
+        """
+        # Set default settings
+        self._settings = {
+            "database_path": str(Path.home() / ".jobtrackr" / "jobtrackr.db"),
+            "log_level": "INFO",
+            "theme": "system",
+            "default_view": "dashboard",
+            "save_window_state": True,
+            "auto_backup": True,
+            "backup_frequency_days": 7,
+            "check_updates": True,
+        }
+
+        # Determine settings file location
+        if settings_file is None:
+            self._settings_dir = Path.home() / ".jobtrackr"
+            self._settings_file = self._settings_dir / "settings.json"
+        else:
+            self._settings_file = Path(settings_file)
+            self._settings_dir = self._settings_file.parent
+
+        # Ensure settings directory exists
+        os.makedirs(self._settings_dir, exist_ok=True)
+
+        # Load existing settings
+        self._load_settings()
+
+    def _load_settings(self) -> None:
+        """Load settings from file, creating default file if it doesn't exist."""
         try:
-            if self.config_file.exists():
-                logger.debug(f"Loading settings from {self.config_file}")
-                with open(self.config_file) as f:
-                    self._config = json.load(f)
-
-                # Check for missing keys and apply defaults
-                for key, default_value in DEFAULT_SETTINGS.items():
-                    if key not in self._config:
-                        logger.debug(f"Adding missing setting: {key} = {default_value}")
-                        self._config[key] = default_value
+            if self._settings_file.exists():
+                with open(self._settings_file) as f:
+                    loaded_settings = json.load(f)
+                    # Update default settings with loaded values
+                    self._settings.update(loaded_settings)
+                    logger.debug(f"Settings loaded from {self._settings_file}")
             else:
-                # Create default config
-                logger.info(f"No settings file found, creating defaults at {self.config_file}")
-                self._config = DEFAULT_SETTINGS.copy()
-                self.save()
-
-            # Expand paths with ~ to user's home directory
-            for key in ["database_path", "export_directory"]:
-                if isinstance(self._config[key], str) and self._config[key].startswith("~"):
-                    self._config[key] = os.path.expanduser(self._config[key])
-                    logger.debug(f"Expanded path for {key}: {self._config[key]}")
-
+                # Write default settings to file
+                self._save_settings()
+                logger.info(f"Created default settings file at {self._settings_file}")
         except Exception as e:
             logger.error(f"Error loading settings: {e}", exc_info=True)
-            self._config = DEFAULT_SETTINGS.copy()
-            logger.info("Using default settings due to error")
 
-    def save(self) -> None:
-        """Save settings to config file."""
+    def _save_settings(self) -> None:
+        """Save current settings to file."""
         try:
-            logger.debug(f"Saving settings to {self.config_file}")
-            with open(self.config_file, "w") as f:
-                json.dump(self._config, f, indent=2)
-            logger.debug("Settings saved successfully")
+            with open(self._settings_file, "w") as f:
+                json.dump(self._settings, f, indent=2)
+            logger.debug(f"Settings saved to {self._settings_file}")
         except Exception as e:
             logger.error(f"Error saving settings: {e}", exc_info=True)
 
     def get(self, key: str, default: Any = None) -> Any:
-        """Get a setting value."""
-        value = self._config.get(key, default)
-        logger.debug(f"Retrieved setting {key} = {value}")
-        return value
+        """
+        Get a setting value by key.
+
+        Args:
+            key: The setting key to retrieve
+            default: Value to return if key doesn't exist
+
+        Returns:
+            The setting value or default if not found
+        """
+        return self._settings.get(key, default)
 
     def set(self, key: str, value: Any) -> None:
-        """Set a setting value."""
-        logger.info(f"Setting {key} = {value}")
-        self._config[key] = value
-        self.save()
+        """
+        Set a setting value and save to file.
+
+        Args:
+            key: The setting key to set
+            value: The value to set
+        """
+        self._settings[key] = value
+        self._save_settings()
+
+    def get_all(self) -> dict[str, Any]:
+        """
+        Get all settings as a dictionary.
+
+        Returns:
+            A copy of the settings dictionary
+        """
+        return self._settings.copy()
 
     def get_database_path(self) -> str:
-        """Get the database path, ensuring directory exists."""
+        """
+        Get the database file path from settings.
+
+        Returns:
+            Path to the database file
+        """
         db_path = self.get("database_path")
-        db_dir = os.path.dirname(db_path)
 
         # Ensure database directory exists
+        db_dir = os.path.dirname(db_path)
         os.makedirs(db_dir, exist_ok=True)
-        logger.debug(f"Ensured database directory exists: {db_dir}")
 
         return db_path
-
-    def get_export_directory(self) -> str:
-        """Get the export directory, ensuring it exists."""
-        export_dir = self.get("export_directory")
-
-        # Ensure export directory exists
-        os.makedirs(export_dir, exist_ok=True)
-        logger.debug(f"Ensured export directory exists: {export_dir}")
-
-        return export_dir
-
-    def database_exists(self) -> bool:
-        """Check if the database file exists."""
-        exists = os.path.exists(self.get_database_path())
-        logger.debug(f"Database exists check: {exists}")
-        return exists

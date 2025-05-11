@@ -1,17 +1,15 @@
-import logging
 from datetime import datetime
 from typing import Any
 
 from sqlalchemy import desc
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
-from src.config import ChangeType
-from src.db.database import get_session
-from src.db.models import Application, Interaction
+from src.db.models import Interaction
 from src.services.base_service import BaseService
-from src.services.change_record_service import ChangeRecordService
+from src.utils.decorators import db_operation
+from src.utils.logging import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class InteractionService(BaseService):
@@ -22,133 +20,180 @@ class InteractionService(BaseService):
 
     def _create_entity_from_dict(self, data: dict[str, Any], session: Session) -> Interaction:
         """Create an Interaction object from a dictionary."""
-        # Ensure application exists
-        application = session.query(Application).filter(Application.id == data["application_id"]).first()
-        if not application:
-            raise ValueError(f"Application with ID {data['application_id']} not found")
-
-        # Handle date format
-        date = data["date"]
+        # Parse the date string to a datetime object
+        date = data.get("date")
         if isinstance(date, str):
-            date = datetime.fromisoformat(date)
+            try:
+                date = datetime.fromisoformat(date.replace("Z", "+00:00"))
+            except ValueError:
+                # Try another format if ISO format fails
+                date = datetime.strptime(date, "%Y-%m-%dT%H:%M:%S")
 
         return Interaction(
-            application_id=data["application_id"],
-            type=data["type"],
-            date=date,
-            notes=data.get("notes"),
+            contact_id=data["contact_id"],
+            application_id=data.get("application_id"),
+            interaction_type=data["interaction_type"],
+            date=date or datetime.utcnow(),
+            subject=data.get("subject", ""),
+            notes=data.get("notes", ""),
         )
 
     def _update_entity_from_dict(self, entity: Interaction, data: dict[str, Any], session: Session) -> None:
         """Update an Interaction object from a dictionary."""
-        if "type" in data:
-            entity.type = data["type"]
+        if "interaction_type" in data:
+            entity.interaction_type = data["interaction_type"]
+
         if "date" in data:
-            if isinstance(data["date"], str):
-                entity.date = datetime.fromisoformat(data["date"])
-            else:
-                entity.date = data["date"]
+            date = data["date"]
+            if isinstance(date, str):
+                try:
+                    date = datetime.fromisoformat(date.replace("Z", "+00:00"))
+                except ValueError:
+                    # Try another format if ISO format fails
+                    date = datetime.strptime(date, "%Y-%m-%dT%H:%M:%S")
+            entity.date = date
+
+        if "subject" in data:
+            entity.subject = data["subject"]
+
         if "notes" in data:
             entity.notes = data["notes"]
 
-    def create(self, data: dict[str, Any]) -> dict[str, Any]:
-        """Create a new interaction and record the change."""
-        session = get_session()
-        try:
-            # Create using the parent method's implementation
-            interaction = self._create_entity_from_dict(data, session)
+        if "application_id" in data:
+            entity.application_id = data["application_id"]
 
-            # Add to session and commit
-            session.add(interaction)
-            session.commit()
-            session.refresh(interaction)
+    def _entity_to_dict(self, interaction: Interaction, include_details: bool = True) -> dict[str, Any]:
+        """Convert an Interaction object to a dictionary."""
+        result = {
+            "id": interaction.id,
+            "contact_id": interaction.contact_id,
+            "interaction_type": interaction.interaction_type,
+            "date": interaction.date.isoformat() if interaction.date else None,
+        }
 
-            # Record the change
-            change_record_service = ChangeRecordService()
-            change_record_service.create(
+        if include_details:
+            result.update(
                 {
-                    "application_id": data["application_id"],
-                    "change_type": ChangeType.INTERACTION_ADDED.value,
-                    "new_value": data["type"],
-                    "notes": f"Added {data['type']} interaction on {interaction.date.isoformat()}",
+                    "application_id": interaction.application_id,
+                    "subject": interaction.subject,
+                    "notes": interaction.notes,
+                    "created_at": interaction.created_at.isoformat() if interaction.created_at else None,
+                    "updated_at": interaction.updated_at.isoformat() if interaction.updated_at else None,
                 }
             )
 
-            return self._entity_to_dict(interaction)
-        except Exception as e:
-            session.rollback()
-            logger.error(f"Error creating interaction: {e}")
-            raise
-        finally:
-            session.close()
+            # Include contact information
+            if interaction.contact:
+                result["contact"] = {
+                    "id": interaction.contact.id,
+                    "name": interaction.contact.name,
+                }
 
-    def _entity_to_dict(self, interaction: Interaction, include_details: bool = True) -> dict[str, Any]:
-        """Convert an Interaction to a dictionary."""
-        result = {
-            "id": interaction.id,
-            "application_id": interaction.application_id,
-            "type": interaction.type,
-            "date": interaction.date.isoformat(),
-            "notes": interaction.notes,
-        }
-
-        # Add contact information if available
-        if include_details and interaction.contacts:
-            result["contacts"] = [
-                {"id": contact.id, "name": contact.name, "title": contact.title} for contact in interaction.contacts
-            ]
+            # Include application information if available
+            if interaction.application:
+                result["application"] = {
+                    "id": interaction.application.id,
+                    "job_title": interaction.application.job_title,
+                }
 
         return result
 
-    def get_interactions(self, application_id: int) -> list[dict[str, Any]]:
-        """Get all interactions for an application."""
-        session = get_session()
+    @db_operation
+    def get_interactions_by_contact(
+        self, contact_id: int, session: Session, limit: int = 50, offset: int = 0
+    ) -> list[dict[str, Any]]:
+        """Get interactions for a specific contact."""
         try:
-            interactions = (
+            logger.debug(f"Getting interactions for contact {contact_id}")
+
+            # Query interactions for the contact
+            query = (
                 session.query(Interaction)
-                .filter(Interaction.application_id == application_id)
+                .options(joinedload(Interaction.contact))
+                .options(joinedload(Interaction.application))
+                .filter(Interaction.contact_id == contact_id)
                 .order_by(desc(Interaction.date))
-                .all()
             )
 
-            return [self._entity_to_dict(interaction) for interaction in interactions]
+            # Apply pagination
+            interactions = query.offset(offset).limit(limit).all()
+
+            # Convert to dictionaries
+            result = [self._entity_to_dict(interaction) for interaction in interactions]
+
+            logger.debug(f"Found {len(result)} interactions for contact {contact_id}")
+            return result
+
         except Exception as e:
-            logger.error(f"Error fetching interactions: {e}")
+            logger.error(f"Error getting interactions for contact {contact_id}: {e}", exc_info=True)
             raise
-        finally:
-            session.close()
 
-    def delete(self, _id: int) -> bool:
-        """Delete an interaction and record the change."""
-        session = get_session()
+    @db_operation
+    def get_interactions_by_application(
+        self, application_id: int, session: Session, limit: int = 50, offset: int = 0
+    ) -> list[dict[str, Any]]:
+        """Get interactions for a specific application."""
         try:
-            interaction = session.query(Interaction).filter(Interaction.id == _id).first()
-            if not interaction:
-                return False
+            logger.debug(f"Getting interactions for application {application_id}")
 
-            application_id = interaction.application_id
-            interaction_type = interaction.type
-            interaction_date = interaction.date
+            # Query interactions for the application
+            query = (
+                session.query(Interaction)
+                .options(joinedload(Interaction.contact))
+                .filter(Interaction.application_id == application_id)
+                .order_by(desc(Interaction.date))
+            )
+
+            # Apply pagination
+            interactions = query.offset(offset).limit(limit).all()
+
+            # Convert to dictionaries
+            result = [self._entity_to_dict(interaction) for interaction in interactions]
+
+            logger.debug(f"Found {len(result)} interactions for application {application_id}")
+            return result
+
+        except Exception as e:
+            logger.error(f"Error getting interactions for application {application_id}: {e}", exc_info=True)
+            raise
+
+    @db_operation
+    def delete_interaction(self, interaction_id: int, session: Session) -> bool:
+        """Delete an interaction."""
+        try:
+            logger.debug(f"Deleting interaction {interaction_id}")
+
+            # Find the interaction
+            interaction = session.query(Interaction).filter(Interaction.id == interaction_id).first()
+
+            if not interaction:
+                logger.debug(f"Interaction {interaction_id} not found")
+                return False
 
             # Delete the interaction
             session.delete(interaction)
             session.commit()
 
-            # Record the change
-            change_record_service = ChangeRecordService()
-            change_record_service.create(
-                {
-                    "application_id": application_id,
-                    "change_type": ChangeType.INTERACTION_ADDED.value,
-                    "old_value": interaction_type,
-                    "notes": f"Deleted {interaction_type} interaction from {interaction_date.isoformat()}",
-                }
-            )
-
+            logger.debug(f"Deleted interaction {interaction_id}")
             return True
+
         except Exception as e:
+            logger.error(f"Error deleting interaction {interaction_id}: {e}", exc_info=True)
             session.rollback()
-            logger.error(f"Error deleting interaction {_id}: {e}")
             raise
-        finally:
-            session.close()
+
+    @db_operation
+    def get_interactions(self, application_id: int, session: Session) -> list[dict]:
+        """Get all interactions for an application."""
+        try:
+            interactions = (
+                session.query(Interaction)
+                .options(joinedload(Interaction.contact))
+                .filter(Interaction.application_id == application_id)
+                .order_by(Interaction.date.desc())
+                .all()
+            )
+            return [self._entity_to_dict(interaction) for interaction in interactions]
+        except Exception as e:
+            logger.error(f"Error getting interactions: {e}", exc_info=True)
+            return []

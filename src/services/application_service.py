@@ -2,14 +2,14 @@ import logging
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import desc, func, or_
+from sqlalchemy import desc, func, or_, update
 from sqlalchemy.orm import Session, joinedload
 
 from src.config import ApplicationStatus, ChangeType
-from src.db.database import get_session
 from src.db.models import Application, Company
 from src.services.base_service import BaseService
 from src.services.change_record_service import ChangeRecordService
+from src.utils.decorators import db_operation
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +31,8 @@ class ApplicationService(BaseService):
             job_title=data["job_title"],
             position=data["position"],
             location=data.get("location"),
-            salary=data.get("salary"),
+            salary_min=data.get("salary_min"),
+            salary_max=data.get("salary_max"),
             status=data["status"],
             applied_date=applied_date,
             link=data.get("link"),
@@ -95,7 +96,8 @@ class ApplicationService(BaseService):
             result.update(
                 {
                     "location": app.location,
-                    "salary": app.salary,
+                    "salary_min": app.salary_min,
+                    "salary_max": app.salary_max,
                     "link": app.link,
                     "description": app.description,
                     "notes": app.notes,
@@ -105,9 +107,9 @@ class ApplicationService(BaseService):
 
         return result
 
-    def get_applications(self, status: str | None = None, **kwargs) -> list[dict[str, Any]]:
+    @db_operation
+    def get_applications(self, session: Session, status: str | None = None, **kwargs) -> list[dict[str, Any]]:
         """Get applications with optional filtering and sorting."""
-        session = get_session()
         try:
             query = session.query(Application).options(joinedload(Application.company))
 
@@ -131,8 +133,11 @@ class ApplicationService(BaseService):
 
             # Apply pagination
             offset = kwargs.get("offset", 0)
-            limit = kwargs.get("limit", 10)
-            applications = query.offset(offset).limit(limit).all()
+            limit = kwargs.get("limit", None)
+            if limit is not None:
+                applications = query.offset(offset).limit(limit).all()
+            else:
+                applications = query.offset(offset).all()
 
             # Convert to dictionaries
             return [self._entity_to_dict(app, include_details=False) for app in applications]
@@ -140,39 +145,34 @@ class ApplicationService(BaseService):
         except Exception as e:
             logger.error(f"Error fetching applications: {e}")
             raise
-        finally:
-            session.close()
 
-    def search_applications(self, search_term: str) -> list[dict[str, Any]]:
+    @db_operation
+    def search_applications(self, search_term: str, session: Session) -> list[dict[str, Any]]:
         """Search for applications by keyword."""
-        session = get_session()
-        try:
-            search_pattern = f"%{search_term}%"
+        search_pattern = f"%{search_term}%"
 
-            # Create base query
-            query = session.query(Application).join(Company, isouter=True)
+        # Create base query
+        query = session.query(Application).join(Company, isouter=True)
 
-            # Add search conditions
-            search_fields = [
-                Application.job_title,
-                Application.position,
-                Application.description,
-                Application.notes,
-                Application.location,
-                Company.name,
-            ]
+        # Add search conditions
+        search_fields = [
+            Application.job_title,
+            Application.position,
+            Application.description,
+            Application.notes,
+            Application.location,
+            Company.name,
+        ]
 
-            conditions = [field.ilike(search_pattern) for field in search_fields]
-            query = query.filter(or_(*conditions)).order_by(Application.applied_date.desc())
+        conditions = [field.ilike(search_pattern) for field in search_fields]
+        query = query.filter(or_(*conditions)).order_by(Application.applied_date.desc())
 
-            applications = query.all()
-            return [self._entity_to_dict(app, include_details=False) for app in applications]
-        finally:
-            session.close()
+        applications = query.all()
+        return [self._entity_to_dict(app, include_details=False) for app in applications]
 
-    def get_applications_by_company(self, company_id: int) -> list[dict[str, Any]]:
+    @db_operation
+    def get_applications_by_company(self, company_id: int, session: Session) -> list[dict[str, Any]]:
         """Get applications for a specific company."""
-        session = get_session()
         try:
             query = session.query(Application).filter(Application.company_id == company_id)
             applications = query.order_by(Application.applied_date.desc()).all()
@@ -180,14 +180,12 @@ class ApplicationService(BaseService):
         except Exception as e:
             logger.error(f"Error fetching applications for company {company_id}: {e}")
             raise
-        finally:
-            session.close()
 
+    @db_operation
     def get_applications_for_export(
-        self, include_notes=True, include_interactions=True, include_reminders=True
+        self, session: Session, include_notes=True, include_interactions=True
     ) -> list[dict[str, Any]]:
         """Get all applications with optional details for export."""
-        session = get_session()
         try:
             # Base query for applications with company info
             query = (
@@ -208,7 +206,7 @@ class ApplicationService(BaseService):
                     "company_website": app.company.website if app.company else "",
                     "position": app.position,
                     "location": app.location or "",
-                    "salary": app.salary or "",
+                    "salary": app.salary_min or "" if app.salary_min else app.salary_max or "",
                     "status": app.status,
                     "applied_date": app.applied_date.isoformat(),
                     "link": app.link or "",
@@ -239,12 +237,10 @@ class ApplicationService(BaseService):
         except Exception as e:
             logger.error(f"Error getting applications for export: {e}")
             raise
-        finally:
-            session.close()
 
-    def get_dashboard_stats(self) -> dict[str, Any]:
+    @db_operation
+    def get_dashboard_stats(self, session: Session) -> dict[str, Any]:
         """Get dashboard statistics."""
-        session = get_session()
         try:
             # Get total applications count
             total_count = session.query(func.count(Application.id)).scalar() or 0
@@ -269,8 +265,6 @@ class ApplicationService(BaseService):
         except Exception as e:
             logger.error(f"Error fetching dashboard stats: {e}")
             raise
-        finally:
-            session.close()
 
     def add_interaction(self, data: dict[str, Any]) -> dict[str, Any]:
         """Add an interaction to an application."""
@@ -278,3 +272,26 @@ class ApplicationService(BaseService):
 
         interaction_service = InteractionService()
         return interaction_service.create(data)
+
+    @db_operation
+    def update_status(self, application_id, new_status, session):
+        """
+        Update the status of an application directly using its ID.
+        This avoids the entity refresh issue in the base update method.
+
+        Args:
+            application_id: The ID of the application to update
+            new_status: The new status to set
+        """
+        try:
+            # Używamy bezpośredniego zapytania UPDATE, które nie wymaga odświeżania encji
+            update_stmt = update(Application).where(Application.id == application_id).values(status=new_status)
+            session.execute(update_stmt)
+            session.commit()
+            logger.info(f"Updated application status for ID {application_id} to {new_status}")
+        except Exception as e:
+            session.rollback()
+            logger.error(f"Error updating application status for ID {application_id}: {e}", exc_info=True)
+            raise
+        finally:
+            session.close()
