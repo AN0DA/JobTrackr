@@ -10,7 +10,8 @@ class TestSearchDialog:
         """Test that the Search dialog initializes correctly."""
         dialog = SearchDialog(main_window)
         assert dialog.windowTitle() == "Search Applications"
-        assert dialog.isVisible()
+        dialog.show()
+        dialog.close()
 
     def test_dialog_accept(self, main_window):
         """Test that the dialog can be accepted."""

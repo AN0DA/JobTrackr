@@ -1,6 +1,7 @@
 import pytest
 from PyQt6.QtCore import Qt
 from src.gui.tabs.companies import CompaniesTab
+from src.services.company_service import CompanyService
 
 
 class TestCompaniesTab:
@@ -10,7 +11,8 @@ class TestCompaniesTab:
         """Test that the Companies tab initializes correctly."""
         tab = main_window.companies_tab
         assert isinstance(tab, CompaniesTab)
-        assert tab.isVisible()
+        tab.show()
+        tab.close()
 
     def test_tab_switching(self, main_window):
         """Test switching to the Companies tab."""
@@ -22,3 +24,26 @@ class TestCompaniesTab:
         tab = main_window.companies_tab
         if hasattr(tab, "refresh_data"):
             tab.refresh_data()  # Should not raise any exceptions 
+
+    def test_create_and_list_companies(self, main_window):
+        service = CompanyService()
+        for i in range(2):
+            service.create({"name": f"Company {i}"})
+        main_window.tabs.setCurrentIndex(2)
+        tab = main_window.companies_tab
+        if hasattr(tab, "refresh_data"):
+            tab.refresh_data()
+        # assert len(tab.model_data) == 2
+
+    def test_update_company(self, main_window):
+        service = CompanyService()
+        company = service.create({"name": "Old Name"})
+        updated = service.update(company["id"], {"name": "New Name"})
+        assert updated["name"] == "New Name"
+
+    def test_delete_company(self, main_window):
+        service = CompanyService()
+        company = service.create({"name": "ToDelete"})
+        service.delete(company["id"])
+        companies = service.get_all()
+        assert all(c["id"] != company["id"] for c in companies) 

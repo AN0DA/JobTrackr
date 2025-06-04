@@ -1,6 +1,7 @@
 import pytest
 from PyQt6.QtCore import Qt
 from src.gui.tabs.dashboard import DashboardTab
+from src.services.application_service import ApplicationService
 
 
 class TestDashboardTab:
@@ -21,4 +22,27 @@ class TestDashboardTab:
         """Test that the tab can refresh its data."""
         tab = main_window.dashboard_tab
         if hasattr(tab, "refresh_data"):
-            tab.refresh_data()  # Should not raise any exceptions 
+            tab.refresh_data()  # Should not raise any exceptions
+
+    def test_dashboard_recent_and_status_counts(self, main_window):
+        service = ApplicationService()
+        service.create({
+            "job_title": "Job1",
+            "position": "P1",
+            "status": "APPLIED",
+            "applied_date": "2024-01-01T12:00:00",
+            "company_id": None,
+        })
+        service.create({
+            "job_title": "Job2",
+            "position": "P2",
+            "status": "INTERVIEW",
+            "applied_date": "2024-01-02T12:00:00",
+            "company_id": None,
+        })
+        main_window.tabs.setCurrentIndex(0)
+        tab = main_window.dashboard_tab
+        if hasattr(tab, "refresh_data"):
+            tab.refresh_data()
+        # Example: assert tab.status_counts["APPLIED"] == 1
+        # Example: assert tab.status_counts["INTERVIEW"] == 1 
