@@ -40,6 +40,7 @@ application_detail.py - Dialog for viewing job application details in JobTrackr.
 This module provides a dialog for displaying all details, history, and related entities for a job application.
 """
 
+
 class ApplicationDetailDialog(QDialog):
     """
     Dialog for viewing application details.

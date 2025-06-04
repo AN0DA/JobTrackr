@@ -364,7 +364,9 @@ class InteractionService(BaseService):
             # Query interactions for the search term
             query = (
                 session.query(Interaction)
-                .filter(Interaction.notes.ilike(f"%{search_term}%") | Interaction.interaction_type.ilike(f"%{search_term}%"))
+                .filter(
+                    Interaction.notes.ilike(f"%{search_term}%") | Interaction.interaction_type.ilike(f"%{search_term}%")
+                )
                 .order_by(desc(Interaction.date))
             )
 

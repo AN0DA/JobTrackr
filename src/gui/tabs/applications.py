@@ -14,12 +14,12 @@ from PyQt6.QtWidgets import (
 )
 
 from src.config import ApplicationStatus
+from src.db.database import get_session
 from src.gui.components.data_table import DataTable
 from src.gui.dialogs.application_detail import ApplicationDetailDialog
 from src.gui.dialogs.application_form import ApplicationForm
 from src.services.application_service import ApplicationService
 from src.utils.logging import get_logger
-from src.db.database import get_session
 
 logger = get_logger(__name__)
 

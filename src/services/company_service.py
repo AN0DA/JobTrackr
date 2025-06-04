@@ -297,7 +297,9 @@ class CompanyService(BaseService):
             raise
 
     @db_operation
-    def get_company_network(self, company_id: int, session: Session) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    def get_company_network(
+        self, company_id: int, session: Session
+    ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
         """
         Get all companies and relationships relevant to a given company for network visualization.
         Args:

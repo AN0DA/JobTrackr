@@ -26,6 +26,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 from sqlalchemy.orm import Session
+
 from src.gui.components.data_table import DataTable
 from src.gui.dialogs.application_detail import ApplicationDetailDialog
 from src.gui.dialogs.company_relationship_form import CompanyRelationshipForm
@@ -41,6 +42,7 @@ company_detail.py - Dialog for viewing company details in JobTrackr.
 
 This module provides a dialog for displaying all details, relationships, and related entities for a company.
 """
+
 
 class CompanyDetailDialog(QDialog):
     """

@@ -5,7 +5,7 @@ from typing import Any
 from sqlalchemy import desc, func, or_, update
 from sqlalchemy.orm import Session, joinedload
 
-from src.config import ApplicationStatus, ChangeType
+from src.config import ChangeType
 from src.db.models import Application, Company
 from src.services.base_service import BaseService
 from src.services.change_record_service import ChangeRecordService
@@ -134,7 +134,9 @@ class ApplicationService(BaseService):
 
         return result
 
-    def get_applications(self, session: Session, company_id: int | None = None, status: str | None = None, **kwargs: Any) -> list[dict[str, Any]]:
+    def get_applications(
+        self, session: Session, company_id: int | None = None, status: str | None = None, **kwargs: Any
+    ) -> list[dict[str, Any]]:
         """
         Get applications with optional filtering by company or status.
 
@@ -171,11 +173,8 @@ class ApplicationService(BaseService):
 
             # Apply pagination
             offset = kwargs.get("offset", 0)
-            limit = kwargs.get("limit", None)
-            if limit is not None:
-                applications = query.offset(offset).limit(limit).all()
-            else:
-                applications = query.offset(offset).all()
+            limit = kwargs.get("limit")
+            applications = query.offset(offset).limit(limit).all() if limit is not None else query.offset(offset).all()
 
             # Convert to dictionaries
             return [self._entity_to_dict(app, include_details=False) for app in applications]
@@ -254,15 +253,8 @@ class ApplicationService(BaseService):
         Returns:
             List of dicts with status and count.
         """
-        results = (
-            session.query(Application.status, func.count(Application.id))
-            .group_by(Application.status)
-            .all()
-        )
-        return [
-            {"status": status, "count": count}
-            for status, count in results
-        ]
+        results = session.query(Application.status, func.count(Application.id)).group_by(Application.status).all()
+        return [{"status": status, "count": count} for status, count in results]
 
     def get_recent_applications(self, session: Session, limit: int = 5) -> list[dict[str, Any]]:
         """
@@ -273,12 +265,7 @@ class ApplicationService(BaseService):
         Returns:
             List of recent application dictionaries.
         """
-        apps = (
-            session.query(Application)
-            .order_by(Application.applied_date.desc())
-            .limit(limit)
-            .all()
-        )
+        apps = session.query(Application).order_by(Application.applied_date.desc()).limit(limit).all()
         return [self._entity_to_dict(app, include_details=False) for app in apps]
 
     def get_dashboard_stats(self, session: Session = None) -> dict[str, Any]:
@@ -292,6 +279,7 @@ class ApplicationService(BaseService):
         close_session = False
         if session is None:
             from src.db.database import get_session
+
             session = get_session()
             close_session = True
         try:

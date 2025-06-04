@@ -14,12 +14,12 @@ from PyQt6.QtWidgets import (
 )
 
 from src.config import CompanyType
+from src.db.database import get_session
 from src.gui.components.data_table import DataTable
 from src.gui.dialogs.company_detail import CompanyDetailDialog
 from src.gui.dialogs.company_form import CompanyForm
 from src.services.company_service import CompanyService
 from src.utils.logging import get_logger
-from src.db.database import get_session
 
 logger = get_logger(__name__)
 

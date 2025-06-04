@@ -15,13 +15,13 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from src.db.database import get_session
 from src.gui.components.data_table import DataTable
 from src.gui.dialogs.contact_detail import ContactDetailDialog
 from src.gui.dialogs.contact_form import ContactForm
 from src.services.company_service import CompanyService
 from src.services.contact_service import ContactService
 from src.utils.logging import get_logger
-from src.db.database import get_session
 
 logger = get_logger(__name__)
 

@@ -69,7 +69,7 @@ class BaseService(Generic[ModelType]):
             sort_by = kwargs.get("sort_by")
             sort_desc = kwargs.get("sort_desc", False)
             offset = kwargs.get("offset", 0)
-            limit = kwargs.get("limit", None)
+            limit = kwargs.get("limit")
 
             self.logger.debug(
                 f"Getting {self.entity_name}s with sort_by={sort_by}, "
