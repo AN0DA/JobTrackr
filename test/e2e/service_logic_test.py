@@ -1,10 +1,13 @@
+from datetime import datetime
+
 import pytest
+
+from src.db.database import get_session
 from src.services.application_service import ApplicationService
 from src.services.company_service import CompanyService
 from src.services.contact_service import ContactService
 from src.services.interaction_service import InteractionService
-from datetime import datetime
-from src.db.database import get_session
+
 
 def test_application_crud():
     service = ApplicationService()
@@ -28,6 +31,7 @@ def test_application_crud():
     assert service.delete(app["id"])
     assert service.get(app["id"]) is None
 
+
 def test_company_crud():
     service = CompanyService()
     # Create
@@ -42,6 +46,7 @@ def test_company_crud():
     # Delete
     assert service.delete(company["id"])
     assert service.get(company["id"]) is None
+
 
 def test_contact_crud():
     service = ContactService()
@@ -58,17 +63,20 @@ def test_contact_crud():
     assert service.delete(contact["id"])
     assert service.get(contact["id"]) is None
 
+
 def test_interaction_crud():
     # Need a contact and application first
     app_service = ApplicationService()
     contact_service = ContactService()
-    app = app_service.create({
-        "job_title": "Dev",
-        "position": "Engineer",
-        "status": "APPLIED",
-        "applied_date": datetime.now().isoformat(),
-        "company_id": None,
-    })
+    app = app_service.create(
+        {
+            "job_title": "Dev",
+            "position": "Engineer",
+            "status": "APPLIED",
+            "applied_date": datetime.now().isoformat(),
+            "company_id": None,
+        }
+    )
     contact = contact_service.create({"name": "Alice"})
     service = InteractionService()
     data = {
@@ -91,6 +99,7 @@ def test_interaction_crud():
     assert service.delete(interaction["id"])
     assert service.get(interaction["id"]) is None
 
+
 def test_company_search_and_edge_cases():
     service = CompanyService()
     # Create companies
@@ -105,6 +114,7 @@ def test_company_search_and_edge_cases():
         service.update(9999, {"name": "Ghost"})
     # Delete non-existent
     assert service.delete(9999) is False
+
 
 def test_contact_search_and_edge_cases():
     service = ContactService()
@@ -122,23 +132,27 @@ def test_contact_search_and_edge_cases():
     # Delete non-existent
     assert service.delete(9999) is False
 
+
 def test_application_status_counts_and_recent():
-    from src.db.database import get_session
     service = ApplicationService()
-    service.create({
-        "job_title": "Job1",
-        "position": "P1",
-        "status": "APPLIED",
-        "applied_date": datetime.now().isoformat(),
-        "company_id": None,
-    })
-    service.create({
-        "job_title": "Job2",
-        "position": "P2",
-        "status": "INTERVIEW",
-        "applied_date": datetime.now().isoformat(),
-        "company_id": None,
-    })
+    service.create(
+        {
+            "job_title": "Job1",
+            "position": "P1",
+            "status": "APPLIED",
+            "applied_date": datetime.now().isoformat(),
+            "company_id": None,
+        }
+    )
+    service.create(
+        {
+            "job_title": "Job2",
+            "position": "P2",
+            "status": "INTERVIEW",
+            "applied_date": datetime.now().isoformat(),
+            "company_id": None,
+        }
+    )
     session = get_session()
     try:
         # Status counts
@@ -153,12 +167,15 @@ def test_application_status_counts_and_recent():
     finally:
         session.close()
 
+
 def test_db_operation_decorator_handles_exceptions():
     from src.utils.decorators import db_operation
+
     class DummyService:
         @db_operation
         def fail(self, session=None):
             raise ValueError("fail!")
+
     service = DummyService()
     with pytest.raises(ValueError):
-        service.fail() 
+        service.fail()

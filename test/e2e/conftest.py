@@ -1,13 +1,17 @@
 import sys
+
 import pytest
 from PyQt6.QtWidgets import QApplication
+
 from src.gui.main_window import MainWindow
+
 
 # Add imports for SQLAlchemy and patching
 def _patch_db(monkeypatch):
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
-    from src.db import models, database
+
+    from src.db import database, models
 
     # Create in-memory SQLite engine
     engine = create_engine("sqlite:///:memory:")
@@ -19,6 +23,7 @@ def _patch_db(monkeypatch):
     monkeypatch.setattr(database, "engine", engine)
     monkeypatch.setattr(database, "get_session", lambda: TestingSessionLocal())
 
+
 @pytest.fixture(scope="session")
 def app():
     """Create a QApplication instance for testing."""
@@ -26,15 +31,17 @@ def app():
     yield app
     app.quit()
 
+
 @pytest.fixture(scope="function", autouse=True)
 def _setup_in_memory_db(monkeypatch):
     """Setup in-memory SQLite DB and patch session for each test."""
     _patch_db(monkeypatch)
     yield
 
+
 @pytest.fixture
 def main_window(app):
     """Create and return a MainWindow instance for testing."""
     window = MainWindow()
     window.show()
-    return window 
+    return window

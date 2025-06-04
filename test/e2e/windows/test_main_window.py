@@ -1,10 +1,6 @@
-import pytest
-from PyQt6.QtGui import QAction
-from src.gui.main_window import MainWindow
 from unittest.mock import patch
+
 from src.services.application_service import ApplicationService
-from src.db.models import Application
-from PyQt6.QtWidgets import QMessageBox
 
 
 class TestMainWindow:
@@ -65,7 +61,7 @@ class TestMainWindow:
             "applied_date": "2024-01-01T12:00:00",
             "company_id": None,
         }
-        app_dict = service.create(data)
+        service.create(data)
         # Simulate refresh in UI
         main_window.tabs.setCurrentIndex(1)
         tab = main_window.applications_tab
@@ -92,4 +88,4 @@ class TestMainWindow:
         """Test that switching tabs updates the view with correct data."""
         for idx, name in enumerate(["Dashboard", "Applications", "Companies", "Contacts"]):
             main_window.tabs.setCurrentIndex(idx)
-            assert main_window.tabs.tabText(idx) == name 
+            assert main_window.tabs.tabText(idx) == name

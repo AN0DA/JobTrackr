@@ -1,5 +1,3 @@
-import pytest
-from PyQt6.QtCore import Qt
 from src.gui.tabs.companies import CompaniesTab
 from src.services.company_service import CompanyService
 
@@ -23,7 +21,7 @@ class TestCompaniesTab:
         """Test that the tab can refresh its data."""
         tab = main_window.companies_tab
         if hasattr(tab, "refresh_data"):
-            tab.refresh_data()  # Should not raise any exceptions 
+            tab.refresh_data()  # Should not raise any exceptions
 
     def test_create_and_list_companies(self, main_window):
         service = CompanyService()
@@ -46,4 +44,4 @@ class TestCompaniesTab:
         company = service.create({"name": "ToDelete"})
         service.delete(company["id"])
         companies = service.get_all()
-        assert all(c["id"] != company["id"] for c in companies) 
+        assert all(c["id"] != company["id"] for c in companies)

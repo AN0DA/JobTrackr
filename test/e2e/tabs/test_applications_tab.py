@@ -1,5 +1,3 @@
-import pytest
-from PyQt6.QtCore import Qt
 from src.gui.tabs.applications import ApplicationsTab
 from src.services.application_service import ApplicationService
 
@@ -23,18 +21,20 @@ class TestApplicationsTab:
         """Test that the tab can refresh its data."""
         tab = main_window.applications_tab
         if hasattr(tab, "refresh_data"):
-            tab.refresh_data()  # Should not raise any exceptions 
+            tab.refresh_data()  # Should not raise any exceptions
 
     def test_multiple_applications_listed(self, main_window):
         service = ApplicationService()
         for i in range(3):
-            service.create({
-                "job_title": f"Job {i}",
-                "position": f"Position {i}",
-                "status": "APPLIED",
-                "applied_date": "2024-01-01T12:00:00",
-                "company_id": None,
-            })
+            service.create(
+                {
+                    "job_title": f"Job {i}",
+                    "position": f"Position {i}",
+                    "status": "APPLIED",
+                    "applied_date": "2024-01-01T12:00:00",
+                    "company_id": None,
+                }
+            )
         main_window.tabs.setCurrentIndex(1)
         tab = main_window.applications_tab
         if hasattr(tab, "refresh_data"):
@@ -43,20 +43,24 @@ class TestApplicationsTab:
 
     def test_filter_by_status(self, main_window):
         service = ApplicationService()
-        service.create({
-            "job_title": "Job A",
-            "position": "A",
-            "status": "APPLIED",
-            "applied_date": "2024-01-01T12:00:00",
-            "company_id": None,
-        })
-        service.create({
-            "job_title": "Job B",
-            "position": "B",
-            "status": "INTERVIEW",
-            "applied_date": "2024-01-01T12:00:00",
-            "company_id": None,
-        })
+        service.create(
+            {
+                "job_title": "Job A",
+                "position": "A",
+                "status": "APPLIED",
+                "applied_date": "2024-01-01T12:00:00",
+                "company_id": None,
+            }
+        )
+        service.create(
+            {
+                "job_title": "Job B",
+                "position": "B",
+                "status": "INTERVIEW",
+                "applied_date": "2024-01-01T12:00:00",
+                "company_id": None,
+            }
+        )
         main_window.tabs.setCurrentIndex(1)
         tab = main_window.applications_tab
         if hasattr(tab, "refresh_data"):
@@ -70,4 +74,4 @@ class TestApplicationsTab:
         tab = main_window.applications_tab
         if hasattr(tab, "refresh_data"):
             tab.refresh_data()
-        # assert tab.model_data == [] 
+        # assert tab.model_data == []

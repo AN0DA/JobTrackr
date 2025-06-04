@@ -1,5 +1,3 @@
-import pytest
-from PyQt6.QtCore import Qt
 from src.gui.dialogs.settings import SettingsDialog
 
 
@@ -23,4 +21,4 @@ class TestSettingsDialog:
         """Test that the dialog can be rejected."""
         dialog = SettingsDialog(main_window)
         dialog.reject()
-        # Rejecting a dialog should not raise 
+        # Rejecting a dialog should not raise

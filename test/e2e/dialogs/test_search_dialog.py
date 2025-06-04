@@ -1,5 +1,3 @@
-import pytest
-from PyQt6.QtCore import Qt
 from src.gui.search import SearchDialog
 
 
@@ -23,4 +21,4 @@ class TestSearchDialog:
         """Test that the dialog can be rejected."""
         dialog = SearchDialog(main_window)
         dialog.reject()
-        assert not dialog.isVisible() 
+        assert not dialog.isVisible()

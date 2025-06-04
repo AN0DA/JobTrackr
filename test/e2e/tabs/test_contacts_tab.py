@@ -1,5 +1,3 @@
-import pytest
-from PyQt6.QtCore import Qt
 from src.gui.tabs.contacts import ContactsTab
 from src.services.contact_service import ContactService
 
@@ -23,7 +21,7 @@ class TestContactsTab:
         """Test that the tab can refresh its data."""
         tab = main_window.contacts_tab
         if hasattr(tab, "refresh_data"):
-            tab.refresh_data()  # Should not raise any exceptions 
+            tab.refresh_data()  # Should not raise any exceptions
 
     def test_create_and_list_contacts(self, main_window):
         service = ContactService()
@@ -47,4 +45,4 @@ class TestContactsTab:
         tab = main_window.contacts_tab
         if hasattr(tab, "refresh_data"):
             tab.refresh_data()
-        # assert tab.model_data == [] 
+        # assert tab.model_data == []
