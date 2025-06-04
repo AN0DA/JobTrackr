@@ -3,11 +3,11 @@
 all: lint mypy test
 
 lint:
-	uv run ruff format src/ \
-	&& uv run ruff check --fix --show-fixes src/
+	uv run ruff format src/ test \
+	&& uv run ruff check --fix --show-fixes src/ test/
 
 mypy:
-	uv run mypy src/
+	uv run mypy src/ test/
 
 test:
 	PYTHONPATH=$(PWD) uv run pytest --cov --cov-report term-missing:skip-covered --tb=short
@@ -15,8 +15,6 @@ test:
 sync:
 	uv sync --all-groups
 
-dump:
-	./dump.sh src src.dump
 
 # Create a new migration revision
 revision:
