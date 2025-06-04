@@ -246,30 +246,66 @@ class ApplicationService(BaseService):
             logger.error(f"Error fetching applications for company {company_id}: {e}")
             raise
 
-    def get_status_counts(self, session: Session) -> dict[str, int]:
+    def get_status_counts(self, session: Session) -> list[dict[str, Any]]:
         """
         Get counts of applications by status.
-
         Args:
             session: SQLAlchemy session.
         Returns:
-            Dictionary mapping status to count.
+            List of dicts with status and count.
         """
-        # Implementation needed
-        raise NotImplementedError("Method not implemented")
+        results = (
+            session.query(Application.status, func.count(Application.id))
+            .group_by(Application.status)
+            .all()
+        )
+        return [
+            {"status": status, "count": count}
+            for status, count in results
+        ]
 
     def get_recent_applications(self, session: Session, limit: int = 5) -> list[dict[str, Any]]:
         """
         Get the most recently created applications.
-
         Args:
             session: SQLAlchemy session.
             limit: Maximum number of recent applications to retrieve.
         Returns:
             List of recent application dictionaries.
         """
-        # Implementation needed
-        raise NotImplementedError("Method not implemented")
+        apps = (
+            session.query(Application)
+            .order_by(Application.applied_date.desc())
+            .limit(limit)
+            .all()
+        )
+        return [self._entity_to_dict(app, include_details=False) for app in apps]
+
+    def get_dashboard_stats(self, session: Session = None) -> dict[str, Any]:
+        """
+        Return dashboard stats: total applications, applications by status, and recent applications.
+        Args:
+            session: SQLAlchemy session (optional, will create if not provided).
+        Returns:
+            Dict with dashboard stats.
+        """
+        close_session = False
+        if session is None:
+            from src.db.database import get_session
+            session = get_session()
+            close_session = True
+        try:
+            total = session.query(func.count(Application.id)).scalar()
+            by_status = self.get_status_counts(session)
+            recent = self.get_recent_applications(session, limit=5)
+            return {
+                "total_applications": total,
+                "applications_by_status": by_status,
+                "recent_applications": recent,
+            }
+        finally:
+            if close_session:
+                session.close()
 
     def add_interaction(self, data: dict[str, Any]) -> dict[str, Any]:
         """Add an interaction to an application."""

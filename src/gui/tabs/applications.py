@@ -19,6 +19,7 @@ from src.gui.dialogs.application_detail import ApplicationDetailDialog
 from src.gui.dialogs.application_form import ApplicationForm
 from src.services.application_service import ApplicationService
 from src.utils.logging import get_logger
+from src.db.database import get_session
 
 logger = get_logger(__name__)
 
@@ -130,11 +131,14 @@ class ApplicationsTab(QWidget):
             self.current_status = status
 
             service = ApplicationService()
-
-            if status and status != "All":
-                applications = service.get_applications(status=status)
-            else:
-                applications = service.get_applications()
+            session = get_session()
+            try:
+                if status and status != "All":
+                    applications = service.get_applications(session=session, status=status)
+                else:
+                    applications = service.get_applications(session=session)
+            finally:
+                session.close()
 
             # Clear and update table
             self.table.setRowCount(0)
@@ -184,7 +188,11 @@ class ApplicationsTab(QWidget):
             self.main_window.show_status_message(f"Searching for '{search_term}'...")
 
             service = ApplicationService()
-            applications = service.search_applications(search_term)
+            session = get_session()
+            try:
+                applications = service.search_applications(search_term, session=session)
+            finally:
+                session.close()
 
             # Apply status filter if active
             if self.current_status and self.current_status != "All":

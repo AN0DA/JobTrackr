@@ -21,6 +21,7 @@ from src.gui.dialogs.contact_form import ContactForm
 from src.services.company_service import CompanyService
 from src.services.contact_service import ContactService
 from src.utils.logging import get_logger
+from src.db.database import get_session
 
 logger = get_logger(__name__)
 
@@ -153,11 +154,15 @@ class ContactsTab(QWidget):
             self.company_filter = company_id
 
             service = ContactService()
+            session = get_session()
+            try:
+                contacts = service.get_all(session=session)
+            finally:
+                session.close()
 
-            filter_company_id = (
-                None if not company_id or company_id == "All" else int(company_id) if company_id != "None" else None
-            )
-            contacts = service.get_contacts(company_id=filter_company_id)
+            # Apply company filter if specified
+            if company_id:
+                contacts = [c for c in contacts if c.get("company", {}).get("id") == company_id]
 
             # Clear and update table
             self.table.setRowCount(0)
@@ -173,10 +178,8 @@ class ContactsTab(QWidget):
                 self.table.setItem(i, 0, QTableWidgetItem(str(contact["id"])))
                 self.table.setItem(i, 1, QTableWidgetItem(contact["name"]))
                 self.table.setItem(i, 2, QTableWidgetItem(contact.get("title", "")))
-
                 company_name = contact.get("company", {}).get("name", "")
                 self.table.setItem(i, 3, QTableWidgetItem(company_name))
-
                 self.table.setItem(i, 4, QTableWidgetItem(contact.get("email", "")))
                 self.table.setItem(i, 5, QTableWidgetItem(contact.get("phone", "")))
 
@@ -202,37 +205,39 @@ class ContactsTab(QWidget):
             self.main_window.show_status_message(f"Searching for '{search_term}'...")
 
             service = ContactService()
-            results = service.search_contacts(search_term)
+            session = get_session()
+            try:
+                contacts = service.search_contacts(search_term, session=session)
+            finally:
+                session.close()
 
             # Apply company filter if active
-            if self.company_filter and self.company_filter != "All":
+            if self.company_filter:
                 if self.company_filter == "None":
                     # Filter for contacts without company
-                    results = [c for c in results if not c.get("company")]
+                    contacts = [c for c in contacts if not c.get("company")]
                 else:
                     filter_id = int(self.company_filter)
-                    results = [c for c in results if c.get("company", {}).get("id") == filter_id]
+                    contacts = [c for c in contacts if c.get("company", {}).get("id") == filter_id]
 
             # Update table
             self.table.setRowCount(0)
 
-            if not results:
+            if not contacts:
                 self.main_window.show_status_message(f"No contacts found matching '{search_term}'")
                 return
 
-            for i, contact in enumerate(results):
+            for i, contact in enumerate(contacts):
                 self.table.insertRow(i)
                 self.table.setItem(i, 0, QTableWidgetItem(str(contact["id"])))
                 self.table.setItem(i, 1, QTableWidgetItem(contact["name"]))
                 self.table.setItem(i, 2, QTableWidgetItem(contact.get("title", "")))
-
                 company_name = contact.get("company", {}).get("name", "")
                 self.table.setItem(i, 3, QTableWidgetItem(company_name))
-
                 self.table.setItem(i, 4, QTableWidgetItem(contact.get("email", "")))
                 self.table.setItem(i, 5, QTableWidgetItem(contact.get("phone", "")))
 
-            count = len(results)
+            count = len(contacts)
             self.main_window.show_status_message(
                 f"Found {count} contact{'s' if count != 1 else ''} matching '{search_term}'"
             )

@@ -127,3 +127,12 @@ class Settings:
         os.makedirs(db_dir, exist_ok=True)
 
         return db_path
+
+    def database_exists(self) -> bool:
+        """
+        Check if the database file exists at the current database path.
+        Returns:
+            True if the database file exists, False otherwise.
+        """
+        db_path = self.get("database_path")
+        return os.path.exists(db_path)

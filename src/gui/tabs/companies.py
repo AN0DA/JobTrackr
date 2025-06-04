@@ -19,6 +19,7 @@ from src.gui.dialogs.company_detail import CompanyDetailDialog
 from src.gui.dialogs.company_form import CompanyForm
 from src.services.company_service import CompanyService
 from src.utils.logging import get_logger
+from src.db.database import get_session
 
 logger = get_logger(__name__)
 
@@ -128,7 +129,11 @@ class CompaniesTab(QWidget):
             self.company_type_filter = company_type
 
             service = CompanyService()
-            companies = service.get_all()
+            session = get_session()
+            try:
+                companies = service.get_all(session=session)
+            finally:
+                session.close()
 
             # Apply type filter if specified
             if company_type and company_type != "All":
@@ -151,8 +156,8 @@ class CompaniesTab(QWidget):
                 industry = company.get("industry", "")
                 self.table.setItem(i, 2, QTableWidgetItem(industry or ""))
 
-                company_type = company.get("type", "")
-                self.table.setItem(i, 3, QTableWidgetItem(company_type or ""))
+                company_type_val = company.get("type", "")
+                self.table.setItem(i, 3, QTableWidgetItem(company_type_val or ""))
 
                 website = company.get("website", "")
                 self.table.setItem(i, 4, QTableWidgetItem(website or ""))
