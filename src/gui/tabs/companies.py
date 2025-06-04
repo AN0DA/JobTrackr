@@ -131,7 +131,7 @@ class CompaniesTab(QWidget):
             service = CompanyService()
             session = get_session()
             try:
-                companies = service.get_all(session=session)
+                companies = service.get_all()
             finally:
                 session.close()
 

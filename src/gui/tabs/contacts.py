@@ -156,7 +156,7 @@ class ContactsTab(QWidget):
             service = ContactService()
             session = get_session()
             try:
-                contacts = service.get_all(session=session)
+                contacts = service.get_all()
             finally:
                 session.close()
 

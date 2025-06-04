@@ -295,3 +295,42 @@ class CompanyService(BaseService):
         except Exception as e:
             logger.error(f"Error getting relationship {relationship_id}: {e}")
             raise
+
+    @db_operation
+    def get_company_network(self, company_id: int, session: Session) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+        """
+        Get all companies and relationships relevant to a given company for network visualization.
+        Args:
+            company_id: The central company ID.
+            session: SQLAlchemy session.
+        Returns:
+            Tuple of (companies, relationships):
+                companies: List of company dicts (id, name)
+                relationships: List of dicts (company_id, related_company_id, relationship_type)
+        """
+        # Find all relationships where this company is source or target
+        outgoing = session.query(CompanyRelationship).filter(CompanyRelationship.source_company_id == company_id).all()
+        incoming = session.query(CompanyRelationship).filter(CompanyRelationship.related_company_id == company_id).all()
+        all_relationships = outgoing + incoming
+
+        # Collect all involved company IDs
+        company_ids = set()
+        for rel in all_relationships:
+            company_ids.add(rel.source_company_id)
+            company_ids.add(rel.related_company_id)
+        company_ids.add(company_id)
+
+        # Query all companies involved
+        companies = session.query(Company).filter(Company.id.in_(company_ids)).all()
+        companies_list = [{"id": c.id, "name": c.name} for c in companies]
+
+        # Prepare relationships list
+        relationships_list = [
+            {
+                "company_id": rel.source_company_id,
+                "related_company_id": rel.related_company_id,
+                "relationship_type": rel.relationship_type,
+            }
+            for rel in all_relationships
+        ]
+        return companies_list, relationships_list

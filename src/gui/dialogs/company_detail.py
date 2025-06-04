@@ -25,12 +25,13 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-
+from sqlalchemy.orm import Session
 from src.gui.components.data_table import DataTable
 from src.gui.dialogs.application_detail import ApplicationDetailDialog
 from src.gui.dialogs.company_relationship_form import CompanyRelationshipForm
 from src.services.application_service import ApplicationService
 from src.services.company_service import CompanyService
+from src.utils.decorators import db_operation
 from src.utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -132,6 +133,9 @@ class CompanyDetailDialog(QDialog):
         # Tab 2: Relationships
         relationships_tab = QWidget()
         relationships_layout = QVBoxLayout(relationships_tab)
+        # Add a layout for the network visualization (for load_relationships_network)
+        self.network_layout = QVBoxLayout()
+        relationships_layout.addLayout(self.network_layout)
 
         relationships_layout.addWidget(QLabel("Company Relationships"))
 
@@ -508,13 +512,14 @@ class CompanyDetailDialog(QDialog):
             if self.main_window:
                 self.main_window.show_status_message(f"Error visualizing relationships: {str(e)}")
 
-    def load_applications(self) -> None:
+    @db_operation
+    def load_applications(self, session: Session) -> None:
         """
         Load job applications for this company and update the applications table.
         """
         try:
             app_service = ApplicationService()
-            applications = app_service.get_applications_by_company(self.company_id)
+            applications = app_service.get_applications_for_company(self.company_id, session=session)
 
             self.applications_table.setRowCount(0)
 
