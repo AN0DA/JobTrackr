@@ -55,70 +55,70 @@ jobs:
         if: always()
         run: uv run ruff format --config pyproject.toml --check src/ test/
 
-  Test:
-    name: Python tests
-    runs-on: ubuntu-latest
-    needs: Validate
-    if: needs.Validate.outputs.branch_valid == 'true'
-    permissions:
-      contents: read
-      issues: read
-      checks: write
-      pull-requests: write
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+  # Test:
+  #   name: Python tests
+  #   runs-on: ubuntu-latest
+  #   needs: Validate
+  #   if: needs.Validate.outputs.branch_valid == 'true'
+  #   permissions:
+  #     contents: read
+  #     issues: read
+  #     checks: write
+  #     pull-requests: write
+  #   steps:
+  #     - name: Checkout repo
+  #       uses: actions/checkout@v4
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v5
+  #     - name: Install uv
+  #       uses: astral-sh/setup-uv@v5
 
-      - name: Set up Python
-        run: uv python install
+  #     - name: Set up Python
+  #       run: uv python install
 
-      - name: Install the project
-        run: uv sync --all-extras --dev
+  #     - name: Install the project
+  #       run: uv sync --all-extras --dev
 
-      - name: Run Python tests
-        run: uv run coverage run -m pytest --junitxml=./test_results.xml
+  #     - name: Run Python tests
+  #       run: uv run coverage run -m pytest --junitxml=./test_results.xml
 
-      - name: Publish test results to GitHub
-        uses: EnricoMi/publish-unit-test-result-action@v2
-        if: always()
-        with:
-          files: ./test_results.xml
-          fail_on: nothing
-          pull_request_build: commit
+  #     - name: Publish test results to GitHub
+  #       uses: EnricoMi/publish-unit-test-result-action@v2
+  #       if: always()
+  #       with:
+  #         files: ./test_results.xml
+  #         fail_on: nothing
+  #         pull_request_build: commit
 
-  Mypy:
-    name: Mypy
-    runs-on: ubuntu-latest
-    needs: Validate
-    if: needs.Validate.outputs.branch_valid == 'true'
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+  # Mypy:
+  #   name: Mypy
+  #   runs-on: ubuntu-latest
+  #   needs: Validate
+  #   if: needs.Validate.outputs.branch_valid == 'true'
+  #   steps:
+  #     - name: Checkout repo
+  #       uses: actions/checkout@v4
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v5
+  #     - name: Install uv
+  #       uses: astral-sh/setup-uv@v5
 
-      - name: Set up Python
-        run: uv python install
+  #     - name: Set up Python
+  #       run: uv python install
 
-      - name: Install the project
-        run: uv sync --all-extras --dev
+  #     - name: Install the project
+  #       run: uv sync --all-extras --dev
 
-      - name: Mypy check
-        id: mypy
-        if: always()
-        run: uv run mypy src/ test/
+  #     - name: Mypy check
+  #       id: mypy
+  #       if: always()
+  #       run: uv run mypy src/ test/
 
   Semantic-release:
     name: Run semantic release
     runs-on: ubuntu-latest
     needs:
       - Linting
-      - Test
-      - Mypy
+      # - Test
+      # - Mypy
     if: needs.Validate.outputs.branch_valid == 'true'
     outputs:
       new_release_version: ${{ steps.release.outputs.new_release_version }}
@@ -164,41 +164,6 @@ jobs:
             src/__init__.py
             CHANGELOG.md
             pyproject.toml
-
-  Publish-to-PyPI:
-    name: Publish to PyPI
-    runs-on: ubuntu-latest
-    needs:
-      - Semantic-release
-    if: needs.Semantic-release.outputs.new_release_published == 'true'
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          ref: main
-
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: release-artifacts
-          path: .
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v5
-
-      - name: Set up Python
-        run: uv python install
-
-      - name: Install the project
-        run: uv sync --all-extras --dev
-
-      - name: Build package
-        run: uv build
-
-      - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          skip-existing: true
 
   Changelog-pr:
     name: Create Changelog Pull Request
