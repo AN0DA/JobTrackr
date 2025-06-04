@@ -1,6 +1,6 @@
 [project]
 name = "JobTrackr"
-version = "0.1.0"
+version = "1.0.0"
 description = "Job tracking TUI tool"
 readme = "README.md"
 authors = [{name = "Mikołaj Kaczmarek", email = "12432719+AN0DA@users.noreply.github.com"}]
