@@ -24,9 +24,19 @@ logger = get_logger(__name__)
 
 
 class CompaniesTab(QWidget):
-    """Tab for managing companies."""
+    """
+    Tab for managing companies.
+
+    Provides UI and logic for listing, searching, filtering, viewing, editing, and deleting companies.
+    """
 
     def __init__(self, parent=None) -> None:
+        """
+        Initialize the companies tab.
+
+        Args:
+            parent: Parent widget (main window).
+        """
         super().__init__(parent)
         self.main_window = parent
         self.company_type_filter = None
@@ -34,7 +44,9 @@ class CompaniesTab(QWidget):
         self.load_companies()
 
     def _init_ui(self) -> None:
-        """Initialize the companies tab UI."""
+        """
+        Initialize the companies tab UI components and layout.
+        """
         layout = QVBoxLayout(self)
 
         # Header section with filters
@@ -105,7 +117,12 @@ class CompaniesTab(QWidget):
         self.table.itemSelectionChanged.connect(self.on_selection_changed)
 
     def load_companies(self, company_type=None) -> None:
-        """Load companies with optional type filter."""
+        """
+        Load companies, optionally filtered by type.
+
+        Args:
+            company_type: Type to filter companies by, or None for all.
+        """
         try:
             self.main_window.show_status_message("Loading companies...")
             self.company_type_filter = company_type
@@ -151,7 +168,12 @@ class CompaniesTab(QWidget):
             self.main_window.show_status_message(f"Error loading companies: {str(e)}")
 
     def search_companies(self, search_term) -> None:
-        """Search companies by name or industry."""
+        """
+        Search companies by name or industry, and update the table.
+
+        Args:
+            search_term: The search string to filter companies.
+        """
         try:
             if not search_term:
                 self.load_companies(self.company_type_filter)
@@ -202,7 +224,12 @@ class CompaniesTab(QWidget):
             self.main_window.show_status_message(f"Search error: {str(e)}")
 
     def get_selected_company_id(self) -> int | None:
-        """Get the ID of the selected company."""
+        """
+        Get the ID of the currently selected company.
+
+        Returns:
+            The selected company's ID, or None if no selection.
+        """
         selected_items = self.table.selectedItems()
         if not selected_items:
             return None
@@ -214,12 +241,16 @@ class CompaniesTab(QWidget):
         return None
 
     def refresh_data(self) -> None:
-        """Refresh the companies data."""
+        """
+        Refresh the companies data in the table.
+        """
         self.load_companies(self.company_type_filter)
 
     @pyqtSlot()
     def on_selection_changed(self) -> None:
-        """Enable or disable buttons based on selection."""
+        """
+        Enable or disable action buttons based on table selection.
+        """
         has_selection = bool(self.table.selectedItems())
         self.view_button.setEnabled(has_selection)
         self.edit_button.setEnabled(has_selection)
@@ -227,7 +258,12 @@ class CompaniesTab(QWidget):
 
     @pyqtSlot(str)
     def on_type_filter_changed(self, company_type) -> None:
-        """Handle type filter changes."""
+        """
+        Handle changes to the type filter dropdown.
+
+        Args:
+            company_type: The selected company type from the filter.
+        """
         if company_type == "All":
             self.load_companies(None)
         else:
@@ -235,20 +271,26 @@ class CompaniesTab(QWidget):
 
     @pyqtSlot()
     def on_search(self) -> None:
-        """Handle search button click."""
+        """
+        Handle search button click or return key in search box.
+        """
         search_term = self.search_input.text().strip()
         self.search_companies(search_term)
 
     @pyqtSlot()
     def on_new_company(self) -> None:
-        """Open dialog to create a new company."""
+        """
+        Open dialog to create a new company and refresh the table on success.
+        """
         dialog = CompanyForm(self)
         if dialog.exec():
             self.refresh_data()
 
     @pyqtSlot()
     def on_view_company(self) -> None:
-        """Open the company detail view."""
+        """
+        Open dialog to view the selected company's details.
+        """
         company_id = self.get_selected_company_id()
         if company_id:
             dialog = CompanyDetailDialog(self, company_id)
@@ -257,7 +299,9 @@ class CompaniesTab(QWidget):
 
     @pyqtSlot()
     def on_edit_company(self) -> None:
-        """Open dialog to edit the selected company."""
+        """
+        Open dialog to edit the selected company and refresh the table on success.
+        """
         company_id = self.get_selected_company_id()
         if company_id:
             dialog = CompanyForm(self, company_id)
@@ -266,7 +310,9 @@ class CompaniesTab(QWidget):
 
     @pyqtSlot()
     def on_delete_company(self) -> None:
-        """Delete the selected company."""
+        """
+        Delete the selected company and refresh the table on success.
+        """
         company_id = self.get_selected_company_id()
         if not company_id:
             return
@@ -300,7 +346,9 @@ class CompaniesTab(QWidget):
 
     @pyqtSlot(QTableWidgetItem)
     def on_row_double_clicked(self, item) -> None:
-        """Handle row double click to open application details."""
+        """
+        Open dialog to view the company's details when a row is double clicked.
+        """
         row = item.row()
         company_id = int(self.table.item(row, 0).text())
         dialog = CompanyDetailDialog(self, company_id)

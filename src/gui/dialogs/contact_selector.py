@@ -18,9 +18,19 @@ logger = get_logger(__name__)
 
 
 class ContactSelectorDialog(QDialog):
-    """Dialog for selecting a contact to associate with an application or other entity."""
+    """
+    Dialog for selecting a contact to associate with an application or other entity.
+
+    Allows searching, filtering, and selecting a contact from a table.
+    """
 
     def __init__(self, parent=None):
+        """
+        Initialize the contact selector dialog.
+
+        Args:
+            parent: Parent widget.
+        """
         super().__init__(parent)
         self.main_window = parent.main_window if parent else None
         self.selected_contact_id = None
@@ -32,7 +42,9 @@ class ContactSelectorDialog(QDialog):
         self.load_contacts()
 
     def _init_ui(self):
-        """Initialize the dialog UI."""
+        """
+        Initialize the dialog UI components.
+        """
         layout = QVBoxLayout(self)
 
         # Search bar
@@ -75,7 +87,9 @@ class ContactSelectorDialog(QDialog):
         self.setLayout(layout)
 
     def load_contacts(self, search_term=None):
-        """Load contacts with optional search filtering."""
+        """
+        Load contacts into the table, optionally filtering by a search term.
+        """
         try:
             self.contacts_table.setRowCount(0)
 
@@ -116,17 +130,19 @@ class ContactSelectorDialog(QDialog):
             if self.main_window:
                 self.main_window.show_status_message(f"Error loading contacts: {str(e)}")
 
-    @pyqtSlot(str)
     def on_search(self, text):
-        """Handle search input changes."""
+        """
+        Handle search input changes and reload the contact list.
+        """
         if not text:
             self.load_contacts()
         else:
             self.load_contacts(text)
 
-    @pyqtSlot()
     def on_select(self):
-        """Handle select button click."""
+        """
+        Handle select button click and accept the selected contact.
+        """
         selected_rows = self.contacts_table.selectedItems()
         if not selected_rows:
             if self.main_window:
@@ -141,9 +157,10 @@ class ContactSelectorDialog(QDialog):
         self.selected_contact_id = contact_id_item.data(Qt.ItemDataRole.UserRole)
         self.accept()
 
-    @pyqtSlot(QTableWidgetItem)
     def on_table_double_clicked(self, item: QTableWidgetItem) -> None:
-        """Handle double click on a contact in the table."""
+        """
+        Handle double click on a contact in the table and accept the selection.
+        """
         if not item:
             return
 
@@ -154,9 +171,10 @@ class ContactSelectorDialog(QDialog):
             self.selected_contact_id = contact_id
             self.accept()
 
-    @pyqtSlot()
     def on_add_new_contact(self):
-        """Open dialog to add a new contact."""
+        """
+        Open dialog to add a new contact and reload the contact list.
+        """
         from src.gui.dialogs.contact_form import ContactForm
 
         dialog = ContactForm(self)

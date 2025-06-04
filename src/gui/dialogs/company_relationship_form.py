@@ -20,9 +20,21 @@ logger = get_logger(__name__)
 
 
 class CompanyRelationshipForm(QDialog):
-    """Dialog for creating or editing company relationships."""
+    """
+    Dialog for creating or editing company relationships.
+
+    Allows the user to enter or edit relationships between companies and save them.
+    """
 
     def __init__(self, parent=None, source_company_id=None, relationship_id=None) -> None:
+        """
+        Initialize the company relationship form dialog.
+
+        Args:
+            parent: Parent widget.
+            source_company_id: ID of the source company.
+            relationship_id: ID of the relationship to edit (None for new relationship).
+        """
         super().__init__(parent)
         self.main_window = parent.main_window if parent else None
         self.source_company_id = source_company_id
@@ -40,7 +52,9 @@ class CompanyRelationshipForm(QDialog):
             self.load_relationship()
 
     def _init_ui(self) -> None:
-        """Initialize the form UI."""
+        """
+        Initialize the form UI components.
+        """
         layout = QVBoxLayout(self)
 
         # Form layout for relationship fields
@@ -86,7 +100,9 @@ class CompanyRelationshipForm(QDialog):
         self.load_companies()
 
     def load_companies(self) -> None:
-        """Load companies for dropdown."""
+        """
+        Load companies for the dropdowns and display.
+        """
         try:
             service = CompanyService()
 
@@ -112,7 +128,9 @@ class CompanyRelationshipForm(QDialog):
                 self.main_window.show_status_message(f"Error loading companies: {str(e)}")
 
     def load_relationship(self) -> None:
-        """Load relationship data if editing."""
+        """
+        Load relationship data for editing and populate the form fields.
+        """
         try:
             service = CompanyService()
             relationship = service.get_relationship(self.relationship_id)
@@ -150,7 +168,9 @@ class CompanyRelationshipForm(QDialog):
                 self.main_window.show_status_message(f"Error loading relationship: {str(e)}")
 
     def save_relationship(self) -> None:
-        """Save the relationship."""
+        """
+        Save the relationship data from the form.
+        """
         try:
             service = CompanyService()
 

@@ -21,9 +21,21 @@ logger = get_logger(__name__)
 
 
 class ContactForm(QDialog):
-    """Dialog for creating or editing a contact."""
+    """
+    Dialog for creating or editing a contact.
+
+    Allows the user to enter or edit contact details, select a company, and save the contact.
+    """
 
     def __init__(self, parent=None, contact_id=None, readonly=False) -> None:
+        """
+        Initialize the contact form dialog.
+
+        Args:
+            parent: Parent widget.
+            contact_id: ID of the contact to edit (None for new contact).
+            readonly (bool): If True, the form is read-only.
+        """
         super().__init__(parent)
         self.main_window = parent.main_window if parent else None
         self.contact_id = contact_id
@@ -41,7 +53,9 @@ class ContactForm(QDialog):
             self.load_contact()
 
     def _init_ui(self) -> None:
-        """Initialize the form UI."""
+        """
+        Initialize the form UI components.
+        """
         layout = QVBoxLayout(self)
 
         # Form layout for contact fields
@@ -111,7 +125,9 @@ class ContactForm(QDialog):
         self.load_companies()
 
     def load_companies(self) -> None:
-        """Load companies for the dropdown."""
+        """
+        Load companies for the company dropdown.
+        """
         try:
             service = CompanyService()
             self.companies = service.get_all()
@@ -127,7 +143,9 @@ class ContactForm(QDialog):
                 self.main_window.show_status_message(f"Error loading companies: {str(e)}")
 
     def load_contact(self) -> None:
-        """Load contact data for editing."""
+        """
+        Load contact data for editing and populate the form fields.
+        """
         try:
             service = ContactService()
             contact_data = service.get(int(self.contact_id))
@@ -165,7 +183,9 @@ class ContactForm(QDialog):
                 self.main_window.show_status_message(f"Error loading contact: {str(e)}")
 
     def save_contact(self) -> None:
-        """Save the contact data."""
+        """
+        Save the contact data from the form.
+        """
         try:
             # Collect data from form
             name = self.name_input.text().strip()
@@ -213,7 +233,9 @@ class ContactForm(QDialog):
             QMessageBox.critical(self, "Error", f"Error saving contact: {str(e)}")
 
     def on_new_company(self) -> None:
-        """Open dialog to create a new company."""
+        """
+        Open a dialog to create a new company and reload the company list.
+        """
         from src.gui.dialogs.company_form import CompanyForm
 
         dialog = CompanyForm(self)

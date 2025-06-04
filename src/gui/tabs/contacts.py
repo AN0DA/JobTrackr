@@ -26,9 +26,19 @@ logger = get_logger(__name__)
 
 
 class ContactsTab(QWidget):
-    """Tab for managing contacts."""
+    """
+    Tab for managing contacts.
+
+    Provides UI and logic for listing, searching, filtering, viewing, editing, and deleting contacts.
+    """
 
     def __init__(self, parent=None) -> None:
+        """
+        Initialize the contacts tab.
+
+        Args:
+            parent: Parent widget (main window).
+        """
         super().__init__(parent)
         self.main_window = parent
         self.companies: list[dict[str, Any]] = []
@@ -37,7 +47,9 @@ class ContactsTab(QWidget):
         self.load_companies()  # Load companies first before contacts
 
     def _init_ui(self) -> None:
-        """Initialize the contacts tab UI."""
+        """
+        Initialize the contacts tab UI components and layout.
+        """
         layout = QVBoxLayout(self)
 
         # Header section with filters
@@ -105,7 +117,9 @@ class ContactsTab(QWidget):
         self.table.itemSelectionChanged.connect(self.on_selection_changed)
 
     def load_companies(self) -> None:
-        """Load companies for filtering."""
+        """
+        Load companies for the company filter dropdown.
+        """
         try:
             service = CompanyService()
             self.companies = service.get_all()
@@ -128,7 +142,12 @@ class ContactsTab(QWidget):
                 self.main_window.show_status_message(f"Error loading companies: {str(e)}")
 
     def load_contacts(self, company_id=None) -> None:
-        """Load contacts with optional company filter."""
+        """
+        Load contacts, optionally filtered by company.
+
+        Args:
+            company_id: ID of the company to filter by, or None for all.
+        """
         try:
             self.main_window.show_status_message("Loading contacts...")
             self.company_filter = company_id
@@ -169,7 +188,12 @@ class ContactsTab(QWidget):
             self.main_window.show_status_message(f"Error loading contacts: {str(e)}")
 
     def search_contacts(self, search_term) -> None:
-        """Search contacts by name, email, or title."""
+        """
+        Search contacts by name, email, or title, and update the table.
+
+        Args:
+            search_term: The search string to filter contacts.
+        """
         try:
             if not search_term:
                 self.load_contacts(self.company_filter)
@@ -218,7 +242,12 @@ class ContactsTab(QWidget):
             self.main_window.show_status_message(f"Search error: {str(e)}")
 
     def get_selected_contact_id(self) -> int | None:
-        """Get the ID of the selected contact."""
+        """
+        Get the ID of the currently selected contact.
+
+        Returns:
+            The selected contact's ID, or None if no selection.
+        """
         selected_items = self.table.selectedItems()
         if not selected_items:
             return None
@@ -230,12 +259,16 @@ class ContactsTab(QWidget):
         return None
 
     def refresh_data(self) -> None:
-        """Refresh the contacts data."""
+        """
+        Refresh the contacts data in the table.
+        """
         self.load_contacts(self.company_filter)
 
     @pyqtSlot()
     def on_selection_changed(self) -> None:
-        """Enable or disable buttons based on selection."""
+        """
+        Enable or disable action buttons based on table selection.
+        """
         has_selection = bool(self.table.selectedItems())
         self.view_button.setEnabled(has_selection)
         self.edit_button.setEnabled(has_selection)
@@ -243,7 +276,12 @@ class ContactsTab(QWidget):
 
     @pyqtSlot(str)
     def on_company_filter_changed(self, company_name) -> None:
-        """Handle company filter changes."""
+        """
+        Handle changes to the company filter dropdown.
+
+        Args:
+            company_name: The selected company name from the filter.
+        """
         index = self.company_filter_combo.currentIndex()
         company_id = self.company_filter_combo.itemData(index)
 
@@ -254,20 +292,26 @@ class ContactsTab(QWidget):
 
     @pyqtSlot()
     def on_search(self) -> None:
-        """Handle search button click."""
+        """
+        Handle search button click or return key in search box.
+        """
         search_term = self.search_input.text().strip()
         self.search_contacts(search_term)
 
     @pyqtSlot()
     def on_new_contact(self) -> None:
-        """Open dialog to create a new contact."""
+        """
+        Open dialog to create a new contact and refresh the table on success.
+        """
         dialog = ContactForm(self)
         if dialog.exec():
             self.refresh_data()
 
     @pyqtSlot()
     def on_view_contact(self) -> None:
-        """Open the contact detail view."""
+        """
+        Open dialog to view the selected contact's details.
+        """
         contact_id = self.get_selected_contact_id()
         if contact_id:
             dialog = ContactDetailDialog(self, contact_id)
@@ -275,7 +319,9 @@ class ContactsTab(QWidget):
 
     @pyqtSlot()
     def on_edit_contact(self) -> None:
-        """Open dialog to edit the selected contact."""
+        """
+        Open dialog to edit the selected contact and refresh the table on success.
+        """
         contact_id = self.get_selected_contact_id()
         if contact_id:
             dialog = ContactForm(self, contact_id)
@@ -284,7 +330,9 @@ class ContactsTab(QWidget):
 
     @pyqtSlot()
     def on_delete_contact(self) -> None:
-        """Delete the selected contact."""
+        """
+        Delete the selected contact and refresh the table on success.
+        """
         contact_id = self.get_selected_contact_id()
         if not contact_id:
             return
@@ -318,7 +366,9 @@ class ContactsTab(QWidget):
 
     @pyqtSlot(QTableWidgetItem)
     def on_row_double_clicked(self, item) -> None:
-        """Handle row double click to open application details."""
+        """
+        Open dialog to view the contact's details when a row is double clicked.
+        """
         row = item.row()
         contact_id = int(self.table.item(row, 0).text())
         dialog = ContactDetailDialog(self, contact_id)

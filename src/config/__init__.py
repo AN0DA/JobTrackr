@@ -1,5 +1,3 @@
-"""Application configuration and constants."""
-
 import enum
 import os
 from pathlib import Path
@@ -13,7 +11,6 @@ HOME_DIR = Path.home()
 CONFIG_DIR = HOME_DIR / ".jobtrackr"
 DEFAULT_DATA_DIR = HOME_DIR / "jobtrackr_data"
 DEFAULT_DB_PATH = DEFAULT_DATA_DIR / "jobtrackr.db"
-DEFAULT_EXPORT_DIR = DEFAULT_DATA_DIR / "exports"
 
 # Application settings defaults
 DEFAULT_SETTINGS = {"database_path": str(DEFAULT_DB_PATH), "check_updates": True}

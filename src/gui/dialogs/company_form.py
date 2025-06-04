@@ -19,9 +19,21 @@ logger = get_logger(__name__)
 
 
 class CompanyForm(QDialog):
-    """Dialog for creating or editing a company."""
+    """
+    Dialog for creating or editing a company.
+
+    Allows the user to enter or edit company details and save the company.
+    """
 
     def __init__(self, parent=None, company_id=None, readonly=False) -> None:
+        """
+        Initialize the company form dialog.
+
+        Args:
+            parent: Parent widget.
+            company_id: ID of the company to edit (None for new company).
+            readonly (bool): If True, the form is read-only.
+        """
         super().__init__(parent)
         self.main_window = parent.main_window if parent else None
         self.company_id = company_id
@@ -38,7 +50,9 @@ class CompanyForm(QDialog):
             self.load_company()
 
     def _init_ui(self) -> None:
-        """Initialize the form UI."""
+        """
+        Initialize the form UI components.
+        """
         layout = QVBoxLayout(self)
 
         # Form layout for company fields
@@ -99,7 +113,9 @@ class CompanyForm(QDialog):
         self.setLayout(layout)
 
     def load_company(self) -> None:
-        """Load company data for editing."""
+        """
+        Load company data for editing and populate the form fields.
+        """
         try:
             service = CompanyService()
             company_data = service.get(int(self.company_id))
@@ -135,7 +151,9 @@ class CompanyForm(QDialog):
                 self.main_window.show_status_message(f"Error: {str(e)}")
 
     def save_company(self) -> None:
-        """Save the company data."""
+        """
+        Save the company data from the form.
+        """
         try:
             # Collect data from form
             name = self.name_input.text().strip()

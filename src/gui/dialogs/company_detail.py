@@ -35,9 +35,18 @@ from src.utils.logging import get_logger
 
 logger = get_logger(__name__)
 
+"""
+company_detail.py - Dialog for viewing company details in JobTrackr.
+
+This module provides a dialog for displaying all details, relationships, and related entities for a company.
+"""
 
 class CompanyDetailDialog(QDialog):
-    """Dialog for viewing company details."""
+    """
+    Dialog for viewing company details.
+
+    Displays all information, relationships, applications, and visualizations related to a company.
+    """
 
     def __init__(self, parent=None, company_id=None) -> None:
         super().__init__(parent)
@@ -55,7 +64,9 @@ class CompanyDetailDialog(QDialog):
             self.load_company_data()
 
     def _init_ui(self) -> None:
-        """Initialize the dialog UI."""
+        """
+        Initialize the dialog UI, including header, tabs, and layout.
+        """
         layout = QVBoxLayout(self)
 
         # Header section with company info and buttons
@@ -202,7 +213,9 @@ class CompanyDetailDialog(QDialog):
         self.setLayout(layout)
 
     def toggle_visualization(self):
-        """Toggle the visibility of the visualization panel."""
+        """
+        Toggle the visibility of the company relationships visualization panel.
+        """
         is_visible = self.viz_content.isVisible()
         self.viz_content.setVisible(not is_visible)
 
@@ -221,7 +234,9 @@ class CompanyDetailDialog(QDialog):
                 self._generate_network_visualization(self.last_relationships)
 
     def load_company_data(self) -> None:
-        """Load all company data and populate the UI."""
+        """
+        Load all company data and populate the UI fields and tabs.
+        """
         try:
             # Load company details
             service = CompanyService()
@@ -281,7 +296,9 @@ class CompanyDetailDialog(QDialog):
                 self.main_window.show_status_message(f"Error loading company data: {str(e)}")
 
     def load_relationships(self) -> None:
-        """Load company relationships."""
+        """
+        Load company relationships and update the relationships table and visualization.
+        """
         try:
             service = CompanyService()
             relationships = service.get_related_companies(self.company_id)
@@ -350,7 +367,12 @@ class CompanyDetailDialog(QDialog):
                 self.main_window.show_status_message(f"Error loading relationships: {str(e)}")
 
     def _generate_network_visualization(self, relationships):
-        """Generate a network graph visualization of company relationships."""
+        """
+        Generate a network graph visualization of company relationships.
+
+        Args:
+            relationships: List of relationship data dicts.
+        """
         try:
             # Clear previous figure
             self.figure.clear()
@@ -412,7 +434,9 @@ class CompanyDetailDialog(QDialog):
             self.canvas.draw()
 
     def load_relationships_network(self):
-        """Load and visualize company relationships as a network graph."""
+        """
+        Load and visualize company relationships as a network graph (alternative view).
+        """
         try:
             if not self.company_id:
                 return
@@ -485,7 +509,9 @@ class CompanyDetailDialog(QDialog):
                 self.main_window.show_status_message(f"Error visualizing relationships: {str(e)}")
 
     def load_applications(self) -> None:
-        """Load job applications for this company."""
+        """
+        Load job applications for this company and update the applications table.
+        """
         try:
             app_service = ApplicationService()
             applications = app_service.get_applications_by_company(self.company_id)
@@ -520,7 +546,9 @@ class CompanyDetailDialog(QDialog):
 
     @pyqtSlot()
     def on_edit_company(self) -> None:
-        """Open dialog to edit the company."""
+        """
+        Open dialog to edit the company and reload data on success.
+        """
         from src.gui.dialogs.company_form import CompanyForm
 
         dialog = CompanyForm(self, self.company_id)
@@ -529,14 +557,18 @@ class CompanyDetailDialog(QDialog):
 
     @pyqtSlot()
     def on_add_relationship(self) -> None:
-        """Open dialog to add a company relationship."""
+        """
+        Open dialog to add a company relationship and reload relationships on success.
+        """
         dialog = CompanyRelationshipForm(self, self.company_id)
         if dialog.exec():
             self.load_relationships()
 
     @pyqtSlot()
     def on_application_double_clicked(self, index) -> None:
-        """Open application details when double clicked."""
+        """
+        Open application details dialog when an application is double clicked.
+        """
         if self.applications_table.item(index.row(), 0).text() == "No applications found":
             return
 
@@ -548,7 +580,12 @@ class CompanyDetailDialog(QDialog):
 
     @pyqtSlot(int)
     def on_edit_relationship(self, relationship_id):
-        """Open dialog to edit a company relationship."""
+        """
+        Open dialog to edit a company relationship and reload relationships on success.
+
+        Args:
+            relationship_id: ID of the relationship to edit.
+        """
         if not relationship_id:
             if self.main_window:
                 self.main_window.show_status_message("Cannot edit relationship: Invalid ID")
@@ -562,7 +599,12 @@ class CompanyDetailDialog(QDialog):
 
     @pyqtSlot(int)
     def on_delete_relationship(self, relationship_id):
-        """Delete a company relationship."""
+        """
+        Delete a company relationship and reload relationships on success.
+
+        Args:
+            relationship_id: ID of the relationship to delete.
+        """
         if not relationship_id:
             if self.main_window:
                 self.main_window.show_status_message("Cannot delete relationship: Invalid ID")
@@ -595,7 +637,12 @@ class CompanyDetailDialog(QDialog):
 
     @pyqtSlot(QTableWidgetItem)
     def on_relationship_item_clicked(self, item):
-        """Handle clicks on relationship table items."""
+        """
+        Handle clicks on relationship table items (for text-based actions).
+
+        Args:
+            item: The clicked QTableWidgetItem.
+        """
         row = item.row()
         col = item.column()
 
@@ -610,7 +657,9 @@ class CompanyDetailDialog(QDialog):
                 self.on_delete_relationship(relationship_id)
 
     def export_company_data(self):
-        """Export company data to a file."""
+        """
+        Export company data and relationships to a JSON file.
+        """
         if not self.company_data:
             if self.main_window:
                 self.main_window.show_status_message("No company data to export")

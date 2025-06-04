@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
 
-"""Database management for JobTrackr."""
-
 import os
-import sys  # Added for sys.frozen and sys._MEIPASS
+import sys
 from pathlib import Path
 
 from PyQt6.QtWidgets import QApplication, QMessageBox
@@ -21,7 +19,17 @@ logger = get_logger(__name__)
 
 
 def get_resource_path(relative_path):
-    """Get absolute path to resource, works for dev and for PyInstaller"""
+    """
+    Get absolute path to a resource file.
+
+    Handles both development and PyInstaller-bundled environments.
+
+    Args:
+        relative_path (str): Relative path to the resource.
+
+    Returns:
+        str: Absolute path to the resource.
+    """
     if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
         # PyInstaller creates a temp folder and stores path in _MEIPASS
         base_path = sys._MEIPASS
@@ -34,14 +42,20 @@ def get_resource_path(relative_path):
 
 
 def ensure_db_directory(db_path: str) -> None:
-    """Ensure the database directory exists."""
+    """
+    Ensure the directory for the database file exists.
+
+    Args:
+        db_path (str): Path to the database file.
+    """
     db_dir = os.path.dirname(db_path)
     if db_dir:
         Path(db_dir).mkdir(parents=True, exist_ok=True)
 
 
 def show_migration_dialog() -> bool:
-    """Show a dialog asking the user if they want to run migrations.
+    """
+    Show a dialog asking the user if they want to run database migrations.
 
     Returns:
         bool: True if the user chooses to run migrations, False otherwise.
@@ -72,7 +86,8 @@ def show_migration_dialog() -> bool:
 
 
 def run_migrations() -> bool:
-    """Run database migrations.
+    """
+    Run Alembic database migrations.
 
     Returns:
         bool: True if migrations were successful, False otherwise.
@@ -106,7 +121,8 @@ def run_migrations() -> bool:
 
 
 def check_and_run_migrations() -> bool:
-    """Check if migrations are needed and run them if necessary.
+    """
+    Check if database migrations are needed and run them if necessary.
 
     Returns:
         bool: True if the application should continue, False if it should exit.

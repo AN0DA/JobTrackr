@@ -3,16 +3,23 @@ from PyQt6.QtWidgets import QAbstractItemView, QHeaderView, QTableWidget
 
 
 class DataTable(QTableWidget):
-    """Standardized table widget for consistent data display."""
+    """
+    Standardized table widget for consistent data display.
+
+    Provides a table with standard headers, selection behavior, and styling.
+    Emits a signal when a row is double-clicked.
+    """
 
     row_double_clicked = pyqtSignal(int)  # Emits row id when double-clicked
 
     def __init__(self, rows, columns, parent=None):
-        """Initialize the table with standard configuration.
+        """
+        Initialize the table with standard configuration.
 
         Args:
-            columns: List of column names
-            parent: Parent widget
+            rows (int): Number of rows.
+            columns (list[str]): List of column names.
+            parent: Parent widget.
         """
         super().__init__(rows, len(columns), parent)
 
@@ -52,7 +59,9 @@ class DataTable(QTableWidget):
         self.cellDoubleClicked.connect(self._on_cell_double_clicked)
 
     def _on_cell_double_clicked(self, row, column):
-        """Handle cell double click."""
+        """
+        Handle cell double click event and emit row id.
+        """
         id_item = self.item(row, 0)
         if id_item:
             self.row_double_clicked.emit(int(id_item.text()))

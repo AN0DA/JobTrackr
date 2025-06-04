@@ -4,7 +4,12 @@ from src.config import UI_COLORS
 
 
 class StyledButton(QPushButton):
-    """Custom styled button with consistent appearance."""
+    """
+    Custom styled button with consistent appearance.
+
+    Supports multiple button types (primary, secondary, danger, success, text)
+    with configurable colors and styles from the UI_COLORS configuration.
+    """
 
     TYPES = {
         "primary": {
@@ -40,13 +45,14 @@ class StyledButton(QPushButton):
     }
 
     def __init__(self, text="", button_type="primary", icon=None, parent=None):
-        """Initialize styled button.
+        """
+        Initialize styled button.
 
         Args:
-            text: Button text
-            button_type: Type of button (primary, secondary, danger, success, text)
-            icon: Optional icon to display
-            parent: Parent widget
+            text (str): Button text.
+            button_type (str): Type of button (primary, secondary, danger, success, text).
+            icon: Optional icon to display.
+            parent: Parent widget.
         """
         super().__init__(text, parent)
         self.button_type = button_type
@@ -57,7 +63,9 @@ class StyledButton(QPushButton):
         self._apply_style()
 
     def _apply_style(self):
-        """Apply the style based on button type."""
+        """
+        Apply the style to the button based on its type.
+        """
         style = self.TYPES.get(self.button_type, self.TYPES["primary"])
 
         self.setStyleSheet(f"""

@@ -26,9 +26,20 @@ logger = get_logger(__name__)
 
 
 class ContactDetailDialog(QDialog):
-    """Dialog for viewing contact details."""
+    """
+    Dialog for viewing contact details.
+
+    Displays all information, notes, interactions, and associated applications for a contact.
+    """
 
     def __init__(self, parent=None, contact_id=None) -> None:
+        """
+        Initialize the contact detail dialog.
+
+        Args:
+            parent: Parent widget.
+            contact_id: ID of the contact to display.
+        """
         super().__init__(parent)
         self.main_window = parent.main_window if parent else None
         self.contact_id = contact_id
@@ -44,7 +55,9 @@ class ContactDetailDialog(QDialog):
             self.load_contact_data()
 
     def _init_ui(self) -> None:
-        """Initialize the dialog UI."""
+        """
+        Initialize the dialog UI, including header, tabs, and layout.
+        """
         layout = QVBoxLayout(self)
 
         # Header with contact info
@@ -177,7 +190,9 @@ class ContactDetailDialog(QDialog):
         layout.addLayout(btn_layout)
 
     def load_contact_data(self) -> None:
-        """Load all contact data and populate the UI."""
+        """
+        Load all contact data and populate the UI fields and tabs.
+        """
         try:
             # Load contact details
             service = ContactService()
@@ -225,7 +240,9 @@ class ContactDetailDialog(QDialog):
                 self.main_window.show_status_message(f"Error loading contact data: {str(e)}")
 
     def load_interactions(self) -> None:
-        """Load interactions for this contact."""
+        """
+        Load interactions for this contact and update the interactions table.
+        """
         try:
             self.interactions_table.setRowCount(0)
 
@@ -267,7 +284,9 @@ class ContactDetailDialog(QDialog):
                 self.main_window.show_status_message(f"Error loading interactions: {str(e)}")
 
     def load_applications(self) -> None:
-        """Load applications associated with this contact."""
+        """
+        Load applications associated with this contact and update the applications table.
+        """
         try:
             self.applications_table.setRowCount(0)
 
@@ -315,14 +334,18 @@ class ContactDetailDialog(QDialog):
 
     @pyqtSlot()
     def on_edit_contact(self) -> None:
-        """Open dialog to edit the contact."""
+        """
+        Open dialog to edit the contact and reload data on success.
+        """
         dialog = ContactForm(self, self.contact_id)
         if dialog.exec():
             self.load_contact_data()
 
     @pyqtSlot()
     def on_add_interaction(self) -> None:
-        """Open dialog to add a new interaction for this contact."""
+        """
+        Open dialog to add a new interaction for this contact and reload interactions on success.
+        """
         dialog = InteractionForm(self, self.contact_id)
         if dialog.exec():
             self.load_interactions()
@@ -331,7 +354,9 @@ class ContactDetailDialog(QDialog):
 
     @pyqtSlot()
     def on_edit_interaction(self) -> None:
-        """Open dialog to edit the selected interaction."""
+        """
+        Open dialog to edit the selected interaction and reload interactions on success.
+        """
         selected_rows = self.interactions_table.selectedItems()
         if not selected_rows:
             if self.main_window:
@@ -350,7 +375,9 @@ class ContactDetailDialog(QDialog):
 
     @pyqtSlot()
     def on_interaction_double_clicked(self, index) -> None:
-        """Handle double-click on an interaction to edit it."""
+        """
+        Open interaction form when an interaction is double clicked.
+        """
         if self.interactions_table.item(index.row(), 0).text() == "No interactions found":
             return
 
@@ -361,7 +388,9 @@ class ContactDetailDialog(QDialog):
 
     @pyqtSlot()
     def on_delete_interaction(self) -> None:
-        """Delete the selected interaction."""
+        """
+        Delete the selected interaction and reload interactions on success.
+        """
         selected_rows = self.interactions_table.selectedItems()
         if not selected_rows:
             if self.main_window:
@@ -399,7 +428,9 @@ class ContactDetailDialog(QDialog):
 
     @pyqtSlot()
     def on_application_double_clicked(self, index) -> None:
-        """Open application details when double clicked."""
+        """
+        Open application details dialog when an application is double clicked.
+        """
         from src.gui.dialogs.application_detail import ApplicationDetailDialog
 
         if self.applications_table.item(index.row(), 0).text() == "No applications found":
@@ -414,7 +445,9 @@ class ContactDetailDialog(QDialog):
 
     @pyqtSlot()
     def on_delete_contact(self) -> None:
-        """Delete this contact."""
+        """
+        Delete this contact and close the dialog on success.
+        """
         reply = QMessageBox.question(
             self,
             "Delete Contact",

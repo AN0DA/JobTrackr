@@ -13,7 +13,9 @@ class Settings:
     Handle application settings including database configuration.
 
     This class manages reading, writing, and accessing application settings
-    that are stored in a JSON file.
+    that are stored in a JSON file. It provides methods to get, set, and retrieve
+    all settings, as well as to obtain the database path. Settings are persisted
+    automatically on change.
     """
 
     def __init__(self, settings_file: str | None = None):
@@ -23,7 +25,6 @@ class Settings:
         Args:
             settings_file: Optional path to settings file. If None, uses default location.
         """
-        # Set default settings
         self._settings = {
             "database_path": str(Path.home() / ".jobtrackr" / "jobtrackr.db"),
             "log_level": "INFO",
@@ -35,7 +36,6 @@ class Settings:
             "check_updates": True,
         }
 
-        # Determine settings file location
         if settings_file is None:
             self._settings_dir = Path.home() / ".jobtrackr"
             self._settings_file = self._settings_dir / "settings.json"
@@ -43,30 +43,35 @@ class Settings:
             self._settings_file = Path(settings_file)
             self._settings_dir = self._settings_file.parent
 
-        # Ensure settings directory exists
         os.makedirs(self._settings_dir, exist_ok=True)
 
-        # Load existing settings
         self._load_settings()
 
     def _load_settings(self) -> None:
-        """Load settings from file, creating default file if it doesn't exist."""
+        """
+        Load settings from file, creating default file if it doesn't exist.
+
+        If the settings file does not exist, a default settings file is created.
+        Updates the internal settings dictionary with values from the file.
+        """
         try:
             if self._settings_file.exists():
                 with open(self._settings_file) as f:
                     loaded_settings = json.load(f)
-                    # Update default settings with loaded values
                     self._settings.update(loaded_settings)
                     logger.debug(f"Settings loaded from {self._settings_file}")
             else:
-                # Write default settings to file
                 self._save_settings()
                 logger.info(f"Created default settings file at {self._settings_file}")
         except Exception as e:
             logger.error(f"Error loading settings: {e}", exc_info=True)
 
     def _save_settings(self) -> None:
-        """Save current settings to file."""
+        """
+        Save current settings to file.
+
+        Writes the current settings dictionary to the settings file in JSON format.
+        """
         try:
             with open(self._settings_file, "w") as f:
                 json.dump(self._settings, f, indent=2)
@@ -79,11 +84,11 @@ class Settings:
         Get a setting value by key.
 
         Args:
-            key: The setting key to retrieve
-            default: Value to return if key doesn't exist
+            key: The setting key to retrieve.
+            default: Value to return if key doesn't exist.
 
         Returns:
-            The setting value or default if not found
+            The setting value or default if not found.
         """
         return self._settings.get(key, default)
 
@@ -92,8 +97,8 @@ class Settings:
         Set a setting value and save to file.
 
         Args:
-            key: The setting key to set
-            value: The value to set
+            key: The setting key to set.
+            value: The value to set.
         """
         self._settings[key] = value
         self._save_settings()
@@ -103,7 +108,7 @@ class Settings:
         Get all settings as a dictionary.
 
         Returns:
-            A copy of the settings dictionary
+            A copy of the settings dictionary.
         """
         return self._settings.copy()
 
@@ -111,12 +116,13 @@ class Settings:
         """
         Get the database file path from settings.
 
+        Ensures the directory for the database exists before returning the path.
+
         Returns:
-            Path to the database file
+            Path to the database file.
         """
         db_path = self.get("database_path")
 
-        # Ensure database directory exists
         db_dir = os.path.dirname(db_path)
         os.makedirs(db_dir, exist_ok=True)
 

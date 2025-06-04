@@ -34,9 +34,18 @@ from src.utils.logging import get_logger
 
 logger = get_logger(__name__)
 
+"""
+application_detail.py - Dialog for viewing job application details in JobTrackr.
+
+This module provides a dialog for displaying all details, history, and related entities for a job application.
+"""
 
 class ApplicationDetailDialog(QDialog):
-    """Dialog for viewing application details."""
+    """
+    Dialog for viewing application details.
+
+    Displays all information, status, timeline, contacts, and interactions related to a job application.
+    """
 
     def __init__(self, parent=None, app_id=None) -> None:
         super().__init__(parent)

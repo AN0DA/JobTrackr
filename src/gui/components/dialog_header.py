@@ -5,9 +5,21 @@ from src.config import FONT_SIZES, UI_COLORS
 
 
 class DialogHeader(QWidget):
-    """Standardized header for dialogs."""
+    """
+    Standardized header for dialogs.
+
+    Displays a title and optional subtitle with consistent styling and layout.
+    """
 
     def __init__(self, title, subtitle=None, parent=None):
+        """
+        Initialize the dialog header widget.
+
+        Args:
+            title (str): The main title text.
+            subtitle (str, optional): Optional subtitle text.
+            parent: Parent widget.
+        """
         super().__init__(parent)
 
         self.setStyleSheet(f"""

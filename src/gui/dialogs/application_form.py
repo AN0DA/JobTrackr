@@ -23,9 +23,21 @@ logger = get_logger(__name__)
 
 
 class ApplicationForm(QDialog):
-    """Dialog for creating or editing a job application."""
+    """
+    Dialog for creating or editing a job application.
+
+    Allows the user to enter or edit job application details, select a company, and save the application.
+    """
 
     def __init__(self, parent=None, app_id=None, readonly=False):
+        """
+        Initialize the application form dialog.
+
+        Args:
+            parent: Parent widget.
+            app_id: ID of the application to edit (None for new application).
+            readonly (bool): If True, the form is read-only.
+        """
         super().__init__(parent)
         self.app_id = app_id
         self.readonly = readonly
@@ -43,7 +55,9 @@ class ApplicationForm(QDialog):
             self.load_application()
 
     def _init_ui(self):
-        """Initialize the form UI."""
+        """
+        Initialize the form UI components.
+        """
         layout = QVBoxLayout(self)
 
         # Create tab widget for form sections
@@ -149,7 +163,9 @@ class ApplicationForm(QDialog):
         self.load_companies()
 
     def load_companies(self):
-        """Load companies for the dropdown."""
+        """
+        Load companies for the company dropdown.
+        """
         try:
             service = CompanyService()
             self.companies = service.get_all()
@@ -164,7 +180,9 @@ class ApplicationForm(QDialog):
                 self.parent().main_window.show_status_message(f"Error loading companies: {str(e)}")
 
     def load_application(self):
-        """Load application data for editing."""
+        """
+        Load application data for editing and populate the form fields.
+        """
         try:
             service = ApplicationService()
             app_data = service.get(int(self.app_id))
@@ -223,7 +241,9 @@ class ApplicationForm(QDialog):
                 self.parent().main_window.show_status_message(f"Error: {str(e)}")
 
     def save_application(self):
-        """Save the application data."""
+        """
+        Save the application data from the form.
+        """
         try:
             # Collect data from form
             job_title = self.job_title_input.text().strip()
@@ -291,7 +311,9 @@ class ApplicationForm(QDialog):
             QMessageBox.critical(self, "Error", f"Error saving application: {str(e)}")
 
     def on_new_company(self):
-        """Open dialog to create a new company."""
+        """
+        Open a dialog to create a new company and reload the company list.
+        """
         from src.gui.dialogs.company_form import CompanyForm
 
         dialog = CompanyForm(self)

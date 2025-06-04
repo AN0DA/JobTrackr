@@ -7,9 +7,21 @@ logger = get_logger(__name__)
 
 
 class BaseFormDialog(QDialog):
-    """Base class for all form dialogs to ensure consistency."""
+    """
+    Base class for all form dialogs to ensure consistency.
+
+    Provides a standard layout, button row, and required field handling for entity forms.
+    """
 
     def __init__(self, parent=None, entity_id=None, readonly=False):
+        """
+        Initialize the base form dialog.
+
+        Args:
+            parent: Parent widget.
+            entity_id: ID of the entity to edit (None for new entity).
+            readonly (bool): If True, the form is read-only.
+        """
         super().__init__(parent)
         self.main_window = parent.main_window if parent else None
         self.entity_id = entity_id
@@ -26,7 +38,9 @@ class BaseFormDialog(QDialog):
             self.load_data()
 
     def _init_ui(self):
-        """Initialize the form UI with consistent layout."""
+        """
+        Initialize the form UI with consistent layout and buttons.
+        """
         self.layout = QVBoxLayout(self)
 
         # Form layout for fields
@@ -53,15 +67,26 @@ class BaseFormDialog(QDialog):
         self.layout.addLayout(btn_layout)
 
     def add_form_field(self, label, widget, required=False):
-        """Add a field to the form with consistent styling."""
+        """
+        Add a field to the form with consistent styling.
+
+        Args:
+            label (str): Field label.
+            widget: Input widget.
+            required (bool): Whether the field is required.
+        """
         if required and not self.readonly:
             label = f"{label}*"
         self.form_layout.addRow(label, widget)
 
     def load_data(self):
-        """Load entity data - override in subclass."""
+        """
+        Load entity data - override in subclass.
+        """
         pass
 
     def save_data(self):
-        """Save entity data - override in subclass."""
+        """
+        Save entity data - override in subclass.
+        """
         pass

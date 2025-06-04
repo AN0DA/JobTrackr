@@ -15,9 +15,16 @@ logger = get_logger(__name__)
 
 
 class MainWindow(QMainWindow):
-    """Main application window with tabs for different sections."""
+    """
+    Main application window with tabs for different sections.
+
+    Provides the main UI, tab navigation, menu bar, and status bar for JobTrackr.
+    """
 
     def __init__(self) -> None:
+        """
+        Initialize the main application window and its components.
+        """
         super().__init__()
 
         # Configuration
@@ -35,7 +42,9 @@ class MainWindow(QMainWindow):
         logger.info("Main window initialized")
 
     def _init_ui(self) -> None:
-        """Initialize the user interface components."""
+        """
+        Initialize the user interface components, including menu, tabs, and shortcuts.
+        """
         # Create menu bar
         self.menu_bar = QMenuBar(self)
         self.setMenuBar(self.menu_bar)
@@ -77,42 +86,69 @@ class MainWindow(QMainWindow):
         self._setup_shortcuts()
 
     def _setup_shortcuts(self) -> None:
-        """Set up keyboard shortcuts for common actions."""
+        """
+        Set up keyboard shortcuts for common actions (placeholder).
+        """
         # These would typically be implemented using QAction and QShortcut
         pass
 
     def on_tab_changed(self, index) -> None:
-        """Handle tab changes - refresh data in the selected tab."""
+        """
+        Handle tab changes and refresh data in the selected tab.
+
+        Args:
+            index: Index of the newly selected tab.
+        """
         current_tab = self.tabs.widget(index)
         if hasattr(current_tab, "refresh_data"):
             current_tab.refresh_data()
 
     def show_settings(self) -> None:
-        """Show the settings dialog."""
+        """
+        Show the settings dialog.
+        """
         dialog = SettingsDialog(self)
         dialog.exec()
 
     def show_search(self) -> None:
-        """Show the search dialog."""
+        """
+        Show the search dialog.
+        """
         dialog = SearchDialog(self)
         dialog.exec()
 
     def show_about(self) -> None:
-        """Show the about dialog."""
+        """
+        Show the about dialog with application information.
+        """
         from PyQt6.QtWidgets import QMessageBox
 
         QMessageBox.about(self, "About JobTrackr", f"JobTrackr v{__version__}\n\nA job application tracking tool.")
 
     def show_status_message(self, message, timeout=5000) -> None:
-        """Display a message in the status bar."""
+        """
+        Display a message in the status bar.
+
+        Args:
+            message: The message to display.
+            timeout: Duration in milliseconds to show the message (default 5000).
+        """
         self.statusBar().showMessage(message, timeout)  # Use statusBar() method instead of status_bar attribute
 
     def show_error_message(self, title, message) -> None:
-        """Display an error message dialog."""
+        """
+        Display an error message dialog.
+
+        Args:
+            title: The dialog title.
+            message: The error message to display.
+        """
         QMessageBox.critical(self, title, message)
 
     def closeEvent(self, event) -> None:
-        """Handle window close event."""
+        """
+        Handle window close event and perform cleanup.
+        """
         logger.info("Application shutting down")
         # Any cleanup needed before closing
         event.accept()

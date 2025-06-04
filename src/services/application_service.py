@@ -15,13 +15,25 @@ logger = logging.getLogger(__name__)
 
 
 class ApplicationService(BaseService):
-    """Service for application-related operations."""
+    """
+    Service for application-related operations.
+
+    Provides methods to create, update, delete, and retrieve job applications and their related data.
+    """
 
     model_class = Application
     entity_name = "application"
 
     def _create_entity_from_dict(self, data: dict[str, Any], session: Session) -> Application:
-        """Create an Application object from a dictionary."""
+        """
+        Create an Application object from a dictionary.
+
+        Args:
+            data: Dictionary of application attributes.
+            session: SQLAlchemy session.
+        Returns:
+            Application instance.
+        """
         # Handle date conversion if needed
         applied_date = data["applied_date"]
         if isinstance(applied_date, str):
@@ -41,34 +53,41 @@ class ApplicationService(BaseService):
             company_id=data["company_id"],
         )
 
-    def _update_entity_from_dict(self, app: Application, data: dict[str, Any], session: Session) -> None:
-        """Update an Application object from a dictionary."""
+    def _update_entity_from_dict(self, entity: Application, data: dict[str, Any], session: Session) -> None:
+        """
+        Update an Application object from a dictionary.
+
+        Args:
+            entity: Application instance to update.
+            data: Dictionary of updated attributes.
+            session: SQLAlchemy session.
+        """
         # Track changes for important fields
         change_records = []
 
         # Check for status change
-        if "status" in data and data["status"] != app.status:
+        if "status" in data and data["status"] != entity.status:
             change_records.append(
                 {
-                    "application_id": app.id,
+                    "application_id": entity.id,
                     "change_type": ChangeType.STATUS_CHANGE.value,
-                    "old_value": app.status,
+                    "old_value": entity.status,
                     "new_value": data["status"],
-                    "notes": f"Status changed from {app.status} to {data['status']}",
+                    "notes": f"Status changed from {entity.status} to {data['status']}",
                 }
             )
 
         # Update fields
         for key, value in data.items():
-            if hasattr(app, key):
+            if hasattr(entity, key):
                 # Special case for applied_date
                 if key == "applied_date" and isinstance(value, str):
-                    setattr(app, key, datetime.fromisoformat(value))
+                    setattr(entity, key, datetime.fromisoformat(value))
                 else:
-                    setattr(app, key, value)
+                    setattr(entity, key, value)
 
         # Record changes after session is committed
-        self._record_changes(app.id, change_records)
+        self._record_changes(entity.id, change_records)
 
     def _record_changes(self, app_id: int, change_records: list[dict[str, Any]]) -> None:
         """Record changes to the application."""
@@ -76,43 +95,62 @@ class ApplicationService(BaseService):
         for record in change_records:
             change_record_service.create(record)
 
-    def _entity_to_dict(self, app: Application, include_details: bool = True) -> dict[str, Any]:
-        """Convert an Application object to a dictionary."""
+    def _entity_to_dict(self, application: Application, include_details: bool = True) -> dict[str, Any]:
+        """
+        Convert an Application object to a dictionary.
+
+        Args:
+            application: Application instance.
+            include_details: Whether to include all details.
+        Returns:
+            Dictionary representation of the application.
+        """
         result = {
-            "id": app.id,
-            "job_title": app.job_title,
-            "position": app.position,
-            "status": app.status,
-            "applied_date": app.applied_date.isoformat(),
-            "created_at": app.created_at.isoformat(),
+            "id": application.id,
+            "job_title": application.job_title,
+            "position": application.position,
+            "status": application.status,
+            "applied_date": application.applied_date.isoformat(),
+            "created_at": application.created_at.isoformat(),
         }
 
         # Add company information if available
-        if app.company:
-            result["company"] = {"id": app.company.id, "name": app.company.name}
+        if application.company:
+            result["company"] = {"id": application.company.id, "name": application.company.name}
 
         # Include additional details if requested
         if include_details:
             result.update(
                 {
-                    "location": app.location,
-                    "salary_min": app.salary_min,
-                    "salary_max": app.salary_max,
-                    "link": app.link,
-                    "description": app.description,
-                    "notes": app.notes,
-                    "updated_at": app.updated_at.isoformat() if app.updated_at else None,
+                    "location": application.location,
+                    "salary_min": application.salary_min,
+                    "salary_max": application.salary_max,
+                    "link": application.link,
+                    "description": application.description,
+                    "notes": application.notes,
+                    "updated_at": application.updated_at.isoformat() if application.updated_at else None,
                 }
             )
 
         return result
 
-    @db_operation
-    def get_applications(self, session: Session, status: str | None = None, **kwargs) -> list[dict[str, Any]]:
-        """Get applications with optional filtering and sorting."""
+    def get_applications(self, session: Session, company_id: int | None = None, status: str | None = None, **kwargs: Any) -> list[dict[str, Any]]:
+        """
+        Get applications with optional filtering by company or status.
+
+        Args:
+            session: SQLAlchemy session.
+            company_id: Optional company ID to filter applications.
+            status: Optional status to filter applications.
+            **kwargs: Additional query options (offset, limit).
+        Returns:
+            List of application dictionaries.
+        """
         try:
             query = session.query(Application).options(joinedload(Application.company))
 
+            if company_id:
+                query = query.filter(Application.company_id == company_id)
             if status:
                 query = query.filter(Application.status == status)
 
@@ -146,9 +184,16 @@ class ApplicationService(BaseService):
             logger.error(f"Error fetching applications: {e}")
             raise
 
-    @db_operation
     def search_applications(self, search_term: str, session: Session) -> list[dict[str, Any]]:
-        """Search for applications by keyword."""
+        """
+        Search for applications by position, company, or notes.
+
+        Args:
+            search_term: The search string.
+            session: SQLAlchemy session.
+        Returns:
+            List of application dictionaries matching the search.
+        """
         search_pattern = f"%{search_term}%"
 
         # Create base query
@@ -170,9 +215,29 @@ class ApplicationService(BaseService):
         applications = query.all()
         return [self._entity_to_dict(app, include_details=False) for app in applications]
 
-    @db_operation
-    def get_applications_by_company(self, company_id: int, session: Session) -> list[dict[str, Any]]:
-        """Get applications for a specific company."""
+    def get_applications_for_contact(self, contact_id: int, session: Session) -> list[dict[str, Any]]:
+        """
+        Get all applications associated with a contact.
+
+        Args:
+            contact_id: ID of the contact.
+            session: SQLAlchemy session.
+        Returns:
+            List of application dictionaries associated with the contact.
+        """
+        # Implementation needed
+        raise NotImplementedError("Method not implemented")
+
+    def get_applications_for_company(self, company_id: int, session: Session) -> list[dict[str, Any]]:
+        """
+        Get all applications for a specific company.
+
+        Args:
+            company_id: ID of the company.
+            session: SQLAlchemy session.
+        Returns:
+            List of application dictionaries for the company.
+        """
         try:
             query = session.query(Application).filter(Application.company_id == company_id)
             applications = query.order_by(Application.applied_date.desc()).all()
@@ -181,90 +246,30 @@ class ApplicationService(BaseService):
             logger.error(f"Error fetching applications for company {company_id}: {e}")
             raise
 
-    @db_operation
-    def get_applications_for_export(
-        self, session: Session, include_notes=True, include_interactions=True
-    ) -> list[dict[str, Any]]:
-        """Get all applications with optional details for export."""
-        try:
-            # Base query for applications with company info
-            query = (
-                session.query(Application)
-                .options(joinedload(Application.company))
-                .order_by(Application.applied_date.desc())
-            )
+    def get_status_counts(self, session: Session) -> dict[str, int]:
+        """
+        Get counts of applications by status.
 
-            applications = query.all()
-            result = []
+        Args:
+            session: SQLAlchemy session.
+        Returns:
+            Dictionary mapping status to count.
+        """
+        # Implementation needed
+        raise NotImplementedError("Method not implemented")
 
-            for app in applications:
-                # Start with basic application info
-                app_data = {
-                    "id": app.id,
-                    "job_title": app.job_title,
-                    "company": app.company.name if app.company else "",
-                    "company_website": app.company.website if app.company else "",
-                    "position": app.position,
-                    "location": app.location or "",
-                    "salary": app.salary_min or "" if app.salary_min else app.salary_max or "",
-                    "status": app.status,
-                    "applied_date": app.applied_date.isoformat(),
-                    "link": app.link or "",
-                }
+    def get_recent_applications(self, session: Session, limit: int = 5) -> list[dict[str, Any]]:
+        """
+        Get the most recently created applications.
 
-                # Add notes if requested
-                if include_notes:
-                    app_data["description"] = app.description or ""
-                    app_data["notes"] = app.notes or ""
-
-                # Add interactions if requested
-                if include_interactions and app.interactions:
-                    interactions = []
-                    for _, interaction in enumerate(sorted(app.interactions, key=lambda x: x.date)):
-                        interactions.append(
-                            {
-                                "date": interaction.date.isoformat(),
-                                "type": interaction.type,
-                                "notes": interaction.notes or "",
-                            }
-                        )
-                    app_data["interactions"] = interactions
-
-                result.append(app_data)
-
-            return result
-
-        except Exception as e:
-            logger.error(f"Error getting applications for export: {e}")
-            raise
-
-    @db_operation
-    def get_dashboard_stats(self, session: Session) -> dict[str, Any]:
-        """Get dashboard statistics."""
-        try:
-            # Get total applications count
-            total_count = session.query(func.count(Application.id)).scalar() or 0
-
-            # Get counts by status
-            status_counts = []
-            for status in ApplicationStatus:
-                count = (
-                    session.query(func.count(Application.id)).filter(Application.status == status.value).scalar() or 0
-                )
-                status_counts.append({"status": status.value, "count": count})
-
-            # Get recent applications
-            recent_apps = session.query(Application).order_by(Application.applied_date.desc()).limit(5).all()
-            recent_applications = [self._entity_to_dict(app, include_details=False) for app in recent_apps]
-
-            return {
-                "total_applications": total_count,
-                "applications_by_status": status_counts,
-                "recent_applications": recent_applications,
-            }
-        except Exception as e:
-            logger.error(f"Error fetching dashboard stats: {e}")
-            raise
+        Args:
+            session: SQLAlchemy session.
+            limit: Maximum number of recent applications to retrieve.
+        Returns:
+            List of recent application dictionaries.
+        """
+        # Implementation needed
+        raise NotImplementedError("Method not implemented")
 
     def add_interaction(self, data: dict[str, Any]) -> dict[str, Any]:
         """Add an interaction to an application."""

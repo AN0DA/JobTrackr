@@ -5,21 +5,29 @@ from src.config import STATUS_COLORS
 
 
 class StatusBadge(QLabel):
-    """A badge to display application status with consistent styling."""
+    """
+    A badge to display application status with consistent styling.
+
+    The badge color and style are determined by the status value, using the
+    STATUS_COLORS mapping from configuration.
+    """
 
     def __init__(self, status, parent=None):
-        """Initialize status badge.
+        """
+        Initialize status badge.
 
         Args:
-            status: Status text to display
-            parent: Parent widget
+            status (str): Status text to display.
+            parent: Optional parent widget.
         """
         super().__init__(status, parent)
         self.status = status
         self._apply_style()
 
     def _apply_style(self):
-        """Apply styling based on status."""
+        """
+        Apply styling to the badge based on the status value.
+        """
         color = STATUS_COLORS.get(self.status, STATUS_COLORS["SAVED"])
 
         self.setStyleSheet(f"""

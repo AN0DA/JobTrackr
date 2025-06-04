@@ -26,7 +26,11 @@ logger = get_logger(__name__)
 
 
 class InteractionForm(QDialog):
-    """Form for adding and editing interactions with contacts."""
+    """
+    Form for adding and editing interactions with contacts.
+
+    Allows the user to enter or edit details about an interaction, including type, date, subject, contact, application, and notes.
+    """
 
     INTERACTION_TYPES = [
         "PHONE_CALL",
@@ -41,13 +45,13 @@ class InteractionForm(QDialog):
 
     def __init__(self, parent=None, contact_id=None, application_id=None, interaction_id=None):
         """
-        Initialize the interaction form.
+        Initialize the interaction form dialog.
 
         Args:
-            parent: Parent widget
-            contact_id: ID of the contact associated with this interaction (optional)
-            application_id: ID of the application associated with this interaction (optional)
-            interaction_id: ID of the interaction to edit (if editing an existing interaction)
+            parent: Parent widget.
+            contact_id: ID of the contact associated with this interaction (optional).
+            application_id: ID of the application associated with this interaction (optional).
+            interaction_id: ID of the interaction to edit (if editing an existing interaction).
         """
         super().__init__(parent)
         self.main_window = parent.main_window if parent else None
@@ -73,7 +77,9 @@ class InteractionForm(QDialog):
             self._update_application_display()
 
     def _init_ui(self):
-        """Initialize the form UI."""
+        """
+        Initialize the form UI components.
+        """
         layout = QVBoxLayout(self)
 
         form_layout = QFormLayout()
@@ -145,7 +151,9 @@ class InteractionForm(QDialog):
         layout.addLayout(button_layout)
 
     def load_interaction_data(self):
-        """Load interaction data for editing."""
+        """
+        Load interaction data for editing and populate the form fields.
+        """
         try:
             service = InteractionService()
             self.interaction_data = service.get(self.interaction_id)
@@ -187,7 +195,9 @@ class InteractionForm(QDialog):
             QMessageBox.warning(self, "Error", f"Failed to load interaction data: {str(e)}")
 
     def _update_contact_display(self):
-        """Update the contact label with the current contact info."""
+        """
+        Update the contact label with the current contact info.
+        """
         if not self.contact_id:
             self.contact_label.setText("No contact selected")
             return
@@ -206,7 +216,9 @@ class InteractionForm(QDialog):
             self.contact_label.setText(f"Error getting contact (ID: {self.contact_id})")
 
     def _update_application_display(self):
-        """Update the application label with the current application info."""
+        """
+        Update the application label with the current application info.
+        """
         if not self.application_id:
             self.application_label.setText("No application selected")
             return
@@ -226,37 +238,42 @@ class InteractionForm(QDialog):
             logger.error(f"Error getting application info: {e}", exc_info=True)
             self.application_label.setText(f"Error getting application (ID: {self.application_id})")
 
-    @pyqtSlot()
     def on_select_contact(self):
-        """Open dialog to select a contact."""
+        """
+        Open dialog to select a contact and update the display.
+        """
         dialog = ContactSelectorDialog(self)
         if dialog.exec():
             self.contact_id = dialog.selected_contact_id
             self._update_contact_display()
 
-    @pyqtSlot()
     def on_clear_contact(self):
-        """Clear the selected contact."""
+        """
+        Clear the selected contact from the form.
+        """
         self.contact_id = None
         self.contact_label.setText("No contact selected")
 
-    @pyqtSlot()
     def on_select_application(self):
-        """Open dialog to select an application."""
+        """
+        Open dialog to select an application and update the display.
+        """
         dialog = ApplicationSelectorDialog(self)
         if dialog.exec():
             self.application_id = dialog.selected_application_id
             self._update_application_display()
 
-    @pyqtSlot()
     def on_clear_application(self):
-        """Clear the selected application."""
+        """
+        Clear the selected application from the form.
+        """
         self.application_id = None
         self.application_label.setText("No application selected")
 
-    @pyqtSlot()
     def on_save(self):
-        """Save the interaction data."""
+        """
+        Save the interaction data from the form.
+        """
         # Check for required fields
         if not self.contact_id:
             QMessageBox.warning(self, "Missing Data", "Please select a contact for this interaction")

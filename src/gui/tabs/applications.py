@@ -24,9 +24,19 @@ logger = get_logger(__name__)
 
 
 class ApplicationsTab(QWidget):
-    """Tab for managing job applications."""
+    """
+    Tab for managing job applications.
+
+    Provides UI and logic for listing, searching, filtering, viewing, editing, and deleting applications.
+    """
 
     def __init__(self, parent=None) -> None:
+        """
+        Initialize the applications tab.
+
+        Args:
+            parent: Parent widget (main window).
+        """
         super().__init__(parent)
         self.main_window = parent
         self.current_status = None
@@ -34,7 +44,9 @@ class ApplicationsTab(QWidget):
         self.load_applications()
 
     def _init_ui(self) -> None:
-        """Initialize the applications tab UI."""
+        """
+        Initialize the applications tab UI components and layout.
+        """
         layout = QVBoxLayout(self)
 
         # Header section with filters
@@ -107,7 +119,12 @@ class ApplicationsTab(QWidget):
         self.table.itemSelectionChanged.connect(self.on_selection_changed)
 
     def load_applications(self, status=None) -> None:
-        """Load applications with optional status filter."""
+        """
+        Load applications, optionally filtered by status.
+
+        Args:
+            status: Status to filter applications by, or None for all.
+        """
         try:
             self.main_window.show_status_message("Loading applications...")
             self.current_status = status
@@ -153,7 +170,12 @@ class ApplicationsTab(QWidget):
             self.main_window.show_status_message(f"Error: {str(e)}")
 
     def search_applications(self, search_term) -> None:
-        """Search applications by keyword."""
+        """
+        Search applications by keyword and update the table.
+
+        Args:
+            search_term: The search string to filter applications.
+        """
         try:
             if not search_term:
                 self.load_applications(self.current_status)
@@ -199,7 +221,12 @@ class ApplicationsTab(QWidget):
             self.main_window.show_status_message(f"Search error: {str(e)}")
 
     def get_selected_application_id(self) -> int | None:
-        """Get the ID of the selected application."""
+        """
+        Get the ID of the currently selected application.
+
+        Returns:
+            The selected application's ID, or None if no selection.
+        """
         selected_items = self.table.selectedItems()
         if not selected_items:
             return None
@@ -211,12 +238,16 @@ class ApplicationsTab(QWidget):
         return None
 
     def refresh_data(self) -> None:
-        """Refresh the applications data."""
+        """
+        Refresh the applications data in the table.
+        """
         self.load_applications(self.current_status)
 
     @pyqtSlot()
     def on_selection_changed(self) -> None:
-        """Enable or disable buttons based on selection."""
+        """
+        Enable or disable action buttons based on table selection.
+        """
         has_selection = bool(self.table.selectedItems())
         self.view_button.setEnabled(has_selection)
         self.edit_button.setEnabled(has_selection)
@@ -224,7 +255,12 @@ class ApplicationsTab(QWidget):
 
     @pyqtSlot(str)
     def on_status_filter_changed(self, status) -> None:
-        """Handle status filter changes."""
+        """
+        Handle changes to the status filter dropdown.
+
+        Args:
+            status: The selected status from the filter.
+        """
         if status == "All":
             self.load_applications(None)
         else:
@@ -232,20 +268,26 @@ class ApplicationsTab(QWidget):
 
     @pyqtSlot()
     def on_search(self) -> None:
-        """Handle search button click."""
+        """
+        Handle search button click or return key in search box.
+        """
         search_term = self.search_input.text().strip()
         self.search_applications(search_term)
 
     @pyqtSlot()
     def on_new_application(self) -> None:
-        """Open dialog to create a new application."""
+        """
+        Open dialog to create a new application and refresh the table on success.
+        """
         dialog = ApplicationForm(self)
         if dialog.exec():
             self.refresh_data()
 
     @pyqtSlot()
     def on_view_application(self) -> None:
-        """Open the application detail view."""
+        """
+        Open dialog to view the selected application's details.
+        """
         app_id = self.get_selected_application_id()
         if app_id:
             dialog = ApplicationDetailDialog(self, app_id)
@@ -254,7 +296,9 @@ class ApplicationsTab(QWidget):
 
     @pyqtSlot()
     def on_edit_application(self) -> None:
-        """Open dialog to edit the selected application."""
+        """
+        Open dialog to edit the selected application and refresh the table on success.
+        """
         app_id = self.get_selected_application_id()
         if app_id:
             dialog = ApplicationForm(self, app_id)

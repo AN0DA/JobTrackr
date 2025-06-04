@@ -15,7 +15,11 @@ logger = get_logger(__name__)
 
 
 class BaseService(Generic[ModelType]):
-    """Base service class for common database operations."""
+    """
+    Abstract base class for service classes.
+
+    Provides common CRUD operations and utility methods for derived service classes.
+    """
 
     # The model this service manages (overridden in subclasses)
     model_class: type[ModelType] | None = None
@@ -29,7 +33,15 @@ class BaseService(Generic[ModelType]):
 
     @db_operation
     def get(self, _id: int, session: Session) -> dict[str, Any] | None:
-        """Get a specific entity by ID."""
+        """
+        Retrieve an entity by ID.
+
+        Args:
+            _id: ID of the entity to retrieve.
+            session: SQLAlchemy session.
+        Returns:
+            Dictionary representation of the entity, or None if not found.
+        """
         if not self.model_class:
             raise NotImplementedError("model_class must be defined in the subclass")
 
@@ -90,7 +102,15 @@ class BaseService(Generic[ModelType]):
 
     @db_operation
     def create(self, data: dict[str, Any], session: Session) -> dict[str, Any]:
-        """Create a new entity."""
+        """
+        Create a new entity from a dictionary of data.
+
+        Args:
+            data: Dictionary of entity attributes.
+            session: SQLAlchemy session.
+        Returns:
+            Dictionary representation of the created entity.
+        """
         if not self.model_class:
             raise NotImplementedError("model_class must be defined in the subclass")
 
@@ -115,7 +135,16 @@ class BaseService(Generic[ModelType]):
 
     @db_operation
     def update(self, _id: int, data: dict[str, Any], session: Session) -> dict[str, Any]:
-        """Update an existing entity."""
+        """
+        Update an existing entity by ID with new data.
+
+        Args:
+            _id: ID of the entity to update.
+            data: Dictionary of updated attributes.
+            session: SQLAlchemy session.
+        Returns:
+            Dictionary representation of the updated entity.
+        """
         if not self.model_class:
             raise NotImplementedError("model_class must be defined in the subclass")
 
@@ -145,7 +174,13 @@ class BaseService(Generic[ModelType]):
 
     @db_operation
     def delete(self, _id: int, session: Session) -> bool:
-        """Delete an entity."""
+        """
+        Delete an entity by ID.
+
+        Args:
+            _id: ID of the entity to delete.
+            session: SQLAlchemy session.
+        """
         if not self.model_class:
             raise NotImplementedError("model_class must be defined in the subclass")
 
@@ -168,13 +203,36 @@ class BaseService(Generic[ModelType]):
             raise
 
     def _create_entity_from_dict(self, data: dict[str, Any], session: Session) -> ModelType:
-        """Create an entity from a dictionary of attributes."""
+        """
+        Abstract method to create an entity from a dictionary.
+
+        Args:
+            data: Dictionary of entity attributes.
+            session: SQLAlchemy session.
+        Returns:
+            Entity instance.
+        """
         raise NotImplementedError("Subclasses must implement _create_entity_from_dict")
 
     def _update_entity_from_dict(self, entity: ModelType, data: dict[str, Any], session: Session) -> None:
-        """Update an entity from a dictionary of attributes."""
+        """
+        Abstract method to update an entity from a dictionary.
+
+        Args:
+            entity: Entity instance to update.
+            data: Dictionary of updated attributes.
+            session: SQLAlchemy session.
+        """
         raise NotImplementedError("Subclasses must implement _update_entity_from_dict")
 
     def _entity_to_dict(self, entity: ModelType, include_details: bool = True) -> dict[str, Any]:
-        """Convert an entity object to a dictionary."""
+        """
+        Abstract method to convert an entity to a dictionary.
+
+        Args:
+            entity: Entity instance.
+            include_details: Whether to include all details.
+        Returns:
+            Dictionary representation of the entity.
+        """
         raise NotImplementedError("Subclasses must implement _entity_to_dict")

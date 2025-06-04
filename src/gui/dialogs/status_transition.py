@@ -22,9 +22,21 @@ logger = get_logger(__name__)
 
 
 class StatusTransitionDialog(QDialog):
-    """Dialog for changing application status."""
+    """
+    Dialog for changing application status.
+
+    Allows the user to select a new status for an application, optionally add a note, and records the change.
+    """
 
     def __init__(self, parent=None, application_id=None, current_status=None):
+        """
+        Initialize the status transition dialog.
+
+        Args:
+            parent: Parent widget.
+            application_id: ID of the application whose status is being changed.
+            current_status: The current status of the application.
+        """
         super().__init__(parent)
         self.main_window = parent.main_window if parent else None
         self.application_id = application_id
@@ -36,7 +48,9 @@ class StatusTransitionDialog(QDialog):
         self._init_ui()
 
     def _init_ui(self):
-        """Initialize the dialog UI."""
+        """
+        Initialize the dialog UI components.
+        """
         layout = QVBoxLayout(self)
 
         # Dialog title
@@ -89,7 +103,9 @@ class StatusTransitionDialog(QDialog):
 
     @pyqtSlot()
     def save_status_change(self):
-        """Save the status change."""
+        """
+        Save the status change and create a change record.
+        """
         try:
             new_status = self.new_status_select.currentText()
             note = self.notes_input.toPlainText().strip()

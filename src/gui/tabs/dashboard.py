@@ -22,9 +22,23 @@ logger = get_logger(__name__)
 
 
 class StatsCard(QWidget):
-    """Widget displaying a statistic with title and value."""
+    """
+    Widget displaying a statistic with title and value.
+
+    Used for showing summary statistics on the dashboard.
+    """
 
     def __init__(self, title, value="0", icon=None, color=UI_COLORS["primary"], parent=None):
+        """
+        Initialize the stats card widget.
+
+        Args:
+            title (str): The title of the statistic.
+            value (str): The value to display.
+            icon: Optional icon to display.
+            color (str): Color for the value text.
+            parent: Parent widget.
+        """
         super().__init__(parent)
 
         # Set up styling
@@ -79,14 +93,29 @@ class StatsCard(QWidget):
         self.setMaximumHeight(120)
 
     def update_value(self, value):
-        """Update the displayed value."""
+        """
+        Update the displayed value.
+
+        Args:
+            value: The new value to display.
+        """
         self.value_label.setText(str(value))
 
 
 class ApplicationList(DataTable):
-    """Table widget showing a list of applications."""
+    """
+    Table widget showing a list of applications.
+
+    Used for displaying recent applications on the dashboard.
+    """
 
     def __init__(self, parent=None):
+        """
+        Initialize the application list table.
+
+        Args:
+            parent: Parent widget.
+        """
         super().__init__(0, ["Job Title", "Company", "Status", "Applied Date"], parent)  # 0 rows, 4 columns
 
         # Set up the table
@@ -94,7 +123,12 @@ class ApplicationList(DataTable):
         self.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
 
     def update_applications(self, applications):
-        """Update the displayed applications."""
+        """
+        Update the displayed applications.
+
+        Args:
+            applications: List of application data dicts.
+        """
         self.setRowCount(0)  # Clear current rows
 
         if not applications:
@@ -118,16 +152,28 @@ class ApplicationList(DataTable):
 
 
 class DashboardTab(QWidget):
-    """Dashboard tab showing overview and recent activities."""
+    """
+    Dashboard tab showing overview and recent activities.
+
+    Displays statistics, recent applications, and activity feed for the user.
+    """
 
     def __init__(self, parent=None) -> None:
+        """
+        Initialize the dashboard tab.
+
+        Args:
+            parent: Parent widget (main window).
+        """
         super().__init__(parent)
         self.main_window = parent
         self._init_ui()
         self.refresh_data()
 
     def _init_ui(self) -> None:
-        """Initialize the dashboard UI."""
+        """
+        Initialize the dashboard UI components and layout.
+        """
         main_layout = QVBoxLayout(self)
 
         # Header section
@@ -206,7 +252,9 @@ class DashboardTab(QWidget):
         self.setLayout(main_layout)
 
     def refresh_data(self) -> None:
-        """Load and display dashboard data."""
+        """
+        Load and display dashboard data, including stats and recent applications.
+        """
         try:
             service = ApplicationService()
             stats = service.get_dashboard_stats()
@@ -236,12 +284,16 @@ class DashboardTab(QWidget):
 
     @pyqtSlot()
     def on_new_application(self) -> None:
-        """Open the new application form."""
+        """
+        Open the new application form and refresh dashboard on success.
+        """
         dialog = ApplicationForm(self)
         if dialog.exec():
             self.refresh_data()
 
     @pyqtSlot()
     def on_view_all_applications(self) -> None:
-        """Switch to applications tab."""
+        """
+        Switch to the applications tab in the main window.
+        """
         self.main_window.tabs.setCurrentIndex(1)  # Switch to Applications tab

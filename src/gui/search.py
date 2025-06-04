@@ -20,9 +20,19 @@ logger = get_logger(__name__)
 
 
 class SearchDialog(QDialog):
-    """Dialog for searching applications."""
+    """
+    Dialog for searching applications.
+
+    Allows the user to search for job applications and view results in a table.
+    """
 
     def __init__(self, parent=None) -> None:
+        """
+        Initialize the search dialog.
+
+        Args:
+            parent: Parent widget (main window).
+        """
         super().__init__(parent)
         self.main_window = parent
 
@@ -32,7 +42,9 @@ class SearchDialog(QDialog):
         self._init_ui()
 
     def _init_ui(self) -> None:
-        """Initialize the search dialog UI."""
+        """
+        Initialize the search dialog UI components and layout.
+        """
         layout = QVBoxLayout(self)
 
         # Title
@@ -74,7 +86,9 @@ class SearchDialog(QDialog):
         self.search_input.setFocus()
 
     def perform_search(self) -> None:
-        """Search for applications matching the search term."""
+        """
+        Search for applications matching the search term and update the results table.
+        """
         search_term = self.search_input.text().strip()
 
         if not search_term:
@@ -112,7 +126,12 @@ class SearchDialog(QDialog):
                 self.main_window.show_status_message(f"Search error: {str(e)}")
 
     def on_row_double_clicked(self, index) -> None:
-        """Open the selected application."""
+        """
+        Open the selected application in a detail dialog when a result row is double clicked.
+
+        Args:
+            index: QModelIndex of the double-clicked row.
+        """
         app_id = int(self.results_table.item(index.row(), 0).text())
 
         # Close search dialog

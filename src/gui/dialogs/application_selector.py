@@ -18,9 +18,19 @@ logger = get_logger(__name__)
 
 
 class ApplicationSelectorDialog(QDialog):
-    """Dialog for selecting an application to associate with a contact or other entity."""
+    """
+    Dialog for selecting an application to associate with a contact or other entity.
+
+    Allows searching, filtering, and selecting an application from a table.
+    """
 
     def __init__(self, parent=None):
+        """
+        Initialize the application selector dialog.
+
+        Args:
+            parent: Parent widget.
+        """
         super().__init__(parent)
         self.main_window = parent.main_window if parent else None
         self.selected_application_id = None
@@ -32,7 +42,9 @@ class ApplicationSelectorDialog(QDialog):
         self.load_applications()
 
     def _init_ui(self):
-        """Initialize the dialog UI."""
+        """
+        Initialize the dialog UI components.
+        """
         layout = QVBoxLayout(self)
 
         # Search bar
@@ -69,7 +81,9 @@ class ApplicationSelectorDialog(QDialog):
         self.setLayout(layout)
 
     def load_applications(self, search_term=None):
-        """Load applications with optional search filtering."""
+        """
+        Load applications into the table, optionally filtering by a search term.
+        """
         try:
             self.applications_table.setRowCount(0)
 
@@ -118,7 +132,9 @@ class ApplicationSelectorDialog(QDialog):
 
     @pyqtSlot(str)
     def on_search(self, text):
-        """Handle search input changes."""
+        """
+        Handle search input changes and reload the application list.
+        """
         if not text:
             self.load_applications()
         else:
@@ -126,7 +142,9 @@ class ApplicationSelectorDialog(QDialog):
 
     @pyqtSlot()
     def on_select(self):
-        """Handle select button click."""
+        """
+        Handle select button click and accept the selected application.
+        """
         selected_rows = self.applications_table.selectedItems()
         if not selected_rows:
             if self.main_window:
@@ -143,7 +161,9 @@ class ApplicationSelectorDialog(QDialog):
 
     @pyqtSlot()
     def on_table_double_clicked(self, index):
-        """Handle double-click on table row."""
+        """
+        Handle double click on an application in the table and accept the selection.
+        """
         if self.applications_table.item(index.row(), 0).text() == "No applications found":
             return
 

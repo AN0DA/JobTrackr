@@ -14,13 +14,25 @@ logger = logging.getLogger(__name__)
 
 
 class ContactService(BaseService):
-    """Service for contact-related operations."""
+    """
+    Service for contact-related operations.
+
+    Provides methods to create, update, delete, and retrieve contacts and their associations with companies and applications.
+    """
 
     model_class = Contact
     entity_name = "contact"
 
     def _create_entity_from_dict(self, data: dict[str, Any], session: Session) -> Contact:
-        """Create a Contact object from a dictionary."""
+        """
+        Create a Contact object from a dictionary.
+
+        Args:
+            data: Dictionary of contact attributes.
+            session: SQLAlchemy session.
+        Returns:
+            Contact instance.
+        """
         return Contact(
             name=data["name"],
             title=data.get("title"),
@@ -31,7 +43,14 @@ class ContactService(BaseService):
         )
 
     def _update_entity_from_dict(self, entity: Contact, data: dict[str, Any], session: Session) -> None:
-        """Update a Contact object from a dictionary."""
+        """
+        Update a Contact object from a dictionary.
+
+        Args:
+            entity: Contact instance to update.
+            data: Dictionary of updated attributes.
+            session: SQLAlchemy session.
+        """
         if "name" in data:
             entity.name = data["name"]
         if "title" in data:
@@ -46,7 +65,15 @@ class ContactService(BaseService):
             entity.company_id = data["company_id"]
 
     def _entity_to_dict(self, contact: Contact, include_details: bool = True) -> dict[str, Any]:
-        """Convert a Contact object to a dictionary."""
+        """
+        Convert a Contact object to a dictionary.
+
+        Args:
+            contact: Contact instance.
+            include_details: Whether to include all details.
+        Returns:
+            Dictionary representation of the contact.
+        """
         result = {
             "id": contact.id,
             "name": contact.name,
@@ -79,7 +106,16 @@ class ContactService(BaseService):
 
     @db_operation
     def get_contacts(self, session: Session, company_id: int | None = None, **kwargs: Any) -> list[dict[str, Any]]:
-        """Get contacts with optional filtering by company."""
+        """
+        Get contacts with optional filtering by company.
+
+        Args:
+            session: SQLAlchemy session.
+            company_id: Optional company ID to filter contacts.
+            **kwargs: Additional query options (offset, limit).
+        Returns:
+            List of contact dictionaries.
+        """
         try:
             query = session.query(Contact)
 
@@ -99,7 +135,15 @@ class ContactService(BaseService):
 
     @db_operation
     def search_contacts(self, search_term: str, session: Session) -> list[dict[str, Any]]:
-        """Search for contacts by name, email, or title."""
+        """
+        Search for contacts by name, email, or title.
+
+        Args:
+            search_term: The search string.
+            session: SQLAlchemy session.
+        Returns:
+            List of contact dictionaries matching the search.
+        """
         try:
             search_pattern = f"%{search_term}%"
             query = session.query(Contact).join(Company, isouter=True)
@@ -121,7 +165,16 @@ class ContactService(BaseService):
 
     @db_operation
     def add_contact_to_application(self, application_id: int, contact_id: int, session: Session) -> bool:
-        """Associate a contact with an application."""
+        """
+        Associate a contact with an application.
+
+        Args:
+            application_id: ID of the application.
+            contact_id: ID of the contact.
+            session: SQLAlchemy session.
+        Returns:
+            True if association was successful, False otherwise.
+        """
         try:
             application = session.query(Application).filter(Application.id == application_id).first()
             contact = session.query(Contact).filter(Contact.id == contact_id).first()
@@ -159,7 +212,15 @@ class ContactService(BaseService):
 
     @db_operation
     def get_contacts_for_application(self, application_id: int, session: Session) -> list[dict[str, Any]]:
-        """Get contacts associated with an application."""
+        """
+        Get contacts associated with an application.
+
+        Args:
+            application_id: ID of the application.
+            session: SQLAlchemy session.
+        Returns:
+            List of contact dictionaries associated with the application.
+        """
         try:
             application = session.query(Application).filter(Application.id == application_id).first()
 
@@ -173,7 +234,16 @@ class ContactService(BaseService):
 
     @db_operation
     def remove_contact_from_application(self, application_id: int, contact_id: int, session: Session) -> bool:
-        """Remove a contact from an application."""
+        """
+        Remove a contact from an application.
+
+        Args:
+            application_id: ID of the application.
+            contact_id: ID of the contact.
+            session: SQLAlchemy session.
+        Returns:
+            True if removal was successful, False otherwise.
+        """
         try:
             application = session.query(Application).filter(Application.id == application_id).first()
             contact = session.query(Contact).filter(Contact.id == contact_id).first()
@@ -205,7 +275,15 @@ class ContactService(BaseService):
 
     @db_operation
     def get_associated_applications(self, contact_id: int, session: Session) -> list[dict[str, Any]]:
-        """Get all applications associated with a contact."""
+        """
+        Get all applications associated with a contact.
+
+        Args:
+            contact_id: ID of the contact.
+            session: SQLAlchemy session.
+        Returns:
+            List of application dictionaries associated with the contact.
+        """
         try:
             logger.debug(f"Getting applications for contact {contact_id}")
 
@@ -241,7 +319,16 @@ class ContactService(BaseService):
 
     @db_operation
     def associate_with_application(self, contact_id: int, application_id: int, session: Session) -> bool:
-        """Associate a contact with an application."""
+        """
+        Associate a contact with an application.
+
+        Args:
+            contact_id: ID of the contact.
+            application_id: ID of the application.
+            session: SQLAlchemy session.
+        Returns:
+            True if association was successful, False otherwise.
+        """
         try:
             logger.debug(f"Associating contact {contact_id} with application {application_id}")
 
@@ -278,7 +365,16 @@ class ContactService(BaseService):
 
     @db_operation
     def disassociate_from_application(self, contact_id: int, application_id: int, session: Session) -> bool:
-        """Remove association between a contact and an application."""
+        """
+        Remove the association between a contact and an application.
+
+        Args:
+            contact_id: ID of the contact.
+            application_id: ID of the application.
+            session: SQLAlchemy session.
+        Returns:
+            True if disassociation was successful, False otherwise.
+        """
         try:
             logger.debug(f"Removing association between contact {contact_id} and application {application_id}")
 

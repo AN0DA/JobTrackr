@@ -24,9 +24,19 @@ logger = get_logger(__name__)
 
 
 class SettingsDialog(QDialog):
-    """Dialog for application settings."""
+    """
+    Dialog for application settings.
+
+    Allows the user to view and edit application settings, such as database path, update checks, and logging level.
+    """
 
     def __init__(self, parent: QWidget | None = None) -> None:
+        """
+        Initialize the settings dialog.
+
+        Args:
+            parent: Parent widget.
+        """
         super().__init__(parent)
         self.main_window = parent
         self.settings = Settings()
@@ -38,7 +48,9 @@ class SettingsDialog(QDialog):
         self._load_settings()
 
     def _init_ui(self) -> None:
-        """Initialize the settings dialog UI."""
+        """
+        Initialize the settings dialog UI components.
+        """
         layout = QVBoxLayout(self)
 
         # Database settings
@@ -107,7 +119,9 @@ class SettingsDialog(QDialog):
         self.setLayout(layout)
 
     def _load_settings(self) -> None:
-        """Load current settings values."""
+        """
+        Load current settings values into the dialog fields.
+        """
         # Database path
         db_path = self.settings.get("database_path")
         self.db_path_input.setText(db_path)
@@ -133,7 +147,9 @@ class SettingsDialog(QDialog):
         self.log_dir.setText(str(LOG_DIR))
 
     def on_browse_db(self) -> None:
-        """Browse for database file."""
+        """
+        Open a file dialog to browse for a database file location.
+        """
         current_path = self.db_path_input.text()
         initial_dir = os.path.dirname(os.path.expanduser(current_path))
 
@@ -145,7 +161,9 @@ class SettingsDialog(QDialog):
             self.db_path_input.setText(file_path)
 
     def on_apply_db_changes(self) -> None:
-        """Apply database path changes."""
+        """
+        Apply changes to the database path and update the status display.
+        """
         new_db_path = self.db_path_input.text()
 
         # Expand user path if needed
@@ -183,7 +201,9 @@ class SettingsDialog(QDialog):
             self.db_status.setStyleSheet("color: red")
 
     def on_view_logs(self) -> None:
-        """Open log directory."""
+        """
+        Open the log directory in the system file browser.
+        """
         import webbrowser
 
         from src.config import LOG_DIR
@@ -199,7 +219,9 @@ class SettingsDialog(QDialog):
             QMessageBox.information(self, "Logs", "Log directory does not exist yet.")
 
     def on_save_settings(self) -> None:
-        """Save all settings."""
+        """
+        Save all settings from the dialog fields to persistent storage.
+        """
         try:
             # Get values
             db_path = self.db_path_input.text()

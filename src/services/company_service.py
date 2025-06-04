@@ -12,13 +12,25 @@ logger = logging.getLogger(__name__)
 
 
 class CompanyService(BaseService):
-    """Service for company-related operations."""
+    """
+    Service for company-related operations.
+
+    Provides methods to create, update, delete, and retrieve companies and their relationships.
+    """
 
     model_class = Company
     entity_name = "company"
 
     def _create_entity_from_dict(self, data: dict[str, Any], session: Session) -> Company:
-        """Create a Company object from a dictionary."""
+        """
+        Create a Company object from a dictionary.
+
+        Args:
+            data: Dictionary of company attributes.
+            session: SQLAlchemy session.
+        Returns:
+            Company instance.
+        """
         return Company(
             name=data["name"],
             website=data.get("website"),
@@ -29,7 +41,14 @@ class CompanyService(BaseService):
         )
 
     def _update_entity_from_dict(self, entity: Company, data: dict[str, Any], session: Session) -> None:
-        """Update a Company object from a dictionary."""
+        """
+        Update a Company object from a dictionary.
+
+        Args:
+            entity: Company instance to update.
+            data: Dictionary of updated attributes.
+            session: SQLAlchemy session.
+        """
         if "name" in data:
             entity.name = data["name"]
         if "website" in data:
@@ -44,7 +63,15 @@ class CompanyService(BaseService):
             entity.notes = data["notes"]
 
     def _entity_to_dict(self, company: Company, include_details: bool = True) -> dict[str, Any]:
-        """Convert a Company object to a dictionary."""
+        """
+        Convert a Company object to a dictionary.
+
+        Args:
+            company: Company instance.
+            include_details: Whether to include all details.
+        Returns:
+            Dictionary representation of the company.
+        """
         result = {
             "id": company.id,
             "name": company.name,
@@ -64,14 +91,30 @@ class CompanyService(BaseService):
         return result
 
     def get_company_types(self) -> list[str]:
-        """Get all available company types."""
+        """
+        Get all available company types.
+
+        Returns:
+            List of company type strings.
+        """
         return [ct.value for ct in CompanyType]
 
     @db_operation
     def create_relationship(
         self, source_id: int, target_id: int, relationship_type: str, session: Session, notes: str | None = None
     ) -> dict[str, Any]:
-        """Create a new relationship between companies."""
+        """
+        Create a new relationship between companies.
+
+        Args:
+            source_id: ID of the source company.
+            target_id: ID of the target company.
+            relationship_type: Type of the relationship.
+            session: SQLAlchemy session.
+            notes: Optional notes for the relationship.
+        Returns:
+            Dictionary representation of the new relationship.
+        """
         try:
             # Verify both companies exist
             source = session.query(Company).filter(Company.id == source_id).first()
@@ -105,7 +148,16 @@ class CompanyService(BaseService):
 
     @db_operation
     def update_relationship(self, relationship_id: int, data: dict[str, Any], session: Session) -> dict[str, Any]:
-        """Update an existing company relationship."""
+        """
+        Update an existing company relationship.
+
+        Args:
+            relationship_id: ID of the relationship to update.
+            data: Dictionary of updated attributes.
+            session: SQLAlchemy session.
+        Returns:
+            Dictionary representation of the updated relationship.
+        """
         try:
             relationship = session.query(CompanyRelationship).filter(CompanyRelationship.id == relationship_id).first()
 
@@ -135,7 +187,13 @@ class CompanyService(BaseService):
 
     @db_operation
     def delete_relationship(self, relationship_id: int, session: Session) -> None:
-        """Delete a company relationship."""
+        """
+        Delete a company relationship.
+
+        Args:
+            relationship_id: ID of the relationship to delete.
+            session: SQLAlchemy session.
+        """
         try:
             relationship = session.query(CompanyRelationship).filter(CompanyRelationship.id == relationship_id).first()
 
@@ -151,7 +209,15 @@ class CompanyService(BaseService):
 
     @db_operation
     def get_related_companies(self, company_id: int, session: Session) -> list[dict[str, Any]]:
-        """Get companies related to the given company."""
+        """
+        Get companies related to the given company.
+
+        Args:
+            company_id: ID of the company.
+            session: SQLAlchemy session.
+        Returns:
+            List of related company dictionaries.
+        """
         try:
             # Get outgoing relationships
             outgoing = (
@@ -204,7 +270,15 @@ class CompanyService(BaseService):
 
     @db_operation
     def get_relationship(self, relationship_id: int, session: Session) -> dict[str, Any] | None:
-        """Get a specific relationship by ID."""
+        """
+        Get a specific relationship by ID.
+
+        Args:
+            relationship_id: ID of the relationship.
+            session: SQLAlchemy session.
+        Returns:
+            Dictionary representation of the relationship, or None if not found.
+        """
         try:
             relationship = session.query(CompanyRelationship).filter(CompanyRelationship.id == relationship_id).first()
 

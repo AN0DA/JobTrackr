@@ -13,13 +13,25 @@ logger = get_logger(__name__)
 
 
 class InteractionService(BaseService):
-    """Service for interaction-related operations."""
+    """
+    Service for interaction-related operations.
+
+    Provides methods to create, update, delete, and retrieve interactions for applications, contacts, and companies.
+    """
 
     model_class = Interaction
     entity_name = "interaction"
 
     def _create_entity_from_dict(self, data: dict[str, Any], session: Session) -> Interaction:
-        """Create an Interaction object from a dictionary."""
+        """
+        Create an Interaction object from a dictionary.
+
+        Args:
+            data: Dictionary of interaction attributes.
+            session: SQLAlchemy session.
+        Returns:
+            Interaction instance.
+        """
         # Parse the date string to a datetime object
         date = data.get("date")
         if isinstance(date, str):
@@ -39,7 +51,14 @@ class InteractionService(BaseService):
         )
 
     def _update_entity_from_dict(self, entity: Interaction, data: dict[str, Any], session: Session) -> None:
-        """Update an Interaction object from a dictionary."""
+        """
+        Update an Interaction object from a dictionary.
+
+        Args:
+            entity: Interaction instance to update.
+            data: Dictionary of updated attributes.
+            session: SQLAlchemy session.
+        """
         if "interaction_type" in data:
             entity.interaction_type = data["interaction_type"]
 
@@ -63,7 +82,15 @@ class InteractionService(BaseService):
             entity.application_id = data["application_id"]
 
     def _entity_to_dict(self, interaction: Interaction, include_details: bool = True) -> dict[str, Any]:
-        """Convert an Interaction object to a dictionary."""
+        """
+        Convert an Interaction object to a dictionary.
+
+        Args:
+            interaction: Interaction instance.
+            include_details: Whether to include all details.
+        Returns:
+            Dictionary representation of the interaction.
+        """
         result = {
             "id": interaction.id,
             "contact_id": interaction.contact_id,
@@ -102,7 +129,17 @@ class InteractionService(BaseService):
     def get_interactions_by_contact(
         self, contact_id: int, session: Session, limit: int = 50, offset: int = 0
     ) -> list[dict[str, Any]]:
-        """Get interactions for a specific contact."""
+        """
+        Get all interactions for a specific contact.
+
+        Args:
+            contact_id: ID of the contact.
+            session: SQLAlchemy session.
+            limit: Maximum number of interactions to retrieve.
+            offset: Offset for pagination.
+        Returns:
+            List of interaction dictionaries for the contact.
+        """
         try:
             logger.debug(f"Getting interactions for contact {contact_id}")
 
@@ -132,7 +169,17 @@ class InteractionService(BaseService):
     def get_interactions_by_application(
         self, application_id: int, session: Session, limit: int = 50, offset: int = 0
     ) -> list[dict[str, Any]]:
-        """Get interactions for a specific application."""
+        """
+        Get all interactions for a specific application.
+
+        Args:
+            application_id: ID of the application.
+            session: SQLAlchemy session.
+            limit: Maximum number of interactions to retrieve.
+            offset: Offset for pagination.
+        Returns:
+            List of interaction dictionaries for the application.
+        """
         try:
             logger.debug(f"Getting interactions for application {application_id}")
 
@@ -197,3 +244,139 @@ class InteractionService(BaseService):
         except Exception as e:
             logger.error(f"Error getting interactions: {e}", exc_info=True)
             return []
+
+    def get_interactions_for_application(self, application_id: int, session: Session) -> list[dict[str, Any]]:
+        """
+        Get all interactions for a specific application.
+
+        Args:
+            application_id: ID of the application.
+            session: SQLAlchemy session.
+        Returns:
+            List of interaction dictionaries for the application.
+        """
+        try:
+            logger.debug(f"Getting interactions for application {application_id}")
+
+            # Query interactions for the application
+            query = (
+                session.query(Interaction)
+                .options(joinedload(Interaction.contact))
+                .filter(Interaction.application_id == application_id)
+                .order_by(desc(Interaction.date))
+            )
+
+            # Apply pagination
+            interactions = query.all()
+
+            # Convert to dictionaries
+            result = [self._entity_to_dict(interaction) for interaction in interactions]
+
+            logger.debug(f"Found {len(result)} interactions for application {application_id}")
+            return result
+
+        except Exception as e:
+            logger.error(f"Error getting interactions for application {application_id}: {e}", exc_info=True)
+            raise
+
+    def get_interactions_for_contact(self, contact_id: int, session: Session) -> list[dict[str, Any]]:
+        """
+        Get all interactions for a specific contact.
+
+        Args:
+            contact_id: ID of the contact.
+            session: SQLAlchemy session.
+        Returns:
+            List of interaction dictionaries for the contact.
+        """
+        try:
+            logger.debug(f"Getting interactions for contact {contact_id}")
+
+            # Query interactions for the contact
+            query = (
+                session.query(Interaction)
+                .options(joinedload(Interaction.contact))
+                .options(joinedload(Interaction.application))
+                .filter(Interaction.contact_id == contact_id)
+                .order_by(desc(Interaction.date))
+            )
+
+            # Apply pagination
+            interactions = query.all()
+
+            # Convert to dictionaries
+            result = [self._entity_to_dict(interaction) for interaction in interactions]
+
+            logger.debug(f"Found {len(result)} interactions for contact {contact_id}")
+            return result
+
+        except Exception as e:
+            logger.error(f"Error getting interactions for contact {contact_id}: {e}", exc_info=True)
+            raise
+
+    def get_interactions_for_company(self, company_id: int, session: Session) -> list[dict[str, Any]]:
+        """
+        Get all interactions for a specific company.
+
+        Args:
+            company_id: ID of the company.
+            session: SQLAlchemy session.
+        Returns:
+            List of interaction dictionaries for the company.
+        """
+        try:
+            logger.debug(f"Getting interactions for company {company_id}")
+
+            # Query interactions for the company
+            query = (
+                session.query(Interaction)
+                .options(joinedload(Interaction.contact))
+                .filter(Interaction.company_id == company_id)
+                .order_by(desc(Interaction.date))
+            )
+
+            # Apply pagination
+            interactions = query.all()
+
+            # Convert to dictionaries
+            result = [self._entity_to_dict(interaction) for interaction in interactions]
+
+            logger.debug(f"Found {len(result)} interactions for company {company_id}")
+            return result
+
+        except Exception as e:
+            logger.error(f"Error getting interactions for company {company_id}: {e}", exc_info=True)
+            raise
+
+    def search_interactions(self, search_term: str, session: Session) -> list[dict[str, Any]]:
+        """
+        Search for interactions by notes or type.
+
+        Args:
+            search_term: The search string.
+            session: SQLAlchemy session.
+        Returns:
+            List of interaction dictionaries matching the search.
+        """
+        try:
+            logger.debug(f"Searching interactions for term: {search_term}")
+
+            # Query interactions for the search term
+            query = (
+                session.query(Interaction)
+                .filter(Interaction.notes.ilike(f"%{search_term}%") | Interaction.interaction_type.ilike(f"%{search_term}%"))
+                .order_by(desc(Interaction.date))
+            )
+
+            # Apply pagination
+            interactions = query.all()
+
+            # Convert to dictionaries
+            result = [self._entity_to_dict(interaction) for interaction in interactions]
+
+            logger.debug(f"Found {len(result)} interactions matching the search term")
+            return result
+
+        except Exception as e:
+            logger.error(f"Error searching interactions: {e}", exc_info=True)
+            raise

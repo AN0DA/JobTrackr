@@ -13,7 +13,7 @@ from sqlalchemy.orm import declarative_base, relationship
 
 Base = declarative_base()
 
-# Association table for contacts and applications
+
 contact_applications = Table(
     "contact_applications",
     Base.metadata,
@@ -29,7 +29,13 @@ contact_applications = Table(
 
 
 class Company(Base):
-    """Company model."""
+    """
+    ORM model for a company.
+
+    Represents a company entity, including its name, industry, website, type, size,
+    notes, and timestamps. Companies can have applications, contacts, and relationships
+    with other companies.
+    """
 
     __tablename__ = "companies"
 
@@ -37,13 +43,12 @@ class Company(Base):
     name = Column(String(255), nullable=False)
     industry = Column(String(255))
     website = Column(String(255))
-    type = Column(String(50))  # DIRECT_EMPLOYER, STAFFING_AGENCY, etc
-    size = Column(String(50))  # S, M, L, XL etc
+    type = Column(String(50))
+    size = Column(String(50))
     notes = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    # Relationships
     applications = relationship("Application", back_populates="company")
     contacts = relationship("Contact", back_populates="company")
     outgoing_relationships = relationship(
@@ -54,7 +59,12 @@ class Company(Base):
     )
 
     def to_dict(self):
-        """Convert to dictionary."""
+        """
+        Convert the company instance to a dictionary.
+
+        Returns:
+            dict: Dictionary representation of the company.
+        """
         return {
             "id": self.id,
             "name": self.name,
@@ -69,7 +79,13 @@ class Company(Base):
 
 
 class Application(Base):
-    """Application model."""
+    """
+    ORM model for a job application.
+
+    Represents a job application, including job title, position, location, salary range,
+    status, application date, link, description, notes, and timestamps. Linked to a company,
+    contacts, interactions, and change records.
+    """
 
     __tablename__ = "applications"
 
@@ -87,7 +103,6 @@ class Application(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, onupdate=datetime.utcnow)
 
-    # Foreign keys
     company_id = Column(Integer, ForeignKey("companies.id"))
     company = relationship("Company", back_populates="applications")
     interactions = relationship("Interaction", back_populates="application", cascade="all, delete-orphan")
@@ -95,7 +110,12 @@ class Application(Base):
     contacts = relationship("Contact", secondary=contact_applications, back_populates="applications")
 
     def to_dict(self):
-        """Convert to dictionary."""
+        """
+        Convert the application instance to a dictionary.
+
+        Returns:
+            dict: Dictionary representation of the application.
+        """
         return {
             "id": self.id,
             "job_title": self.job_title,
@@ -114,7 +134,12 @@ class Application(Base):
 
 
 class Contact(Base):
-    """Contact model."""
+    """
+    ORM model for a contact person.
+
+    Represents a contact associated with a company and applications, including name, title,
+    email, phone, notes, and timestamps.
+    """
 
     __tablename__ = "contacts"
 
@@ -128,13 +153,17 @@ class Contact(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    # Relationships
     company = relationship("Company", back_populates="contacts")
     applications = relationship("Application", secondary=contact_applications, back_populates="contacts")
     interactions = relationship("Interaction", back_populates="contact")
 
     def to_dict(self):
-        """Convert to dictionary."""
+        """
+        Convert the contact instance to a dictionary.
+
+        Returns:
+            dict: Dictionary representation of the contact.
+        """
         return {
             "id": self.id,
             "name": self.name,
@@ -149,7 +178,12 @@ class Contact(Base):
 
 
 class Interaction(Base):
-    """Interaction model for tracking communication with contacts."""
+    """
+    ORM model for tracking communication with contacts.
+
+    Represents an interaction (such as email, call, or meeting) between a contact and an
+    application, including type, date, subject, notes, and timestamps.
+    """
 
     __tablename__ = "interactions"
 
@@ -163,12 +197,16 @@ class Interaction(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    # Relationships
     contact = relationship("Contact", back_populates="interactions")
     application = relationship("Application")
 
     def to_dict(self):
-        """Convert to dictionary."""
+        """
+        Convert the interaction instance to a dictionary.
+
+        Returns:
+            dict: Dictionary representation of the interaction.
+        """
         return {
             "id": self.id,
             "contact_id": self.contact_id,
@@ -183,7 +221,12 @@ class Interaction(Base):
 
 
 class ChangeRecord(Base):
-    """Model for tracking changes to applications."""
+    """
+    ORM model for tracking changes to applications.
+
+    Records changes to an application, such as status changes or contact additions, including
+    old and new values, notes, and timestamp.
+    """
 
     __tablename__ = "change_records"
 
@@ -195,11 +238,15 @@ class ChangeRecord(Base):
     notes = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    # Relationships
     application = relationship("Application", back_populates="change_records")
 
     def to_dict(self):
-        """Convert the change record to a dictionary."""
+        """
+        Convert the change record to a dictionary.
+
+        Returns:
+            dict: Dictionary representation of the change record.
+        """
         return {
             "id": self.id,
             "application_id": self.application_id,
@@ -212,7 +259,12 @@ class ChangeRecord(Base):
 
 
 class CompanyRelationship(Base):
-    """Company relationship model."""
+    """
+    ORM model for relationships between companies.
+
+    Represents a relationship between two companies, including the type of relationship,
+    notes, and timestamps.
+    """
 
     __tablename__ = "company_relationships"
 
@@ -230,14 +282,18 @@ class CompanyRelationship(Base):
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
-    # Relationship definitions
     source_company = relationship("Company", foreign_keys=[source_company_id], back_populates="outgoing_relationships")
     related_company = relationship(
         "Company", foreign_keys=[related_company_id], back_populates="incoming_relationships"
     )
 
     def to_dict(self):
-        """Convert to dictionary."""
+        """
+        Convert the company relationship instance to a dictionary.
+
+        Returns:
+            dict: Dictionary representation of the company relationship.
+        """
         return {
             "id": self.id,
             "source_company_id": self.source_company_id,
